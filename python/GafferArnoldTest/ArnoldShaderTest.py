@@ -60,10 +60,10 @@ def withMetadata( func ) :
 	def wrapper( self ) :
 
 		metadataPath = os.path.join( os.path.dirname( __file__ ), "metadata" )
-		if metadataPath not in os.environ["ARNOLD_PLUGIN_PATH"].split( ":" ) :
+		if metadataPath not in os.environ["ARNOLD_PLUGIN_PATH"].split( os.pathsep ) :
 
 			env = os.environ.copy()
-			env["ARNOLD_PLUGIN_PATH"] = env["ARNOLD_PLUGIN_PATH"] + ":" + metadataPath
+			env["ARNOLD_PLUGIN_PATH"] = env["ARNOLD_PLUGIN_PATH"] + os.pathsep + metadataPath
 
 			try :
 				subprocess.check_output(
