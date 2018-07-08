@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (c) 2013, Image Engine Design Inc. All rights reserved.
+//  Copyright (c) 2014, Image Engine Design Inc. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions are
@@ -34,20 +34,16 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef GAFFERBINDINGS_METADATABINDING_H
-#define GAFFERBINDINGS_METADATABINDING_H
-
-#include "GafferBindings/Export.h"
-#include "GafferBindings/Serialisation.h"
-
+#ifndef GAFFERBINDINGS_MATCHPATTERNPATHFILTERBINDING_H
+#define GAFFERBINDINGS_MATCHPATTERNPATHFILTERBINDING_H
 
 #include "GafferBindings/Export.h"
 
 namespace GafferBindings
 {
 
-GAFFERBINDINGS_API std::string metadataSerialisation( const Gaffer::GraphComponent *graphComponent, const std::string &identifier, Serialisation &serialisation );
+GAFFERBINDINGS_API void bindMatchPatternPathFilter();
 
 } // namespace GafferBindings
 
-#endif // GAFFERBINDINGS_METADATABINDING_H
+#endif // GAFFERBINDINGS_MATCHPATTERNPATHFILTERBINDING_H
