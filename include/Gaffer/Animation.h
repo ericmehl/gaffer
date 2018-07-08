@@ -318,7 +318,7 @@ class GAFFER_API Animation : public ComputeNode
 		/// Defines a curve as a collection of keyframes and methods
 		/// for editing them. Provides methods for evaluating the
 		/// interpolated curve at arbitrary positions.
-		class CurvePlug : public ValuePlug
+		class GAFFER_API CurvePlug : public ValuePlug
 		{
 
 			public :
