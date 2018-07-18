@@ -49,15 +49,19 @@ try :
 
 	import sys
 	import ctypes
-	originalDLOpenFlags = sys.getdlopenflags()
-	sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
+	import os
+
+	if os.name == "posix":
+		originalDLOpenFlags = sys.getdlopenflags()
+		sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
 
 	from ._GafferArnold import *
 
 finally :
 
-	sys.setdlopenflags( originalDLOpenFlags )
-	del sys, ctypes, originalDLOpenFlags
+	if os.name == "posix":
+		sys.setdlopenflags( originalDLOpenFlags )
+		del sys, ctypes, originalDLOpenFlags
 
 from .ArnoldShaderBall import ArnoldShaderBall
 from .ArnoldTextureBake import ArnoldTextureBake
