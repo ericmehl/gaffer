@@ -385,9 +385,9 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 	def tearDown( self ) :
 
-		GafferTest.TestCase.tearDown( self )
-
 		os.chdir( self.__originalCWD )
+
+		GafferTest.TestCase.tearDown( self )
 
 if __name__ == "__main__":
 	unittest.main()
