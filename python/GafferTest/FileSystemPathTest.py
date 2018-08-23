@@ -437,7 +437,6 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 			self.assertTrue( len( fileInfo ) > 11 )
 			fileOwner = fileInfo[-11]
 
-
 		GafferTest.TestCase.tearDown( self )
 
 if __name__ == "__main__":
