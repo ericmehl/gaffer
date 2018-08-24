@@ -104,7 +104,11 @@ bool FileSystemPath::isValid( const IECore::Canceller *canceller ) const
 		return true;
 	}
 
+#ifndef _MSC_VER
 	const file_type t = symlink_status( path( this->string() ) ).type();
+#else
+	const file_type t = status( path( this->string() ) ).type();
+#endif
 	return t != status_error && t != file_not_found;
 }
 
