@@ -58,6 +58,9 @@ class GAFFER_API FileSystemPath : public Path
 
 		~FileSystemPath() override;
 
+		/// Sets the path root and names from an OS native path string
+		void setFromString(const std::string &string) override;
+
 		bool isValid( const IECore::Canceller *canceller = nullptr ) const override;
 		bool isLeaf( const IECore::Canceller *canceller = nullptr ) const override;
 		void propertyNames( std::vector<IECore::InternedString> &names, const IECore::Canceller *canceller = nullptr ) const override;
@@ -82,6 +85,7 @@ class GAFFER_API FileSystemPath : public Path
 		// a FileSequence.
 		IECore::FileSequencePtr fileSequence() const;
 
+		std::string string() const override;
 		// Returns the path converted to the OS native format
 		std::string nativeString() const;
 
@@ -90,6 +94,7 @@ class GAFFER_API FileSystemPath : public Path
 	protected :
 
 		void doChildren( std::vector<PathPtr> &children, const IECore::Canceller *canceller ) const override;
+		std::string getOwner( const std::string &pathString ) const;
 
 	private :
 

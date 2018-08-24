@@ -50,10 +50,17 @@
 #include "boost/date_time/posix_time/conversion.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/operations.hpp"
+#include "boost/regex.hpp"
 
 #ifndef _MSC_VER
 	#include <grp.h>
 	#include <pwd.h>
+#else
+#include <stdio.h>
+#include <Windows.h>
+#include <tchar.h>
+#include "accctrl.h"
+#include "aclapi.h"
 #endif
 
 #include <sys/stat.h>
@@ -73,6 +80,12 @@ static InternedString g_modificationTimePropertyName( "fileSystem:modificationTi
 static InternedString g_sizePropertyName( "fileSystem:size" );
 static InternedString g_frameRangePropertyName( "fileSystem:frameRange" );
 
+static InternedString g_windowsSeparator( "\\" );
+static InternedString g_genericSeparator( "/" );
+static InternedString g_uncPrefix( "\\\\" );
+static InternedString g_uncGenericPrefix( "//" );
+static boost::regex g_driveLetterPattern{ "[A-Za-z]:" };
+
 FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 	:	Path( filter ), m_includeSequences( includeSequences )
 {
@@ -81,6 +94,7 @@ FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 FileSystemPath::FileSystemPath( const std::string &path, PathFilterPtr filter, bool includeSequences )
 	:	Path( path, filter ), m_includeSequences( includeSequences )
 {
+	setFromString( path );
 }
 
 FileSystemPath::FileSystemPath( const Names &names, const IECore::InternedString &root, PathFilterPtr filter, bool includeSequences )
@@ -90,6 +104,60 @@ FileSystemPath::FileSystemPath( const Names &names, const IECore::InternedString
 
 FileSystemPath::~FileSystemPath()
 {
+}
+
+// Create a path that is aware of differences in OS naming schemes.
+// Linux and MacOS can have a relative path with no root, or a path rooted at "/" :
+// Windows can have a relative path with no root, a path rooted at a drive letter followed by a colon
+// or a path rooted at a server name and share name (UNC paths).
+
+void FileSystemPath::setFromString(const std::string &string)
+{
+	Names newNames;
+	std::string sanitizedString = string;
+
+	boost::replace_all( sanitizedString, g_windowsSeparator.c_str(), g_genericSeparator.c_str() );
+
+#ifdef _MSC_VER
+	// If `string` is coming from a PathMatcher, it will always have a single leading slash.
+	// On Windows, interpret that to be the start of a UNC path.
+	if( sanitizedString.size() && sanitizedString[0] == '/' && !boost::starts_with( sanitizedString, "//" ) )
+	{
+		sanitizedString = "/" + sanitizedString;
+	}
+#endif
+
+	StringAlgo::tokenize<InternedString>(sanitizedString, '/', back_inserter(newNames));
+
+	InternedString newRoot;
+	if ( newNames.size() && boost::regex_match( newNames[0].string(), g_driveLetterPattern ) )
+	{
+		newRoot = newNames[0];
+		newNames.erase( newNames.begin() );
+	}
+	else if ( boost::starts_with( sanitizedString, "//" ) )
+	{
+		// The server name and share name are both required before the path is valid.
+		if( newNames.size() > 1 )
+		{
+			newRoot = newNames[0].string() + g_genericSeparator.string() + newNames[1].string();
+			newNames.erase( newNames.begin(), newNames.begin() + 2 );
+		}
+	}
+	else if( sanitizedString.size() && sanitizedString[0] == '/' )
+	{
+		newRoot = g_genericSeparator;
+	}
+
+	if (newRoot == this->root() && newNames == this->names() )
+	{
+		return;
+	}
+
+	set( 0, this->names().size(), newNames );
+	setRoot( newRoot );
+
+	emitPathChanged();
 }
 
 bool FileSystemPath::isValid( const IECore::Canceller *canceller ) const
@@ -154,7 +222,7 @@ FileSequencePtr FileSystemPath::fileSequence() const
 
 	FileSequencePtr sequence = nullptr;
 	/// \todo Add cancellation support to `ls`.
-	IECore::ls( this->string(), sequence, /* minSequenceSize = */ 1 );
+	IECore::ls( this->nativeString(), sequence, /* minSequenceSize = */ 1 );
 	return sequence;
 }
 
@@ -193,14 +261,7 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 				for( std::vector<std::string>::iterator it = files.begin(); it != files.end(); ++it )
 				{
 					IECore::Canceller::check( canceller );
-					struct stat s;
-					stat( it->c_str(), &s );
-					#ifndef _MSC_VER
-					struct passwd *pw = getpwuid( s.st_uid );
-					std::string value = pw ? pw->pw_name : "";
-					#else
-					std::string value = "";
-					#endif
+					std::string value = getOwner( it->c_str() );
 					std::pair<std::map<std::string,size_t>::iterator,bool> oIt = ownerCounter.insert( std::pair<std::string,size_t>( value, 0 ) );
 					oIt.first->second++;
 					if( oIt.first->second > maxCount )
@@ -214,14 +275,8 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 		}
 
 		std::string n = this->string();
-		struct stat s;
-		stat( n.c_str(), &s );
-		#ifndef _MSC_VER
-		struct passwd *pw = getpwuid( s.st_uid );
-		return new StringData( pw ? pw->pw_name : "" );
-		#else
-		return new StringData( "" );
-		#endif
+
+		return new StringData( getOwner( n.c_str() ) );
 	}
 	else if( name == g_groupPropertyName )
 	{
@@ -373,7 +428,7 @@ void FileSystemPath::doChildren( std::vector<PathPtr> &children, const IECore::C
 	{
 		IECore::Canceller::check( canceller );
 		std::vector<FileSequencePtr> sequences;
-		IECore::ls( p.string(), sequences, /* minSequenceSize */ 1 );
+		IECore::ls( this->nativeString(), sequences, /* minSequenceSize */ 1 );
 		for( std::vector<FileSequencePtr>::iterator it = sequences.begin(); it != sequences.end(); ++it )
 		{
 			IECore::Canceller::check( canceller );
@@ -456,15 +511,52 @@ PathFilterPtr FileSystemPath::createStandardFilter( const std::vector<std::strin
 	return result;
 }
 
+std::string FileSystemPath::string() const
+{
+	std::string result = this->root();
+
+	if ( boost::regex_match(result, g_driveLetterPattern) )
+	{
+		result += g_genericSeparator;
+	}
+	else if( result.size() && result != "/" )
+	{
+		result = g_uncGenericPrefix.string() + result + g_genericSeparator.string();
+	}
+
+	Path::Names names = this->names();
+	for (size_t i = 0, s = names.size(); i < s; ++i)
+	{
+		if (i != 0)
+		{
+			result += g_genericSeparator;
+		}
+		result += names[i].string();
+	}
+	return result;
+}
+
 std::string FileSystemPath::nativeString() const
 {
-	#ifdef _MSC_VER
-		std::string separator = "\\";
-	#else
-		std::string separator = "/";
-	#endif
+#ifdef _MSC_VER
+		std::string separator = g_windowsSeparator;
+#else
+		std::string separator = g_genericSeparator;
+#endif
 
 	std::string result = this->root();
+
+	if( boost::regex_match( result, g_driveLetterPattern ) )
+	{
+		result += separator;
+	}
+	else if( result.size() && result != "/" )
+	{
+		// We included the generic separator in the root name, now it needs to be converted back.
+		boost::replace_all( result, g_genericSeparator.c_str(), g_windowsSeparator.c_str() );
+		result = g_uncPrefix.string() + result + separator;
+	}
+
 	Path::Names names = this->names();
 	for( size_t i = 0, s = names.size(); i < s; ++i )
 	{
@@ -476,3 +568,87 @@ std::string FileSystemPath::nativeString() const
 	}
 	return result;
 }
+
+std::string FileSystemPath::getOwner( const std::string &pathString ) const
+{
+	std::string value;
+#ifndef _MSC_VER
+	struct stat s;
+	stat(pathString.c_str(), &s);
+	struct passwd *pw = getpwuid(s.st_uid);
+	value = pw ? pw->pw_name : "";
+#else
+	DWORD dwRtnCode = 0;
+	PSID pSidOwner = NULL;
+	BOOL bRtnBool = TRUE;
+	LPTSTR AcctName = NULL;
+	LPTSTR DomainName = NULL;
+	DWORD dwAcctName = 1, dwDomainName = 1;
+	SID_NAME_USE eUse = SidTypeUnknown;
+	HANDLE hFile;
+	PSECURITY_DESCRIPTOR pSD = NULL;
+
+	// First get the size of the data
+	DWORD dwSize;
+	if( GetFileSecurity( pathString.c_str(), OWNER_SECURITY_INFORMATION, pSD, 0, &dwSize ) )
+	{
+		return "";
+	}
+
+	pSD = ( PSECURITY_DESCRIPTOR ) malloc( dwSize );
+
+	if( pSD == NULL)
+	{
+		return "";
+	}
+
+	if( !GetFileSecurity( pathString.c_str(), OWNER_SECURITY_INFORMATION, pSD, dwSize, &dwSize ) )
+	{
+		free( pSD );
+		return "";
+	}
+
+	BOOL defaulted = false;
+	GetSecurityDescriptorOwner( pSD, &pSidOwner, &defaulted);
+	if( defaulted )
+	{
+		free( pSD );
+		return "";
+	}
+
+	// First call to LookupAccountSid to get the buffer sizes.
+	bRtnBool = LookupAccountSid(NULL, pSidOwner, AcctName, (LPDWORD)&dwAcctName, DomainName, (LPDWORD)&dwDomainName, &eUse);
+
+	// Reallocate memory for the buffers.
+	AcctName = (LPTSTR)GlobalAlloc(GMEM_FIXED, dwAcctName);
+
+	// Check GetLastError for GlobalAlloc error condition.
+	if (AcctName == NULL) {
+		free( pSD );
+		return "";
+	}
+
+	DomainName = (LPTSTR)GlobalAlloc(GMEM_FIXED, dwDomainName);
+
+	// Check GetLastError for GlobalAlloc error condition.
+	if (DomainName == NULL) {
+		free( pSD );
+		return "";
+	}
+
+	// Second call to LookupAccountSid to get the account name.
+	bRtnBool = LookupAccountSid(NULL, pSidOwner, AcctName, (LPDWORD)&dwAcctName, DomainName, (LPDWORD)&dwDomainName, &eUse);
+
+	if (bRtnBool == FALSE) {
+		free( pSD );
+		return "";
+	}
+
+	free( pSD );
+	value = AcctName;
+
+#endif
+
+	return value;
+}
+
