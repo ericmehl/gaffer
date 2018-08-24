@@ -155,7 +155,7 @@ FileSequencePtr FileSystemPath::fileSequence() const
 
 	FileSequencePtr sequence = nullptr;
 	/// \todo Add cancellation support to `ls`.
-	IECore::ls( this->string(), sequence, /* minSequenceSize = */ 1 );
+	IECore::ls( this->nativeString(), sequence, /* minSequenceSize = */ 1 );
 	return sequence;
 }
 
