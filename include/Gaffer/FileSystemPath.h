@@ -82,6 +82,7 @@ class GAFFER_API FileSystemPath : public Path
 		// a FileSequence.
 		IECore::FileSequencePtr fileSequence() const;
 
+		std::string string() const override;
 		// Returns the path converted to the OS native format
 		std::string nativeString() const;
 
