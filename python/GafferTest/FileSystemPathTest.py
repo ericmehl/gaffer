@@ -406,6 +406,13 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		with self.assertRaises( IECore.Cancelled ) :
 			p.property( "fileSystem:modificationTime", c )
 
+	def testTruncateUntilValid( self ):
+
+		p = Gaffer.FileSystemPath( "T" )
+		print str( p )
+		print str (p.truncateUntilValid() )
+		self.assertEqual( str( p.truncateUntilValid() ), "" )
+
 	def setUp( self ) :
 
 		GafferTest.TestCase.setUp( self )
