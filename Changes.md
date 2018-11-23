@@ -18,6 +18,10 @@ API
   - Added support for Windows paths.
   - Added `nativeString()` function to return the path as an OS-specific string.
 - WidgetAlgo : Improved `joinEdges()` to support a wider range of widget types.
+- FilePathPlug : Added plug to represent file paths in an OS-native way. It behaves identically to `StringPlug` except for the way its values are set and returned.
+  - When setting the value, an OS-native or generic string can be supplied. It will automatically be converted to Gaffer's internal file path representation.
+  - Values returned by `getValue()` are in OS-native format.
+  - `FilePathPlug` is compatible with `StringPlug` - `FilePathPlug` can be used as input for `StringPlug` and `StringPlug` can be used as input for `FilePathPlug`.
 
 Breaking Changes
 ----------------
