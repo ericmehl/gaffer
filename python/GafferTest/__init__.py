@@ -167,6 +167,8 @@ from .EditScopeTest import EditScopeTest
 from .RandomChoiceTest import RandomChoiceTest
 from .ContextQueryTest import ContextQueryTest
 from .TweakPlugTest import TweakPlugTest
+from .FileSystemPathInOutNode import FileSystemPathInOutNode
+from .FileSystemPathPlugTest import FileSystemPathPlugTest
 
 from .IECorePreviewTest import *
 
