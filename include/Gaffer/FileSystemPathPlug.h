@@ -35,100 +35,77 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef GAFFER_STRINGPLUG_H
-#define GAFFER_STRINGPLUG_H
-
-#include "IECore/StringAlgo.h"
+#ifndef GAFFER_FILESYSTEMPATHPLUG_H
+#define GAFFER_FILESYSTEMPATHPLUG_H
 
 #include "Gaffer/Context.h"
-#include "Gaffer/ValuePlug.h"
+#include "Gaffer/StringPlug.h"
+
 
 namespace Gaffer
 {
 
-/// Plug for providing string values.
+/// Plug for providing file system path values.
 ///
-/// Substitutions
-/// =============
+/// Inherit from StringPlug so all substitutions work and it 
+/// is backwards compatible with Gaffer scripts from previous versions.
 ///
-/// Substitutions allow the user to enter values containing
-/// frame numbers and the values of context variables, and
-/// have the appropriate values substituted in automatically
-/// during computation.
-///
-/// e.g. "~/images/${name}.####.exr" -> "/home/bob/beauty.0001.exr"
-///
-/// Substitutions are performed transparently when `getValue()`
-/// is called for an input plug from within a current `Process`,
-/// so no specific action is required on the part of the Node
-/// developer to support them.
-///
-///	If a node needs to deal with sequences directly, or otherwise
-/// access unsubstituted values, the `substitutions` constructor
-/// argument may be used to disable specific substitutions.
-///
-/// > Note : This feature does not affect the values passed
-///	> internally between string plugs - substitutions are only
-/// > applied to the return value generated for `getValue()`.
-/// > This is important, since it allows a downstream node to
-/// > access an unsubstituted value from its input, even if
-/// > an intermediate upstream plug has substitutions enabled
-/// > for other purposes.
-/// >
-/// > In other words, substitutions could just as well be
-/// > implemented using an explicit `getSubstitutedValue()`
-/// > method or by performing a manual substitution after using
-/// > `getValue()`. However, in practice, it was determined to
-/// > be too error prone to remember to do this for every
-/// > value access in every node.
-class GAFFER_API StringPlug : public ValuePlug
+/// Gaffer standardizes on using forward slashes for separating directories
+/// in a path in the UI. Pulling on the FileSystemPathPlug returns an OS
+/// native format string. Directories are separated by forward slashes on 
+/// POSIX systems and back slashes on Windows.
+/// On Windows, interpret a path starting with a forward slash as a UNC
+/// path, converting it to a double back slash.
+
+class GAFFER_API FileSystemPathPlug : public StringPlug
 {
 
 	public :
 
 		typedef std::string ValueType;
 
-		GAFFER_PLUG_DECLARE_TYPE( Gaffer::StringPlug, StringPlugTypeId, ValuePlug );
+		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( Gaffer::FileSystemPathPlug, FileSystemPathPlugTypeId, StringPlug );
 
-		StringPlug(
-			const std::string &name = defaultName<StringPlug>(),
+
+		FileSystemPathPlug(
+			const std::string &name = defaultName<FileSystemPathPlug>(),
 			Direction direction=In,
 			const std::string &defaultValue = "",
 			unsigned flags = Default,
-			unsigned substitutions = IECore::StringAlgo::AllSubstitutions
+			unsigned substitutions = Context::AllSubstitutions
 		);
-		~StringPlug() override;
+		~FileSystemPathPlug() override;
 
-		unsigned substitutions() const;
-
-		/// Accepts only instances of StringPlug or derived classes.
+		/// Accepts instances StringPlug or derived classes,
+		/// which includes FileSystemPath Plug.
 		bool acceptsInput( const Plug *input ) const override;
 		PlugPtr createCounterpart( const std::string &name, Direction direction ) const override;
 
-		const std::string &defaultValue() const;
-
 		/// \undoable
-		void setValue( const std::string &value );
+		void setValue(const std::string &value);
 		/// Returns the value. See comments in TypedObjectPlug::getValue()
 		/// for details of the optional precomputedHash argument - and use
 		/// with care!
-		virtual std::string getValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
+		std::string getValue( const IECore::MurmurHash *precomputedHash = nullptr, const Context *context = nullptr, const bool forceSubstitutions = false ) const;
 
-		void setFrom( const ValuePlug *other ) override;
+		void setFrom(const ValuePlug *other) override;
 
 		IECore::MurmurHash hash() const override;
 		/// Ensures the method above doesn't mask
 		/// ValuePlug::hash( h )
 		using ValuePlug::hash;
-
-	private :
-
-		unsigned m_substitutions;
-
 };
 
-IE_CORE_DECLAREPTR( StringPlug );
+IE_CORE_DECLAREPTR( FileSystemPathPlug );
+
+typedef FilteredChildIterator<PlugPredicate<Plug::Invalid, FileSystemPathPlug> > FileSystemPathPlugIterator;
+typedef FilteredChildIterator<PlugPredicate<Plug::In, FileSystemPathPlug> > InputFileSystemPathPlugIterator;
+typedef FilteredChildIterator<PlugPredicate<Plug::Out, FileSystemPathPlug> > OutputFileSystemPathPlugIterator;
+
+typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::Invalid, FileSystemPathPlug>, PlugPredicate<> > RecursiveFileSystemPathPlugIterator;
+typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::In, FileSystemPathPlug>, PlugPredicate<> > RecursiveInputFileSystemPathPlugIterator;
+typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::Out, FileSystemPathPlug>, PlugPredicate<> > RecursiveOutputFileSystemPathPlugIterator;
 
 } // namespace Gaffer
 
-#endif // GAFFER_STRINGPLUG_H
+#endif // GAFFER_FILESYSTEMPATHPLUGPLUG_H
