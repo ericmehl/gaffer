@@ -46,6 +46,7 @@
 
 #include "Gaffer/Context.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreImage/OpenImageIOAlgo.h"
 
@@ -1032,7 +1033,7 @@ OpenImageIOReader::OpenImageIOReader( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild(
-		new StringPlug(
+		new FileSystemPathPlug(
 			"fileName", Plug::In, "",
 			/* flags */ Plug::Default,
 			/* substitutions */ IECore::StringAlgo::AllSubstitutions & ~IECore::StringAlgo::FrameSubstitutions
@@ -1051,14 +1052,14 @@ OpenImageIOReader::~OpenImageIOReader()
 {
 }
 
-Gaffer::StringPlug *OpenImageIOReader::fileNamePlug()
+Gaffer::FileSystemPathPlug *OpenImageIOReader::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
 }
 
-const Gaffer::StringPlug *OpenImageIOReader::fileNamePlug() const
+const Gaffer::FileSystemPathPlug *OpenImageIOReader::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
 }
 
 Gaffer::IntPlug *OpenImageIOReader::refreshCountPlug()
