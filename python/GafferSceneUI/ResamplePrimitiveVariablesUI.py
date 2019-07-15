@@ -181,6 +181,20 @@ Gaffer.Metadata.registerNode(
 
 			"plugValueWidget:type", "GafferUI.PresetsPlugValueWidget",
 
+		],
+		"method" : [
+
+			"description",
+			"""
+			Method for resampling the primitive variables
+			""",
+
+			"preset:Average", IECoreScene.MeshAlgo.ResampleMethod.Average,
+			"preset:Min", IECoreScene.MeshAlgo.ResampleMethod.Min,
+			"preset:Max", IECoreScene.MeshAlgo.ResampleMethod.Max,
+
+			"plugValueWidget:type", "GafferUI.PresetsPlugValueWidget",
+
 		]
 	}
 

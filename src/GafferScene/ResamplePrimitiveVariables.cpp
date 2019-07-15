@@ -59,6 +59,7 @@ ResamplePrimitiveVariables::ResamplePrimitiveVariables( const std::string &name 
 	storeIndexOfNextChild( g_firstPlugIndex );
 
 	addChild( new IntPlug( "interpolation", Plug::In, PrimitiveVariable::Vertex, PrimitiveVariable::Constant, PrimitiveVariable::FaceVarying ) );
+	addChild( new IntPlug( "method", Plug::In, MeshAlgo::Average, MeshAlgo::Average, MeshAlgo::Max ) );
 }
 
 ResamplePrimitiveVariables::~ResamplePrimitiveVariables()
@@ -75,11 +76,26 @@ const Gaffer::IntPlug *ResamplePrimitiveVariables::interpolationPlug() const
 	return getChild<IntPlug>( g_firstPlugIndex );
 }
 
+Gaffer::IntPlug *ResamplePrimitiveVariables::methodPlug()
+{
+	return getChild<IntPlug>( g_firstPlugIndex + 1 );
+}
+
+const Gaffer::IntPlug *ResamplePrimitiveVariables::methodPlug() const
+{
+	return getChild<IntPlug>( g_firstPlugIndex + 1 );
+}
+
 void ResamplePrimitiveVariables::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
 {
 	PrimitiveVariableProcessor::affects( input, outputs );
 
 	if( input == interpolationPlug() )
+	{
+		outputs.push_back( outPlug()->objectPlug() );
+	}
+
+	if( input == methodPlug() )
 	{
 		outputs.push_back( outPlug()->objectPlug() );
 	}
@@ -90,15 +106,17 @@ void ResamplePrimitiveVariables::hashProcessedObject( const ScenePath &path, con
 	PrimitiveVariableProcessor::hashProcessedObject( path, context, h );
 
 	interpolationPlug()->hash( h );
+	methodPlug()->hash( h );
 }
 
 void ResamplePrimitiveVariables::processPrimitiveVariable( const ScenePath &path, const Gaffer::Context *context, IECoreScene::ConstPrimitivePtr inputGeometry, IECoreScene::PrimitiveVariable &variable ) const
 {
 	PrimitiveVariable::Interpolation interpolation = static_cast<PrimitiveVariable::Interpolation> ( interpolationPlug()->getValue() );
+	MeshAlgo::ResampleMethod method = static_cast<MeshAlgo::ResampleMethod> ( methodPlug()->getValue() );
 
 	if( const MeshPrimitive *meshPrimitive = IECore::runTimeCast<const MeshPrimitive>( inputGeometry.get() ) )
 	{
-		MeshAlgo::resamplePrimitiveVariable( meshPrimitive, variable, interpolation );
+		MeshAlgo::resamplePrimitiveVariable( meshPrimitive, variable, interpolation, method );
 	}
 	else if( const CurvesPrimitive *curvesPrimitive = IECore::runTimeCast<const CurvesPrimitive>( inputGeometry.get() ) )
 	{

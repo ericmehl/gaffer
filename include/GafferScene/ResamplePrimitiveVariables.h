@@ -55,6 +55,8 @@ class GAFFERSCENE_API ResamplePrimitiveVariables : public PrimitiveVariableProce
 
 		Gaffer::IntPlug *interpolationPlug();
 		const Gaffer::IntPlug *interpolationPlug() const;
+		Gaffer::IntPlug *methodPlug();
+		const Gaffer::IntPlug *methodPlug() const;
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
