@@ -955,7 +955,7 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 					}
 				}
 
-				if( it->first.string() == g_arnoldLightFilterShaderAttributeName )
+				if( it->first.string() == g_arnoldLightFilterShaderAttributeName.string() )
 				{
 					continue;
 				}
