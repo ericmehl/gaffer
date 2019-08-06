@@ -34,9 +34,9 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferSceneUI/StandardLightVisualiser.h"
+#include "GafferArnoldUI/BarndoorVisualiser.h"
 
-#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
+#include "GafferSceneUI/StandardLightVisualiser.h"
 
 #include "Gaffer/Metadata.h"
 
@@ -147,25 +147,10 @@ void addBarndoor( IECoreGL::GroupPtr result, BarndoorLocation location, float co
 	result->addChild( barndoorGroup );
 }
 
-class BarndoorVisualiser final : public LightFilterVisualiser
+}  // namespace
+
+namespace GafferArnoldUI
 {
-
-	public :
-
-		IE_CORE_DECLAREMEMBERPTR( BarndoorVisualiser )
-
-		BarndoorVisualiser();
-		~BarndoorVisualiser() override;
-
-		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
-
-	protected :
-
-		static LightFilterVisualiser::LightFilterVisualiserDescription<BarndoorVisualiser> g_visualiserDescription;
-
-};
-
-IE_CORE_DECLAREPTR( BarndoorVisualiser )
 
 // register the new visualiser
 LightFilterVisualiser::LightFilterVisualiserDescription<BarndoorVisualiser> BarndoorVisualiser::g_visualiserDescription( "ai:lightFilter", "barndoor" );
@@ -237,4 +222,4 @@ Visualisations BarndoorVisualiser::visualise( const IECore::InternedString &attr
 
 }
 
-} // namespace
+} // namespace GafferArnoldUI

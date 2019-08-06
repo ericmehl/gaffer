@@ -34,13 +34,13 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include "GafferArnoldUI/GoboVisualiser.h"
+
 #include "GafferArnoldUI/Private/VisualiserAlgo.h"
 
 #include "GafferOSL/ShadingEngineAlgo.h"
 
 #include "GafferSceneUI/StandardLightVisualiser.h"
-
-#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
 
 #include "Gaffer/Metadata.h"
 #include "Gaffer/Private/IECorePreview/LRUCache.h"
@@ -186,26 +186,10 @@ const char *constantFragSource()
 	;
 }
 
+}  // namespace
 
-class GoboVisualiser final : public LightFilterVisualiser
+namespace GafferArnoldUI
 {
-
-	public :
-
-		IE_CORE_DECLAREMEMBERPTR( GoboVisualiser )
-
-		GoboVisualiser();
-		~GoboVisualiser() override;
-
-		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
-
-	protected :
-
-		static LightFilterVisualiser::LightFilterVisualiserDescription<GoboVisualiser> g_visualiserDescription;
-
-};
-
-IE_CORE_DECLAREPTR( GoboVisualiser )
 
 // register the new visualiser
 LightFilterVisualiser::LightFilterVisualiserDescription<GoboVisualiser> GoboVisualiser::g_visualiserDescription( "ai:lightFilter", "gobo" );
@@ -324,4 +308,4 @@ Visualisations GoboVisualiser::visualise( const IECore::InternedString &attribut
 	return { Visualisation::createOrnament( result, true ) };
 }
 
-} // namespace
+} // namespace GafferArnoldUI

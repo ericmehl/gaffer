@@ -34,7 +34,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
+#include "GafferArnoldUI/DecayVisualiser.h"
 
 #include "IECoreGL/Group.h"
 #include "IECoreGL/Primitive.h"
@@ -191,25 +191,10 @@ void addKnot( IECoreGL::GroupPtr group, const Knot &knot )
 	group->addChild( markerGroup );
 }
 
-class DecayVisualiser final : public LightFilterVisualiser
+}  // namespace
+
+namespace GafferArnoldUI
 {
-
-	public :
-
-		IE_CORE_DECLAREMEMBERPTR( DecayVisualiser )
-
-		DecayVisualiser();
-		~DecayVisualiser() override;
-
-		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
-
-	protected :
-
-		static LightFilterVisualiser::LightFilterVisualiserDescription<DecayVisualiser> g_visualiserDescription;
-
-};
-
-IE_CORE_DECLAREPTR( DecayVisualiser )
 
 // register the new visualiser
 LightFilterVisualiser::LightFilterVisualiserDescription<DecayVisualiser> DecayVisualiser::g_visualiserDescription( "ai:lightFilter", "light_decay" );
@@ -246,4 +231,4 @@ Visualisations DecayVisualiser::visualise( const IECore::InternedString &attribu
 	return { Visualisation( result, Visualisation::Scale::None ) };
 }
 
-} // namespace
+} // namespace GafferArnoldUI

@@ -34,7 +34,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
+#include "GafferArnoldUI/LightBlockerVisualiser.h"
 
 #include "Gaffer/Metadata.h"
 
@@ -169,36 +169,14 @@ void setFalloffGroupSettings( IECoreGL::Group *group, const IECore::CompoundData
 	group->getState()->add( new IECoreGL::CurvesPrimitive::GLLineWidth( 1.0f ) );
 }
 
+}  // namespace
+
 //////////////////////////////////////////////////////////////////////////
 // LightBlockerVisualiser implementation.
 //////////////////////////////////////////////////////////////////////////
 
-class LightBlockerVisualiser : public LightFilterVisualiser
+namespace GafferArnoldUI
 {
-
-	public :
-
-		IE_CORE_DECLAREMEMBERPTR( LightBlockerVisualiser )
-
-		LightBlockerVisualiser();
-		~LightBlockerVisualiser() override;
-
-		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *filterShaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
-
-	protected :
-
-		static LightFilterVisualiser::LightFilterVisualiserDescription<LightBlockerVisualiser> g_visualiserDescription;
-
-	private :
-
-		/// \todo: can this be consolidated with the StandardLightVisualiser?
-		static IECoreGL::ConstRenderablePtr boxShape( const IECore::CompoundData *shaderParameters );
-		static IECoreGL::ConstRenderablePtr sphereShape( const IECore::CompoundData *shaderParameters );
-		static IECoreGL::ConstRenderablePtr cylinderShape( const IECore::CompoundData *shaderParameters );
-		static IECoreGL::ConstRenderablePtr planeShape( const IECore::CompoundData *shaderParameters );
-};
-
-IE_CORE_DECLAREPTR( LightBlockerVisualiser )
 
 // register the new visualiser
 LightFilterVisualiser::LightFilterVisualiserDescription<LightBlockerVisualiser> LightBlockerVisualiser::g_visualiserDescription( "ai:lightFilter", "light_blocker" );
@@ -458,4 +436,4 @@ IECoreGL::ConstRenderablePtr LightBlockerVisualiser::planeShape( const IECore::C
 	return group;
 }
 
-} // namespace
+} // namespace GafferArnoldUI
