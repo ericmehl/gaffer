@@ -1018,7 +1018,7 @@ libraries = {
 
 	"IECoreArnold" : {
 		"envAppends" : {
-			"LIBPATH" : [ "$ARNOLD_ROOT/bin" ],
+			"LIBPATH" : [ "$ARNOLD_ROOT/bin", "$ARNOLD_ROOT/lib" ],
 			## \todo Remove GafferScene. We need it at present to get access to `IECoreScenePreview::Renderer`,
 			# but IECoreArnold must never depend on Gaffer code; logically it is in the layer below Gaffer.
 			"LIBS" : [ "GafferScene", "ai", "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreVDB$CORTEX_LIB_SUFFIX", "openvdb$VDB_LIB_SUFFIX" ],
