@@ -579,6 +579,7 @@ else:
 				"-bigobj",
 				"-DBOOST_DISABLE_ASSERTS", 
 				"-Zi",
+				"-Ox",
 			],
 			LINKFLAGS =
 			[
