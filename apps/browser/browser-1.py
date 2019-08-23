@@ -93,7 +93,14 @@ class browser( Gaffer.Application ) :
 		# centre the window on the primary screen at 3/4 size.
 		## \todo Implement save/restore of geometry, and do all this without using Qt APIs
 		# in the app itself.
-		desktop = QtWidgets.QApplication.instance().desktop()
+		try:
+			import MaxPlus
+			from PySide2 import shiboken2
+			print "trying shiboken"
+			desktop = shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication).desktop()
+			print "shiboken done"
+		except:
+			desktop = QtWidgets.QApplication.instance().desktop()
 		geometry = desktop.availableGeometry()
 		adjustment = geometry.size() / 8
 		geometry.adjust( adjustment.width(), adjustment.height(), -adjustment.width(), -adjustment.height() )

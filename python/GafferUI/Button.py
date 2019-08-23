@@ -68,7 +68,14 @@ class Button( GafferUI.Widget ) :
 		# and we really don't like the etching. the only effective way of disabling it
 		# seems to be to apply this palette which makes the etched text transparent.
 		if Button.__palette is None :
-			Button.__palette = QtGui.QPalette( QtWidgets.QApplication.instance().palette( self._qtWidget() ) )
+			try:
+				import MaxPlus
+				from PySide2 import shiboken2
+				print "Button.__init__"
+				Button.__palette = QtGui.QPalette( shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication).palette( self._qtWidget() ) )
+				print "/Button.__init__"
+			except:
+				Button.__palette = QtGui.QPalette( QtWidgets.QApplication.instance().palette( self._qtWidget() ) )
 			Button.__palette.setColor( QtGui.QPalette.Disabled, QtGui.QPalette.Light, QtGui.QColor( 0, 0, 0, 0 ) )
 
 		self._qtWidget().setPalette( Button.__palette )

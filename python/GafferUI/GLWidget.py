@@ -324,8 +324,10 @@ class _GLGraphicsView( QtWidgets.QGraphicsView ) :
 		# context should therefore be made current before calling this
 		# method.
 
+		print "hosted GL widget"
 		result = QtOpenGL.QGLWidget()
 		_GafferUI._glWidgetSetHostedContext( GafferUI._qtAddress( result ), GafferUI._qtAddress( format ) )
+		print "/hosted GL Widget"
 		return result
 
 	@classmethod

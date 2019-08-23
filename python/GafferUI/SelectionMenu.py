@@ -68,7 +68,14 @@ class SelectionMenu( GafferUI.Widget ) :
 		## \todo When we extend the Style classes to deal with Widgets, this should be
 		# done there. The same code exists in the Button class too.
 		if SelectionMenu.__palette is None :
-			SelectionMenu.__palette = QtGui.QPalette( QtWidgets.QApplication.instance().palette( self._qtWidget() ) )
+			try:
+				import MaxPlus
+				from PySide2 import shiboken2
+				print "SelectionMenu"
+				SelectionMenu.__palette = QtGui.QPalette( shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication).palette( self._qtWidget() ) )
+				print "/SelectionMenu"
+			except:
+				SelectionMenu.__palette = QtGui.QPalette( QtWidgets.QApplication.instance().palette( self._qtWidget() ) )
 			SelectionMenu.__palette.setColor( QtGui.QPalette.Disabled, QtGui.QPalette.Light, QtGui.QColor( 0, 0, 0, 0 ) )
 
 		self._qtWidget().setPalette( SelectionMenu.__palette )

@@ -63,7 +63,14 @@ class TabbedContainer( GafferUI.ContainerWidget ) :
 
 		# See comments in Button.py
 		if TabbedContainer.__palette is None :
-			TabbedContainer.__palette = QtGui.QPalette( QtWidgets.QApplication.instance().palette( self.__tabBar._qtWidget() ) )
+			try:
+				import MaxPlus
+				from PySide2 import shiboken2
+				print "TabbedContainer"
+				TabbedContainer.__palette = QtGui.QPalette( shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication).palette( self.__tabBar._qtWidget() ) )
+				print "/TabbedContainer"
+			except:
+				TabbedContainer.__palette = QtGui.QPalette( QtWidgets.QApplication.instance().palette( self.__tabBar._qtWidget() ) )
 			TabbedContainer.__palette.setColor( QtGui.QPalette.Disabled, QtGui.QPalette.Light, QtGui.QColor( 0, 0, 0, 0 ) )
 
 		self.__tabBar._qtWidget().setPalette( TabbedContainer.__palette )

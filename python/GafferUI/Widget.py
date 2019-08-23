@@ -622,7 +622,14 @@ class Widget( Gaffer.Trackable ) :
 		if widgetType is None :
 			widgetType = GafferUI.Widget
 
-		qWidget = QtWidgets.QApplication.instance().widgetAt( position[0], position[1] )
+		try:
+			import MaxPlus
+			from PySide2 import shiboken2
+			print "Widget.widgetAt"
+			qWidget = shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication).widgetAt( position[0], position[1] )
+			print "/Widget.widgetAt"
+		except:
+			qWidget = QtWidgets.QApplication.instance().widgetAt( position[0], position[1] )
 		widget = GafferUI.Widget._owner( qWidget )
 
 		if widget is not None and isinstance( widget._qtWidget(), QtWidgets.QGraphicsView ) :
@@ -821,7 +828,14 @@ class Widget( Gaffer.Trackable ) :
 	def __ensureFocusChangedConnection( cls ) :
 
 		if not cls.__focusChangedConnected :
-			QtWidgets.QApplication.instance().focusChanged.connect( cls.__focusChanged )
+			try:
+				import MaxPlus
+				from PySide2 import shiboken2
+				print "Widget.__ensureFocusChangedConnection"
+				shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication).focusChanged.connect( cls.__focusChanged )
+				print "/Widget.__ensureFocusChangedConnection"
+			except:
+				QtWidgets.QApplication.instance().focusChanged.connect( cls.__focusChanged )
 			cls.__focusChangedConnected = True
 
 	@classmethod
@@ -833,7 +847,14 @@ class Widget( Gaffer.Trackable ) :
 			# if nothing's connected to the signal currently, then disconnect, because
 			# we don't want the overhead of dealing with focus changes when no-one is
 			# interested.
-			QtWidgets.QApplication.instance().focusChanged.disconnect( cls.__focusChanged )
+			try:
+				import MaxPlus
+				from PySide2 import shiboken2
+				print "Widget.__focusChanged"
+				shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication).focusChanged.disconnect( cls.__focusChanged )
+				print "/Widget.__focusChanged"
+			except:
+				QtWidgets.QApplication.instance().focusChanged.disconnect( cls.__focusChanged )
 			cls.__focusChangedConnected = False
 
 	def _repolish( self, qtWidget=None ) :

@@ -48,7 +48,14 @@ def __pointerChanged() :
 	global __cursorOverridden
 
 	pointer = GafferUI.Pointer.getCurrent()
-	application = QtWidgets.QApplication.instance()
+	try:
+		import MaxPlus
+		from PySide2 import shiboken2
+		print "__pointerChanged"
+		application = shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication)
+		print "/__pointerChanged"
+	except:
+		application = QtWidgets.QApplication.instance()
 
 	if pointer is None :
 		if __cursorOverridden :

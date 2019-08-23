@@ -93,7 +93,6 @@ class EventLoop( object ) :
 
 			try :
 				import MaxPlus
-				print("Ahoy Max User")
 				self.__runStyle = self.__RunStyle.AlreadyRunning
 			except ImportError:
 				pass
@@ -159,7 +158,14 @@ class EventLoop( object ) :
 	# if we're running embedded in an application which already uses qt (like maya 2011 or later)
 	# then there'll already be an application, which we'll share. if not we'll make our own.
 	if QtWidgets.QApplication.instance() :
-		__qtApplication = QtWidgets.QApplication.instance()
+		try:
+			import MaxPlus
+			from PySide2 import shiboken2
+			print "trying shiboken event loop"
+			__qtApplication = shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication)
+			print "/shibken event loop done"
+		except ImportError:
+			__qtApplication = QtWidgets.QApplication.instance()
 	else :
 		# set the style explicitly so we don't inherit one from the desktop
 		# environment, which could mess with our own style (on gnome for instance,

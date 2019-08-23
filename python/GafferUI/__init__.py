@@ -107,7 +107,9 @@ def _qtAddress( o ) :
 			except ImportError :
 				import shiboken
 
+		print "_qtAddress"
 		return shiboken.getCppPointer( o )[0]
+		print "/_qtAddress"
 
 ##########################################################################
 # Function to return a wrapped Qt object from the given C++ address.
@@ -133,7 +135,9 @@ def _qtObject( address, type ) :
 			except ImportError :
 				import shiboken
 
+		print "_qtObject"
 		return shiboken.wrapInstance( address, type )
+		print "/_qtObject"
 
 ##########################################################################
 # now import our actual functionality

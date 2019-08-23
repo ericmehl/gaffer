@@ -630,7 +630,14 @@ class _Menu( QtWidgets.QMenu ) :
 					self.hide()
 
 				# pass the event on to the rightful recipient
-				app = QtWidgets.QApplication.instance()
+				try:
+					import MaxPlus
+					from PySide2 import shiboken2
+					print "Menu.keyPressedEvent"
+					app = shiboken2.wrapInstance(shiboken2.getCppPointer(QtWidgets.QApplication.instance())[0], QtWidgets.QApplication)
+					print "/menu.keyPressedEvent"
+				except:
+					app = QtWidgets.QApplication.instance()
 				if app.focusWidget() != self :
 					app.sendEvent( app.focusWidget(), qEvent )
 					return
