@@ -37,6 +37,7 @@
 
 import GafferUI
 
+print "layouts"
 layouts = GafferUI.Layouts.acquire( application )
 
 # register the editors we want to be available to the user

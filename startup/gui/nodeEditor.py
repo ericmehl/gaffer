@@ -37,6 +37,7 @@
 import GafferUI
 import GafferSceneUI
 
+print "nodeeditor"
 def __toolMenu( nodeEditor, node, menuDefinition ) :
 
 	GafferUI.UIEditor.appendNodeEditorToolMenuDefinitions( nodeEditor, node, menuDefinition )

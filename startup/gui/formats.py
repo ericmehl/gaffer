@@ -36,6 +36,7 @@
 
 import GafferImage
 
+print "formats"
 GafferImage.Format.registerFormat( "1K Super 35", GafferImage.Format( 1024, 778 ) )
 GafferImage.Format.registerFormat( "2K Super 35", GafferImage.Format( 2048, 1556 ) )
 GafferImage.Format.registerFormat( "4K Super 35", GafferImage.Format( 4096, 3112 ) )

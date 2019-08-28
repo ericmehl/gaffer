@@ -37,5 +37,6 @@
 import Gaffer
 import GafferDispatch
 
+print "localdispatcher"
 Gaffer.Metadata.registerValue( GafferDispatch.LocalDispatcher, "executeInBackground", "userDefault", True )
 GafferDispatch.Dispatcher.setDefaultDispatcherType( "Local" )

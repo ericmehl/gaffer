@@ -36,4 +36,5 @@
 
 import GafferUI
 
+print "browser"
 GafferUI.BrowserEditor.registerMode( "Nodes", GafferUI.GraphComponentBrowserMode )

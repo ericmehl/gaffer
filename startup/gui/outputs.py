@@ -42,6 +42,7 @@ import Gaffer
 import GafferScene
 import GafferImage
 
+print "outputs"
 # Add standard beauty output that should be supported by
 # all renderers.
 

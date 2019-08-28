@@ -38,6 +38,7 @@ import IECore
 
 import GafferSceneUI
 
+print "shaderview"
 with IECore.IgnoredExceptions( ImportError ) :
 
 	import GafferAppleseed

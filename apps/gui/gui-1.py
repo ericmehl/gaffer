@@ -100,9 +100,15 @@ class gui( Gaffer.Application ) :
 			for fileName in args["scripts"] :
 				GafferUI.FileMenu.addScript( self.root(), fileName )
 		else :
+			print "creating scriptnode"
 			scriptNode = Gaffer.ScriptNode()
+			print "scriptnode created"
+			print "adding userdefaults"
 			Gaffer.NodeAlgo.applyUserDefaults( scriptNode )
+			print "user defaults applied"
+			print "adding scriptnode as child of root"
 			self.root()["scripts"].addChild( scriptNode )
+			print "scriptnode added as child of root"
 
 		if args["fullScreen"].value :
 			primaryScript = self.root()["scripts"][-1]

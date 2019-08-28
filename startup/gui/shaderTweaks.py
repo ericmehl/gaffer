@@ -38,6 +38,7 @@ import IECore
 import Gaffer
 import GafferScene
 
+print "shadertweaks"
 def __registerShaderPresets( presets ) :
 
 	for name, value in presets :

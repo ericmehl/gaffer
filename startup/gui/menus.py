@@ -49,7 +49,7 @@ import GafferSceneUI
 
 # ScriptWindow menu
 ##########################################################################
-
+print "menus"
 scriptWindowMenu = GafferUI.ScriptWindow.menuDefinition( application )
 
 GafferUI.ApplicationMenu.appendDefinitions( scriptWindowMenu, prefix="/Gaffer" )

@@ -40,6 +40,7 @@ import GafferImage
 
 # add plugs to the preferences node
 
+print "cache"
 preferences = application.root()["preferences"]
 preferences["cache"] = Gaffer.Plug()
 preferences["cache"]["enabled"] = Gaffer.BoolPlug( defaultValue = True )

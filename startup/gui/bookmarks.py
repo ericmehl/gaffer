@@ -38,6 +38,7 @@ import os
 
 import GafferUI
 
+print "bookmarks"
 bookmarks = GafferUI.Bookmarks.acquire( application )
 bookmarks.setDefault( os.getcwd() )
 bookmarks.add( "Home", os.path.expandvars( "$HOME" ) )

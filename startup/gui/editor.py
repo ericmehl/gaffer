@@ -38,6 +38,7 @@ import weakref
 import GafferUI
 import GafferSceneUI
 
+print "editor"
 def __editorCreated( editor ) :
 
 	GafferUI.GraphBookmarksUI.connectToEditor( editor )

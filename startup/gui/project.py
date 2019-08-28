@@ -44,6 +44,7 @@ import Gaffer
 import GafferImage
 import GafferDispatch
 
+print "project"
 ##########################################################################
 # Note this file is shared with the `dispatch` app. We need to ensure any
 # changes here have the desired behaviour in both applications.

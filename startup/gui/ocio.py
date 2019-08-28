@@ -47,6 +47,7 @@ import Gaffer
 import GafferUI
 import GafferImageUI
 
+print "ocio"
 # get default display setup
 
 config = OCIO.GetCurrentConfig()

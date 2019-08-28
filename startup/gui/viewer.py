@@ -44,6 +44,7 @@ import GafferUI
 import GafferScene
 import GafferSceneUI
 
+print "viewer"
 # add plugs to the preferences node
 
 preferences = application.root()["preferences"]
