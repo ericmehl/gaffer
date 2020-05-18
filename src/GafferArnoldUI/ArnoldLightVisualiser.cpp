@@ -34,6 +34,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include "GafferArnoldUI/Export.h"
+
 #include "GafferArnoldUI/Private/VisualiserAlgo.h"
 
 #include "GafferSceneUI/StandardLightVisualiser.h"
@@ -64,7 +66,7 @@ using namespace GafferArnoldUI::Private;
 // Arnold shaders are present in the network, a fallback of the last image
 // node found will be used instead:.
 
-namespace
+namespace GafferArnoldUI
 {
 
 //////////////////////////////////////////////////////////////////////////
@@ -289,4 +291,5 @@ IECore::DataPtr ArnoldLightVisualiser::surfaceTexture( const IECoreScene::Shader
 	return surfaceTexture;
 }
 
-}
+} // namespace GafferArnoldUI
+
