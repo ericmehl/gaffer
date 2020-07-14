@@ -37,6 +37,7 @@
 import unittest
 import inspect
 import imath
+import six
 
 import IECore
 
@@ -226,10 +227,10 @@ class PythonCommandTest( GafferTest.TestCase ) :
 		s["n"]["command"].setValue( "self.frames = frames" )
 
 		d = self.__dispatcher( frameRange = "1-5" )
-		self.assertRaisesRegexp( RuntimeError, "NameError: name 'frames' is not defined", d.dispatch, [ s["n"] ] )
+		six.assertRaisesRegex( self, RuntimeError, "NameError: name 'frames' is not defined", d.dispatch, [ s["n"] ] )
 
 		s["n"]["dispatcher"]["batchSize"].setValue( 5 )
-		self.assertRaisesRegexp( RuntimeError, "NameError: name 'frames' is not defined", d.dispatch, [ s["n"] ] )
+		six.assertRaisesRegex( self, RuntimeError, "NameError: name 'frames' is not defined", d.dispatch, [ s["n"] ] )
 
 	def testSequenceMode( self ) :
 
@@ -277,7 +278,7 @@ class PythonCommandTest( GafferTest.TestCase ) :
 		s["n"]["command"].setValue( "\n".join( commandLines ) )
 
 		d = self.__dispatcher( frameRange = "1-5" )
-		self.assertRaisesRegexp( Exception, "Context has no entry named \"frame\"", d.dispatch, [ s[ "n" ] ] )
+		six.assertRaisesRegex( self, Exception, "Context has no entry named \"frame\"", d.dispatch, [ s[ "n" ] ] )
 
 		commandLines = inspect.cleandoc(
 			"""
@@ -336,7 +337,7 @@ class PythonCommandTest( GafferTest.TestCase ) :
 			"""
 		) )
 
-		self.assertRaisesRegexp( Exception, "Cannot access variables at frame outside range specified for PythonCommand", n.execute )
+		six.assertRaisesRegex( self, Exception, "Cannot access variables at frame outside range specified for PythonCommand", n.execute )
 
 	def testNonSequenceDispatch( self ) :
 
@@ -371,7 +372,7 @@ class PythonCommandTest( GafferTest.TestCase ) :
 
 	def testComments( self ) :
 
-		c = Gaffer.PythonCommand()
+		c = GafferDispatch.PythonCommand()
 		c["command"].setValue( "self.test = 10 # this is a comment" )
 
 		c["task"].execute()
@@ -379,7 +380,7 @@ class PythonCommandTest( GafferTest.TestCase ) :
 
 	def testImath( self ) :
 
-		c = Gaffer.PythonCommand()
+		c = GafferDispatch.PythonCommand()
 		c["command"].setValue( "self.test = imath.V2i( 1, 2 )" )
 
 		c["task"].execute()
@@ -387,14 +388,14 @@ class PythonCommandTest( GafferTest.TestCase ) :
 
 	def testEmptyCommand( self ) :
 
-		c = Gaffer.PythonCommand()
+		c = GafferDispatch.PythonCommand()
 		self.assertEqual( c["command"].getValue(), "" )
 		self.assertEqual( c["task"].hash(), IECore.MurmurHash() )
 
 	def testContextGetNone( self ) :
 
-		command = Gaffer.PythonCommand()
-		command["command"].setValue( "print context.get( 'iAmNotHere' )" )
+		command = GafferDispatch.PythonCommand()
+		command["command"].setValue( "print( context.get( 'iAmNotHere' ) )" )
 
 		with Gaffer.Context() as c :
 			h = command["task"].hash()
@@ -403,8 +404,8 @@ class PythonCommandTest( GafferTest.TestCase ) :
 
 	def testAlternateMissingContextVariables( self ) :
 
-		command = Gaffer.PythonCommand()
-		command["command"].setValue( "print 'a : ', context.get( 'a' ), 'b : ', context.get( 'b' )" )
+		command = GafferDispatch.PythonCommand()
+		command["command"].setValue( "print( 'a : ', context.get( 'a' ), 'b : ', context.get( 'b' ) )" )
 
 		neitherHash = command["task"].hash()
 
@@ -422,7 +423,7 @@ class PythonCommandTest( GafferTest.TestCase ) :
 
 	def testContextModificationsDontLeak( self ) :
 
-		command = Gaffer.PythonCommand()
+		command = GafferDispatch.PythonCommand()
 		command["command"].setValue( "context.setFrame( 2 )" )
 		command["task"].execute()
 

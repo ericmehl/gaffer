@@ -66,7 +66,7 @@ class GAFFERSCENE_API FilterProcessor : public Filter
 
 		~FilterProcessor() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::FilterProcessor, FilterProcessorTypeId, Filter );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::FilterProcessor, FilterProcessorTypeId, Filter );
 
 		/// Returns the primary filter input. For nodes with multiple inputs
 		/// this will be the first child of the inPlugs() array. For nodes
@@ -81,11 +81,11 @@ class GAFFERSCENE_API FilterProcessor : public Filter
 		Gaffer::ArrayPlug *inPlugs();
 		const Gaffer::ArrayPlug *inPlugs() const;
 
-		bool sceneAffectsMatch( const ScenePlug *scene, const Gaffer::ValuePlug *child ) const override;
-
 		/// Returns inPlug() as the correspondingInput of outPlug();
 		Gaffer::Plug *correspondingInput( const Gaffer::Plug *output ) override;
 		const Gaffer::Plug *correspondingInput( const Gaffer::Plug *output ) const override;
+
+		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
 	protected :
 

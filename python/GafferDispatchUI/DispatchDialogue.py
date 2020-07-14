@@ -62,7 +62,7 @@ class DispatchDialogue( GafferUI.Dialogue ) :
 
 		GafferUI.Dialogue.__init__( self, title, sizeMode=sizeMode, **kw )
 
-		self._getWidget().setBorderStyle( GafferUI.Frame.BorderStyle.None )
+		self._getWidget().setBorderStyle( GafferUI.Frame.BorderStyle.None_ )
 
 		self.__dispatchers = dispatchers
 		self.__tasks = tasks
@@ -84,7 +84,7 @@ class DispatchDialogue( GafferUI.Dialogue ) :
 			with GafferUI.TabbedContainer() as self.__tabs :
 
 				for node in self.__nodesToShow :
-					nodeFrame = GafferUI.Frame( borderStyle=GafferUI.Frame.BorderStyle.None, borderWidth=0 )
+					nodeFrame = GafferUI.Frame( borderStyle=GafferUI.Frame.BorderStyle.None_, borderWidth=0 )
 					nodeFrame.addChild( self.__nodeEditor( node ) )
 					# remove the per-node execute button
 					Gaffer.Metadata.registerValue( node, "layout:customWidget:dispatchButton:widgetType", "", persistent = False )
@@ -100,10 +100,10 @@ class DispatchDialogue( GafferUI.Dialogue ) :
 						self.__dispatchersMenuChanged = self.__dispatchersMenu.selectionChangedSignal().connect( Gaffer.WeakMethod( self.__dispatcherChanged ) )
 						dispatcherMenuColumn.setVisible( len(self.__dispatchers) > 1 )
 
-					self.__dispatcherFrame = GafferUI.Frame( borderStyle=GafferUI.Frame.BorderStyle.None, borderWidth=0 )
+					self.__dispatcherFrame = GafferUI.Frame( borderStyle=GafferUI.Frame.BorderStyle.None_, borderWidth=0 )
 					self.__tabs.setLabel( dispatcherTab, "Dispatcher" )
 
-				with GafferUI.Frame( borderStyle=GafferUI.Frame.BorderStyle.None, borderWidth=4 ) as contextTab :
+				with GafferUI.Frame( borderStyle=GafferUI.Frame.BorderStyle.None_, borderWidth=4 ) as contextTab :
 					GafferUI.PlugValueWidget.create( self.__script["variables"] )
 					self.__tabs.setLabel( contextTab, "Context Variables" )
 
@@ -111,7 +111,7 @@ class DispatchDialogue( GafferUI.Dialogue ) :
 		with GafferUI.ListContainer( spacing = 4 ) as self.__progressUI :
 
 			with GafferUI.ListContainer( parenting = { "horizontalAlignment" : GafferUI.HorizontalAlignment.Center, "verticalAlignment" : GafferUI.VerticalAlignment.Center } ) :
-				self.__progressIconFrame = GafferUI.Frame( borderStyle = GafferUI.Frame.BorderStyle.None, parenting = { "horizontalAlignment" : GafferUI.HorizontalAlignment.Center } )
+				self.__progressIconFrame = GafferUI.Frame( borderStyle = GafferUI.Frame.BorderStyle.None_, parenting = { "horizontalAlignment" : GafferUI.HorizontalAlignment.Center } )
 				self.__progressLabel = GafferUI.Label( parenting = { "horizontalAlignment" : GafferUI.HorizontalAlignment.Center } )
 
 			with GafferUI.Collapsible( "Details", collapsed = True, parenting = { "expand" : True } ) as self.__messageCollapsible :
@@ -232,7 +232,7 @@ class DispatchDialogue( GafferUI.Dialogue ) :
 					self.__currentDispatcher.dispatch( self.__tasks )
 					result = 0
 
-		except Exception, e :
+		except Exception as e :
 
 			result = sys.exc_info()
 
@@ -259,7 +259,11 @@ class DispatchDialogue( GafferUI.Dialogue ) :
 		)
 
 		# this works for RuntimeError, but is this safe for all exceptions?
-		userFriendlyException = exceptionInfo[1].args[0].strip( "\n" ).split( "\n" )[-1]
+		excType, excValue, excTrace = exceptionInfo
+		if excValue and excValue.message:
+			userFriendlyException = excValue.message.strip( "\n" ).split( "\n" )[-1]
+		else:
+			userFriendlyException = str( excType.__name__ )
 		userFriendlyException += "\nSee DEBUG messages for more information."
 		self.__messageWidget.messageHandler().handle(
 			IECore.Msg.Level.Error,

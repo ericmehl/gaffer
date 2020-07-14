@@ -69,8 +69,7 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 			}
 			parameters.update( extraParameters )
 
-			# Expect UI thread call used to emit Display::driverCreatedSignal()
-			with GafferTest.ParallelAlgoTest.ExpectedUIThreadCall() :
+			with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as h :
 
 				self.__driver = IECoreImage.ClientDisplayDriver(
 					self.__format.toEXRSpace( self.__format.getDisplayWindow() ),
@@ -78,6 +77,10 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 					list( channelNames ),
 					parameters,
 				)
+
+				# Expect UI thread call used to emit Display::driverCreatedSignal()
+				h.assertCalled()
+				h.assertDone()
 
 		# The channelData argument is a list of FloatVectorData
 		# per channel.
@@ -91,18 +94,24 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 					for c in channelData :
 						bucketData.append( c[i] )
 
-			# Expect UI thread call used to increment updateCount plug
-			with GafferTest.ParallelAlgoTest.ExpectedUIThreadCall() :
+			with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as h :
+
 				self.__driver.imageData(
 					self.__format.toEXRSpace( bucketWindow ),
 					bucketData
 				)
 
+				# Expect UI thread call used to increment updateCount plug
+				h.assertCalled()
+				h.assertDone()
+
 		def close( self ) :
 
-			# Expect UI thread call used to emit Display::imageReceivedSignal()
-			with GafferTest.ParallelAlgoTest.ExpectedUIThreadCall() :
+			with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as h :
 				self.__driver.imageClose()
+				# Expect UI thread call used to emit Display::imageReceivedSignal()
+				h.assertCalled()
+				h.assertDone()
 
 		@classmethod
 		def sendImage( cls, image, port, extraParameters = {}, close = True ) :
@@ -110,11 +119,15 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 			dataWindow = image["dataWindow"].getValue()
 			channelNames = image["channelNames"].getValue()
 
+			parameters = IECore.CompoundData()
+			parameters.update( { "header:" + k : v for k, v in image["metadata"].getValue().items() } )
+			parameters.update( extraParameters )
+
 			driver = DisplayTest.Driver(
 				image["format"].getValue(),
 				dataWindow,
 				channelNames,
-				port, extraParameters
+				port, parameters
 			)
 
 			tileSize = GafferImage.ImagePlug.tileSize()
@@ -141,6 +154,11 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 			self.assertEqual( d["out"]["format"].getValue(), GafferImage.FormatPlug.getDefaultFormat( c ) )
 			GafferImage.FormatPlug.setDefaultFormat( c, GafferImage.Format( 200, 150, 1. ) )
 			self.assertEqual( d["out"]["format"].getValue(), GafferImage.FormatPlug.getDefaultFormat( c ) )
+
+	def testDeep( self ) :
+
+		d = GafferImage.Display()
+		self.assertEqual( d["out"]["deep"].getValue(), False )
 
 	def testTileHashes( self ) :
 
@@ -220,7 +238,10 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 		s["fileName"].setValue( self.temporaryDirectory() + "test.gfr" )
 		s.save()
 
-		output = subprocess.check_output( [ "gaffer", "execute", self.temporaryDirectory() + "test.gfr", "-nodes", "p" ], stderr = subprocess.STDOUT )
+		output = subprocess.check_output(
+			[ "gaffer", "execute", self.temporaryDirectory() + "test.gfr", "-nodes", "p" ],
+			stderr = subprocess.STDOUT, universal_newlines = True
+		)
 		self.assertEqual( output, "" )
 
 	def testSetDriver( self ) :
@@ -242,8 +263,16 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 		display = GafferImage.Display()
 		self.assertTrue( display.getDriver() is None )
 
+		dirtiedPlugs = GafferTest.CapturingSlot( display.plugDirtiedSignal() )
+
 		display.setDriver( driversCreated[0][0] )
 		self.assertTrue( display.getDriver().isSame( driversCreated[0][0] ) )
+
+		# Ensure all the output plugs have been dirtied
+		expectedDirty = { "__driverCount", "out" }.union( { c.getName() for c in display["out"].children() } )
+		self.assertEqual( expectedDirty, set( e[0].getName() for e in dirtiedPlugs ) )
+
+		del dirtiedPlugs[:]
 
 		driver.sendBucket( dataWindow, [ IECore.FloatVectorData( [ 0.5 ] * dataWindow.size().x * dataWindow.size().y ) ] )
 
@@ -254,6 +283,10 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 			display["out"].channelData( "Y", imath.V2i( 0 ) ),
 			IECore.FloatVectorData( [ 0.5 ] * GafferImage.ImagePlug.tileSize() * GafferImage.ImagePlug.tileSize() )
 		)
+
+		# Ensure only channel data has been dirtied
+		expectedDirty = { "channelData", "__channelDataCount", "out" }
+		self.assertEqual( set( e[0].getName() for e in dirtiedPlugs ), expectedDirty )
 
 		display2 = GafferImage.Display()
 		display2.setDriver( display.getDriver(), copy = True )
@@ -289,7 +322,7 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 
 		self.Driver.sendImage( imageReader["out"], port = server.portNumber() )
 
-		self.assertImagesEqual( imageReader["out"], node["out"], ignoreMetadata = True )
+		self.assertImagesEqual( imageReader["out"], node["out"] )
 
 		self.assertEqual( len( imagesReceived ), 1 )
 		self.assertEqual( imagesReceived[0][0], node["out"] )

@@ -106,7 +106,7 @@ bool allDescendantInputsAreNull( const Plug *plug )
 // Plug implementation
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( Plug );
+GAFFER_PLUG_DEFINE_TYPE( Plug );
 
 Plug::Plug( const std::string &name, Direction direction, unsigned flags )
 	:	GraphComponent( name ), m_direction( direction ), m_input( nullptr ), m_flags( None ), m_skipNextUpdateInputFromChildInputs( false )
@@ -820,7 +820,7 @@ class Plug::DirtyPlugs
 		typedef Graph::vertex_descriptor VertexDescriptor;
 		typedef Graph::edge_descriptor EdgeDescriptor;
 
-		typedef std::map<const Plug *, VertexDescriptor> PlugMap;
+		typedef std::unordered_map<const Plug *, VertexDescriptor> PlugMap;
 
 		// Equivalent to the return type for map::insert - the first
 		// field is the vertex descriptor, and the second field is

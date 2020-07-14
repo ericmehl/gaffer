@@ -34,13 +34,17 @@
 #
 ##########################################################################
 
+import os
 import sys
 import unittest
 import inspect
+import subprocess
 import types
 import shutil
 import tempfile
+import traceback
 import functools
+import six
 
 import IECore
 
@@ -75,13 +79,23 @@ class TestCase( unittest.TestCase ) :
 		# shutdown tests that are run when the test application
 		# exits.
 
-		if "_ExpectedFailure" in str( sys.exc_info()[0] ) :
-			# the expected failure exception in the unittest module
-			# unhelpfully also hangs on to exceptions, so we remove
-			# that before calling exc_clear().
-			sys.exc_info()[1].exc_info = ( None, None, None )
+		if six.PY2 :
 
-		sys.exc_clear()
+			if "_ExpectedFailure" in str( sys.exc_info()[0] ) :
+				# the expected failure exception in the unittest module
+				# unhelpfully also hangs on to exceptions, so we remove
+				# that before calling exc_clear().
+				sys.exc_info()[1].exc_info = ( None, None, None )
+
+			sys.exc_clear()
+
+		else :
+
+			if self._outcome.expectedFailure is not None :
+				# Clear the references to local variables in
+				# the traceback associated with the expected
+				# failure.
+				traceback.clear_frames( self._outcome.expectedFailure[1].__traceback__ )
 
 		if self.__temporaryDirectory is not None :
 			shutil.rmtree( self.__temporaryDirectory )
@@ -122,7 +136,7 @@ class TestCase( unittest.TestCase ) :
 						inputPlugs.append( child )
 		__walkInputs( node )
 
-		self.failUnless( len( inputPlugs ) > 0 )
+		self.assertGreater( len( inputPlugs ), 0 )
 
 		numTests = 0
 		for inputPlug in inputPlugs :
@@ -138,7 +152,7 @@ class TestCase( unittest.TestCase ) :
 					increment = 0.1
 				elif isinstance( value, int ) :
 					increment = 1
-				elif isinstance( value, basestring ) :
+				elif isinstance( value, str ) :
 					increment = "a"
 				else :
 					# don't know how to deal with this
@@ -160,7 +174,7 @@ class TestCase( unittest.TestCase ) :
 
 				numTests += 1
 
-		self.failUnless( numTests > 0 )
+		self.assertGreater( numTests, 0 )
 
 	def assertTypeNamesArePrefixed( self, module, namesToIgnore = () ) :
 
@@ -285,10 +299,20 @@ class TestCase( unittest.TestCase ) :
 
 			for plug in node.children( Gaffer.Plug ) :
 
-				if plug.direction() != plug.Direction.In or not isinstance( plug, Gaffer.ValuePlug ) :
+				if plug.source().direction() != plug.Direction.In or not isinstance( plug, Gaffer.ValuePlug ) :
 					continue
 
 				if not plug.getFlags( plug.Flags.Serialisable ) :
 					continue
 
 				self.assertTrue( plug.isSetToDefault(), plug.fullName() + " not at default value following construction" )
+
+	def assertModuleDoesNotImportUI( self, moduleName ) :
+
+		script = os.path.join( self.temporaryDirectory(), "test.py" )
+		with open( script, "w" ) as f :
+			f.write( "import {}\n".format( moduleName ) )
+			f.write( "import sys\n" )
+			f.write( "assert( 'GafferUI' not in sys.modules )\n" )
+
+		subprocess.check_call( [ "gaffer", "python", script ] )

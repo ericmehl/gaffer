@@ -56,7 +56,7 @@ class GAFFERIMAGE_API ImageNode : public Gaffer::ComputeNode
 		ImageNode( const std::string &name=defaultName<ImageNode>() );
 		~ImageNode() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::ImageNode, ImageNodeTypeId, Gaffer::ComputeNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::ImageNode, ImageNodeTypeId, Gaffer::ComputeNode );
 
 		/// All ImageNodes have at least one output ImagePlug for passing on their result. More
 		/// may be added by derived classes if necessary.
@@ -111,6 +111,8 @@ class GAFFERIMAGE_API ImageNode : public Gaffer::ComputeNode
 		virtual void hashFormat( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const;
 		virtual void hashDataWindow( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const;
 		virtual void hashMetadata( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const;
+		virtual void hashDeep( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const;
+		virtual void hashSampleOffsets( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const;
 		virtual void hashChannelNames( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const;
 		virtual void hashChannelData( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const;
 
@@ -122,6 +124,8 @@ class GAFFERIMAGE_API ImageNode : public Gaffer::ComputeNode
 		virtual GafferImage::Format computeFormat( const Gaffer::Context *context, const ImagePlug *parent ) const;
 		virtual Imath::Box2i computeDataWindow( const Gaffer::Context *context, const ImagePlug *parent ) const;
 		virtual IECore::ConstCompoundDataPtr computeMetadata( const Gaffer::Context *context, const ImagePlug *parent ) const;
+		virtual bool computeDeep( const Gaffer::Context *context, const ImagePlug *parent ) const;
+		virtual IECore::ConstIntVectorDataPtr computeSampleOffsets( const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const;
 		virtual IECore::ConstStringVectorDataPtr computeChannelNames( const Gaffer::Context *context, const ImagePlug *parent ) const;
 		virtual IECore::ConstFloatVectorDataPtr computeChannelData( const std::string &channelName, const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const;
 

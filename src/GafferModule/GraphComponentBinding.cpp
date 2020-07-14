@@ -73,7 +73,7 @@ boost::python::list items( GraphComponent &c )
 	boost::python::list l;
 	for( GraphComponent::ChildContainer::const_iterator it=ch.begin(); it!=ch.end(); it++ )
 	{
-		l.append( boost::python::make_tuple( (*it)->getName(), *it ) );
+		l.append( boost::python::make_tuple( (*it)->getName().c_str(), *it ) );
 	}
 	return l;
 }
@@ -114,22 +114,22 @@ boost::python::tuple children( GraphComponent &c, IECore::TypeId typeId )
 	return boost::python::tuple( l );
 }
 
-void addChild( GraphComponent &g, GraphComponentPtr c )
+void addChild( GraphComponent &g, GraphComponent &c )
 {
 	IECorePython::ScopedGILRelease gilRelease;
-	g.addChild( c );
+	g.addChild( &c );
 }
 
-void setChild( GraphComponent &g, const IECore::InternedString &n, GraphComponentPtr c )
+void setChild( GraphComponent &g, const IECore::InternedString &n, GraphComponent &c )
 {
 	IECorePython::ScopedGILRelease gilRelease;
-	g.setChild( n, c );
+	g.setChild( n, &c );
 }
 
-void removeChild( GraphComponent &g, GraphComponentPtr c )
+void removeChild( GraphComponent &g, GraphComponent &c )
 {
 	IECorePython::ScopedGILRelease gilRelease;
-	g.removeChild( c );
+	g.removeChild( &c );
 }
 
 void clearChildren( GraphComponent &g )
@@ -213,7 +213,7 @@ int length( GraphComponent &g )
 	return g.children().size();
 }
 
-bool nonZero( GraphComponent &g )
+bool toBool( GraphComponent &g )
 {
 	return true;
 }
@@ -303,7 +303,15 @@ void GafferModule::bindGraphComponent()
 		.def( "__delitem__", (void (*)( GraphComponent &, long ))&delItem )
 		.def( "__contains__", contains )
 		.def( "__len__", &length )
-		.def( "__nonzero__", &nonZero )
+// The default conversion to bool uses `__len__`, which trips a lot of
+// people up as they expect `if graphComponent` to be equivalent to
+// `if graphComponent is not None`. So we provide a more specific conversion
+// which is always true.
+#if PY_MAJOR_VERSION > 2
+		.def( "__bool__", &toBool )
+#else
+		.def( "__nonzero__", &toBool )
+#endif
 		.def( "__repr__", &repr )
 		.def( "items", &items )
 		.def( "keys", &keys )

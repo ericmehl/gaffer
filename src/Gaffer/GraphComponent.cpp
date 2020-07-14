@@ -55,6 +55,65 @@ using namespace IECore;
 using namespace std;
 
 //////////////////////////////////////////////////////////////////////////
+// Internal utilities
+//////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+// Equivalent to checking a regex match against "^[A-Za-z_]+[A-Za-z_0-9]*",
+// but significantly quicker.
+//
+/// \todo Relax restrictions to only disallow '.' and `/'? We originally had
+/// these strict requirements because we accessed GraphComponent children
+/// as attributes in Python, but that approach has long since gone.
+bool validName( const std::string &name )
+{
+	if( name.empty() )
+	{
+		return false;
+	}
+
+	const char f = name.front();
+	if(
+		!(f >= 'A' && f <= 'Z') &&
+		!(f >= 'a' && f <= 'z' ) &&
+		f != '_'
+	)
+	{
+		return false;
+	}
+
+	for( auto c : name )
+	{
+		if(
+			!(c >= 'A' && c <= 'Z') &&
+			!(c >= 'a' && c <= 'z' ) &&
+			!(c >= '0' && c <= '9' ) &&
+			c != '_'
+		)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void validateName( const InternedString &name )
+{
+	if( validName( name.string() ) )
+	{
+		return;
+	}
+
+	std::string what = boost::str( boost::format( "Invalid name \"%s\"" ) % name.string() );
+	throw IECore::Exception( what );
+}
+
+} // namespace
+
+//////////////////////////////////////////////////////////////////////////
 // GraphComponent::Signals
 //
 // We allocate these separately because they have a significant overhead
@@ -89,11 +148,12 @@ struct GraphComponent::Signals : boost::noncopyable
 // GraphComponent
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( GraphComponent );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( GraphComponent );
 
 GraphComponent::GraphComponent( const std::string &name )
 	: m_name( name ), m_parent( nullptr )
 {
+	validateName( m_name );
 }
 
 GraphComponent::~GraphComponent()
@@ -110,17 +170,13 @@ GraphComponent::~GraphComponent()
 		(*it)->parentChanged( nullptr );
 		Signals::emitLazily( (*it)->m_signals.get(), &Signals::parentChangedSignal, (*it).get(), nullptr );
 	}
+	m_children.clear();
 }
 
 const IECore::InternedString &GraphComponent::setName( const IECore::InternedString &name )
 {
 	// make sure the name is valid
-	static boost::regex validator( "^[A-Za-z_]+[A-Za-z_0-9]*" );
-	if( !regex_match( name.c_str(), validator ) )
-	{
-		std::string what = boost::str( boost::format( "Invalid name \"%s\"" ) % name.string() );
-		throw IECore::Exception( what );
-	}
+	validateName( name );
 
 	// make sure the name is unique
 	IECore::InternedString newName = name;

@@ -12,13 +12,13 @@ The structure of a scene can be broken down into two main areas:
 
 ## Scene hierarchy ##
 
-In common with most DCCs, Gaffer represents a 3D scene as a hierarchy or tree structure. We refer to positions within this tree as **locations**, specified by their path within the scene, e.g. `/world/city/building01`. Locations are arranged via parent-child relationships, such that `/world/city` is considered the parent of the child `/world/city/building01`. Do not confuse locations in the scene hierachy with nodes in the node graph; nodes _output_ scenes, but are not part of them.
+In common with most DCCs, Gaffer represents a 3D scene as a hierarchy or tree structure. We refer to positions within this tree as **locations**, specified by their path within the scene, e.g. `/world/city/building01`. Locations are arranged via parent-child relationships, such that `/world/city` is considered the parent of the child `/world/city/building01`. Do not confuse locations in the scene hierachy with nodes in the node graph; nodes **output** scenes, but are not part of them.
 
-![The Hierarchy View with a location selected](images/hierarchyView.png)
+![](images/hierarchyView.png "The Hierarchy View with a location selected")
 
-Each location has a number of properties that describe the content of the scene at that point in the hierarchy. They can be inspected in the _Selection_ tab of the _Scene Inspector_. Each property of each location is computed independently, allowing Gaffer to generate the scene lazily on demand.
+Each location has a number of properties that describe the content of the scene at that point in the hierarchy. They can be inspected in the _Selection_ tab of the Scene Inspector. Each property of each location is computed independently, allowing Gaffer to generate the scene lazily on demand.
 
-![All of a location's property sections in the Selection tab Scene Inspector](images/sceneInspector.png)
+![](images/sceneInspector.png "All of a location's property sections in the Selection tab Scene Inspector")
 
 > Important :
 > In this article, "property" only refers generically to a piece of data that describes a scene. It does not carry the more specific meanings from other DCCs.
@@ -28,21 +28,21 @@ Each location has a number of properties that describe the content of the scene 
 
 The **transform** contains a 4x4 matrix storing the local transformation of the location. It is used to position the location in 3D space using a combination of translation, rotation and scaling.
 
-![A location's Transform section in the Scene Inspector](images/sceneInspectorTransformSection.png)
+![](images/sceneInspectorTransformSection.png "A location's Transform section in the Scene Inspector")
 
 
 ### Bound ###
 
 The **bound** contains the union of the bounding box of the location's contents and of the contents of all of its descendants. This is stored relative to the location’s local space. The bound may be computed independently of the contents themselves.
 
-![A location's Bound section in the Scene Inspector](images/sceneInspectorBoundSection.png)
+![](images/sceneInspectorBoundSection.png "A location's Bound section in the Scene Inspector")
 
 
 ### Object ###
 
 When a location contains a 3D object, such as a primitive or a camera, it is stored in the **object** property. Although any location can have an object, typically they are only stored at leaf locations.
 
-![A location's Object section in the Scene Inspector](images/sceneInspectorObjectSection.png)
+![](images/sceneInspectorObjectSection.png "A location's Object section in the Scene Inspector")
 
 
 #### Primitive variables ####
@@ -59,11 +59,11 @@ Locations inherit attributes from their parent, with attributes local to the loc
 > Note :
 > Maya users should note that attributes in Gaffer are not equivalent to attributes in Maya’s _Attribute Editor_. The equivalent term in Gaffer is **plug**. An attribute in Gaffer always refers to a property of a scene.
 >
-> Katana users may be accustomed to thinking of every property in a scene as an attribute. In Gaffer, attributes _only_ refer to arbitrary values for the location. Transforms, geometry, and bounds are _not_ attributes.
+> Katana users may be accustomed to thinking of every property in a scene as an attribute. In Gaffer, attributes **only** refer to arbitrary values for the location. Transforms, geometry, and bounds are **not** attributes.
 >
 > Users familiar with RenderMan may be reassured to know that Gaffer derives its use of the term attribute from RenderMan. Gaffer and RenderMan attributes are very much alike.
 
-![A location's Attributes section in the Scene Inspector](images/sceneInspectorAttributesSection.png)
+![](images/sceneInspectorAttributesSection.png "A location's Attributes section in the Scene Inspector")
 
 
 ## Globals ##

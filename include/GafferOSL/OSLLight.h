@@ -55,7 +55,7 @@ class GAFFEROSL_API OSLLight : public GafferScene::Light
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferOSL::OSLLight, OSLLightTypeId, GafferScene::Light );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferOSL::OSLLight, OSLLightTypeId, GafferScene::Light );
 
 		OSLLight( const std::string &name=defaultName<OSLLight>() );
 		~OSLLight() override;
@@ -101,7 +101,7 @@ class GAFFEROSL_API OSLLight : public GafferScene::Light
 		IECore::ConstCompoundObjectPtr computeAttributes( const SceneNode::ScenePath &path, const Gaffer::Context *context, const GafferScene::ScenePlug *parent ) const override;
 
 		void hashLight( const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
-		IECoreScene::ShaderNetworkPtr computeLight( const Gaffer::Context *context ) const override;
+		IECoreScene::ConstShaderNetworkPtr computeLight( const Gaffer::Context *context ) const override;
 
 	private :
 

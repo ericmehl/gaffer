@@ -43,7 +43,7 @@
 using namespace GafferScene;
 using namespace Gaffer;
 
-IE_CORE_DEFINERUNTIMETYPED( Filter );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Filter );
 
 const IECore::InternedString Filter::inputSceneContextName( "scene:filter:inputScene" );
 size_t Filter::g_firstPlugIndex = 0;
@@ -88,11 +88,6 @@ void Filter::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs
 	{
 		outputs.push_back( outPlug() );
 	}
-}
-
-bool Filter::sceneAffectsMatch( const ScenePlug *scene, const Gaffer::ValuePlug *child ) const
-{
-	return false;
 }
 
 void Filter::setInputScene( Gaffer::Context *context, const ScenePlug *scenePlug )

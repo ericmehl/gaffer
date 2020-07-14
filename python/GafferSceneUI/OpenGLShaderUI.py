@@ -37,6 +37,7 @@
 import os
 import string
 import functools
+import six
 
 import IECore
 
@@ -57,7 +58,7 @@ Gaffer.Metadata.registerNode(
 	"""
 	Loads GLSL shaders for use in the viewer and the OpenGLRender node.
 	GLSL shaders are loaded from *.frag and *.vert files in directories
-	specified by the IECOREGL_SHADER_PATH environment variable.
+	specified by the IECOREGL_SHADER_PATHS environment variable.
 
 	Use the ShaderAssignment node to assign shaders to objects in the
 	scene.
@@ -82,7 +83,10 @@ Gaffer.Metadata.registerNode(
 def __shaderCreator( shaderName ) :
 
 	nodeName = os.path.split( shaderName )[-1]
-	nodeName = nodeName.translate( string.maketrans( ".-", "__" ) )
+	if six.PY3 :
+		nodeName = nodeName.translate( str.maketrans( ".-", "__" ) )
+	else :
+		nodeName = nodeName.translate( string.maketrans( ".-", "__" ) )
 
 	node = GafferScene.OpenGLShader( nodeName )
 	node.loadShader( shaderName )

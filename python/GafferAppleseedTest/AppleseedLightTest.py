@@ -36,43 +36,102 @@
 
 import os
 
+import appleseed as asr
+
 import IECore
 
 import Gaffer
 import GafferTest
 import GafferAppleseed
 
+from .AppleseedTest import appleseedProjectSchemaPath
+
 class AppleseedLightTest( GafferTest.TestCase ) :
+
+	def setUp( self ) :
+
+		GafferTest.TestCase.setUp( self )
+
+		self.__scriptFileName = self.temporaryDirectory() + "/test.gfr"
 
 	def testAppleseedLatLongEnvironmentEDF( self ) :
 
 		l = GafferAppleseed.AppleseedLight( "latlong_map_environment_edf" )
 		l.loadShader( "latlong_map_environment_edf" )
 
-		self.failUnless( "radiance_map" in l["parameters"] )
-		self.failUnless( l["parameters"]["radiance_map"].typeName() == "Gaffer::StringPlug" )
+		self.assertIn( "radiance_map", l["parameters"] )
+		self.assertEqual( l["parameters"]["radiance_map"].typeName(), "Gaffer::StringPlug" )
 
-		self.failUnless( "radiance_multiplier" in l["parameters"] )
-		self.failUnless( l["parameters"]["radiance_multiplier"].typeName() == "Gaffer::FloatPlug" )
+		self.assertIn( "radiance_multiplier", l["parameters"] )
+		self.assertEqual( l["parameters"]["radiance_multiplier"].typeName(), "Gaffer::FloatPlug" )
 
 	def testAppleseedMirrorBallEnvironmentEDF( self ) :
 
 		l = GafferAppleseed.AppleseedLight( "mirrorball_map_environment_edf" )
 		l.loadShader( "mirrorball_map_environment_edf" )
 
-		self.failUnless( "radiance_map" in l["parameters"] )
-		self.failUnless( l["parameters"]["radiance_map"].typeName() == "Gaffer::StringPlug" )
+		self.assertIn( "radiance_map", l["parameters"] )
+		self.assertEqual( l["parameters"]["radiance_map"].typeName(), "Gaffer::StringPlug" )
 
-		self.failUnless( "radiance_multiplier" in l["parameters"] )
-		self.failUnless( l["parameters"]["radiance_multiplier"].typeName() == "Gaffer::FloatPlug" )
+		self.assertIn( "radiance_multiplier", l["parameters"] )
+		self.assertEqual( l["parameters"]["radiance_multiplier"].typeName(), "Gaffer::FloatPlug" )
 
 	def testFloatMultiplierPlugs( self ) :
 
 		l = GafferAppleseed.AppleseedLight( "point_light" )
 		l.loadShader( "point_light" )
 
-		self.failUnless( "intensity_multiplier" in l["parameters"] )
-		self.failUnless( l["parameters"]["intensity_multiplier"].typeName() == "Gaffer::FloatPlug" )
+		self.assertIn( "intensity_multiplier", l["parameters"] )
+		self.assertEqual( l["parameters"]["intensity_multiplier"].typeName(), "Gaffer::FloatPlug" )
+
+	def testRectLightVisibilityAttributes( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		s["diffuse_edf"] = GafferAppleseed.AppleseedLight( "diffuse_edf" )
+		s["diffuse_edf"].loadShader( "diffuse_edf" )
+
+		s["AppleseedAttributes"] = GafferAppleseed.AppleseedAttributes( "AppleseedAttributes" )
+		s["AppleseedAttributes"]["in"].setInput( s["diffuse_edf"]["out"] )
+		s["AppleseedAttributes"]["attributes"]["cameraVisibility"]["value"].setValue( False )
+		s["AppleseedAttributes"]["attributes"]["cameraVisibility"]["enabled"].setValue( True )
+		s["AppleseedAttributes"]["attributes"]["cameraVisibility"]["value"].setValue( False )
+		s["AppleseedAttributes"]["attributes"]["cameraVisibility"]["enabled"].setValue( True )
+		s["AppleseedAttributes"]["attributes"]["lightVisibility"]["value"].setValue( False )
+		s["AppleseedAttributes"]["attributes"]["lightVisibility"]["enabled"].setValue( True )
+		s["AppleseedAttributes"]["attributes"]["shadowVisibility"]["value"].setValue( False )
+		s["AppleseedAttributes"]["attributes"]["shadowVisibility"]["enabled"].setValue( True )
+		s["AppleseedAttributes"]["attributes"]["diffuseVisibility"]["value"].setValue( False )
+		s["AppleseedAttributes"]["attributes"]["diffuseVisibility"]["enabled"].setValue( True )
+		s["AppleseedAttributes"]["attributes"]["specularVisibility"]["value"].setValue( False )
+		s["AppleseedAttributes"]["attributes"]["specularVisibility"]["enabled"].setValue( True )
+		s["AppleseedAttributes"]["attributes"]["glossyVisibility"]["value"].setValue( False )
+		s["AppleseedAttributes"]["attributes"]["glossyVisibility"]["enabled"].setValue( True )
+
+		s["render"] = GafferAppleseed.AppleseedRender( "AppleseedRender" )
+		s["render"]["in"].setInput( s["AppleseedAttributes"]["out"] )
+		s["render"]["mode"].setValue( s["render"].Mode.SceneDescriptionMode )
+
+		projectFilename =  self.temporaryDirectory() + "/test.appleseed"
+		s["render"]["fileName"].setValue( projectFilename )
+		s["render"]["task"].execute()
+
+		reader = asr.ProjectFileReader()
+		options = asr.ProjectFileReaderOptions.OmitReadingMeshFiles
+		project = reader.read( projectFilename, appleseedProjectSchemaPath(), options )
+		scene = project.get_scene()
+		mainAssembly = scene.assemblies().get_by_name( "assembly" )
+
+		objInstance = mainAssembly.object_instances()[0]
+		params = objInstance.get_parameters()
+
+		visFlags = params['visibility']
+		self.assertFalse(visFlags['camera'])
+		self.assertFalse(visFlags['diffuse'])
+		self.assertFalse(visFlags['glossy'])
+		self.assertFalse(visFlags['light'])
+		self.assertFalse(visFlags['shadow'])
+		self.assertFalse(visFlags['specular'])
 
 if __name__ == "__main__":
 	unittest.main()

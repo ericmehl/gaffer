@@ -99,7 +99,7 @@ class SceneScope : public Context::EditableScope
 // CollectScenes
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( CollectScenes );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( CollectScenes );
 
 size_t CollectScenes::g_firstPlugIndex = 0;
 
@@ -181,7 +181,7 @@ void CollectScenes::hashBound( const ScenePath &path, const Gaffer::Context *con
 {
 	if( path.size() == 0 )
 	{
-		h = hashOfTransformedChildBounds( path, outPlug() );
+		h = outPlug()->childBoundsHash();
 	}
 	else
 	{
@@ -194,7 +194,7 @@ Imath::Box3f CollectScenes::computeBound( const ScenePath &path, const Gaffer::C
 {
 	if( path.size() == 0 )
 	{
-		return unionOfTransformedChildBounds( path, outPlug() );
+		return outPlug()->childBounds();
 	}
 	else
 	{
@@ -294,7 +294,7 @@ void CollectScenes::hashChildNames( const ScenePath &path, const Gaffer::Context
 		if( path.size() == 1 )
 		{
 			const auto &upstreamPath = Context::current()->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
-			if( !SceneAlgo::exists( inPlug(), upstreamPath ) )
+			if( !inPlug()->exists( upstreamPath ) )
 			{
 				h = inPlug()->childNamesPlug()->defaultValue()->Object::hash();
 				return;
@@ -335,7 +335,7 @@ IECore::ConstInternedStringVectorDataPtr CollectScenes::computeChildNames( const
 		if( path.size() == 1 )
 		{
 			const auto &upstreamPath = Context::current()->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
-			if( !SceneAlgo::exists( inPlug(), upstreamPath ) )
+			if( !inPlug()->exists( upstreamPath ) )
 			{
 				return inPlug()->childNamesPlug()->defaultValue();
 			}
@@ -437,6 +437,7 @@ void CollectScenes::hashSet( const IECore::InternedString &setName, const Gaffer
 		sceneScope.setRootName( *it );
 		inSetPlug->hash( h );
 		sourceRootPlug->hash( h );
+		h.append( *it );
 	}
 }
 

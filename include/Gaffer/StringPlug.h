@@ -38,6 +38,8 @@
 #ifndef GAFFER_STRINGPLUG_H
 #define GAFFER_STRINGPLUG_H
 
+#include "IECore/StringAlgo.h"
+
 #include "Gaffer/Context.h"
 #include "Gaffer/ValuePlug.h"
 
@@ -86,14 +88,14 @@ class GAFFER_API StringPlug : public ValuePlug
 
 		typedef std::string ValueType;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( Gaffer::StringPlug, StringPlugTypeId, ValuePlug );
+		GAFFER_PLUG_DECLARE_TYPE( Gaffer::StringPlug, StringPlugTypeId, ValuePlug );
 
 		StringPlug(
 			const std::string &name = defaultName<StringPlug>(),
 			Direction direction=In,
 			const std::string &defaultValue = "",
 			unsigned flags = Default,
-			unsigned substitutions = Context::AllSubstitutions
+			unsigned substitutions = IECore::StringAlgo::AllSubstitutions
 		);
 		~StringPlug() override;
 

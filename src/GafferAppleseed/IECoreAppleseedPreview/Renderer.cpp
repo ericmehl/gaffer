@@ -41,6 +41,7 @@
 #include "IECoreAppleseed/CameraAlgo.h"
 #include "IECoreAppleseed/ColorAlgo.h"
 #include "IECoreAppleseed/EntityAlgo.h"
+#include "IECoreAppleseed/EntityPtr.h"
 #include "IECoreAppleseed/MeshAlgo.h"
 #include "IECoreAppleseed/MotionAlgo.h"
 #include "IECoreAppleseed/ObjectAlgo.h"
@@ -57,6 +58,7 @@
 #include "IECore/ObjectInterpolator.h"
 #include "IECore/SimpleTypedData.h"
 
+#include "foundation/core/version.h"
 #include "foundation/platform/timers.h"
 #include "foundation/utility/log.h"
 #include "foundation/utility/searchpaths.h"
@@ -156,6 +158,33 @@ class ScopedLogTarget
 	private :
 
 		asf::auto_release_ptr<asf::ILogTarget> m_logTarget;
+};
+
+const std::vector<IECore::MessageHandler::Level> g_ieMsgLevels = {
+	IECore::MessageHandler::Level::Debug,
+	IECore::MessageHandler::Level::Info,
+	IECore::MessageHandler::Level::Warning,
+	IECore::MessageHandler::Level::Error,
+	IECore::MessageHandler::Level::Error
+};
+
+class CortexLogTarget : public asf::ILogTarget
+{
+
+	public :
+
+		CortexLogTarget( IECore::MessageHandler *messageHandler ) : m_messageHandler( messageHandler ) {};
+
+		void write( const asf::LogMessage::Category category, const char* file, const size_t line, const char* header, const char* message ) override
+		{
+			m_messageHandler->handle( g_ieMsgLevels[ min( int(category), 4 ) ], "Appleseed", message );
+		}
+
+		void release() override {};
+
+	private :
+
+		IECore::MessageHandlerPtr m_messageHandler;
 };
 
 } // namespace
@@ -302,19 +331,20 @@ class AppleseedEntity : public IECoreScenePreview::Renderer::ObjectInterface
 			m_mainAssembly->bump_version_id();
 		}
 
-		void insertCamera( asf::auto_release_ptr<asr::Camera> camera )
+		void insertCamera( EntityPtr<asr::Camera> &camera )
 		{
 			LockGuardType lock( g_camerasMutex );
-			m_project.get_scene()->cameras().insert( camera );
+			m_project.get_scene()->cameras().insert( camera.release() );
 		}
 
-		void removeCamera( asr::Camera *camera )
+		void removeCamera( EntityPtr<asr::Camera> &camera )
 		{
 			LockGuardType lock( g_camerasMutex );
-			m_project.get_scene()->cameras().remove( camera );
+			m_project.get_scene()->cameras().remove( camera.get() );
+			camera.reset();
 		}
 
-		void insertEnvironmentEDF( asf::auto_release_ptr<asr::EnvironmentEDF> environment )
+		void insertEnvironmentEDF( EntityPtr<asr::EnvironmentEDF> &environment )
 		{
 			LockGuardType lock( g_environmentMutex );
 
@@ -325,10 +355,10 @@ class AppleseedEntity : public IECoreScenePreview::Renderer::ObjectInterface
 			envShader->get_parameters().insert( "environment_edf", environment->get_name() );
 			m_project.get_scene()->environment_shaders().insert( envShader );
 
-			m_project.get_scene()->environment_edfs().insert( environment );
+			m_project.get_scene()->environment_edfs().insert( environment.release() );
 		}
 
-		void removeEnvironmentEDF( asr::EnvironmentEDF *environment )
+		void removeEnvironmentEDF( EntityPtr<asr::EnvironmentEDF> &environment )
 		{
 			LockGuardType lock( g_environmentMutex );
 
@@ -336,105 +366,113 @@ class AppleseedEntity : public IECoreScenePreview::Renderer::ObjectInterface
 			asr::EnvironmentShader *envShader = m_project.get_scene()->environment_shaders().get_by_name( envShaderName.c_str() );
 			m_project.get_scene()->environment_shaders().remove( envShader );
 
-			m_project.get_scene()->environment_edfs().remove( environment );
+			m_project.get_scene()->environment_edfs().remove( environment.get() );
+			environment.reset();
 		}
 
-		void insertAssembly( asf::auto_release_ptr<asr::Assembly> assembly )
+		void insertAssembly( EntityPtr<asr::Assembly> &assembly )
 		{
 			LockGuardType lock( g_assembliesMutex );
-			m_mainAssembly->assemblies().insert( assembly );
+			m_mainAssembly->assemblies().insert( assembly.release() );
 		}
 
-		void removeAssembly( asr::Assembly *assembly )
+		void removeAssembly( EntityPtr<asr::Assembly> &assembly )
 		{
 			LockGuardType lock( g_assembliesMutex );
-			m_mainAssembly->assemblies().remove( assembly );
+			m_mainAssembly->assemblies().remove( assembly.get() );
+			assembly.reset();
 		}
 
-		void insertAssemblyInstance( asf::auto_release_ptr<asr::AssemblyInstance> assemblyInstance )
+		void insertAssemblyInstance( EntityPtr<asr::AssemblyInstance> &assemblyInstance )
 		{
 			LockGuardType lock( g_assemblyInstancesMutex );
-			m_mainAssembly->assembly_instances().insert( assemblyInstance );
+			m_mainAssembly->assembly_instances().insert( assemblyInstance.release() );
 			bumpMainAssemblyVersionId();
 		}
 
-		void removeAssemblyInstance( asr::AssemblyInstance *assemblyInstance )
+		void removeAssemblyInstance( EntityPtr<asr::AssemblyInstance> &assemblyInstance )
 		{
 			LockGuardType lock( g_assemblyInstancesMutex );
-			m_mainAssembly->assembly_instances().remove( assemblyInstance );
+			m_mainAssembly->assembly_instances().remove( assemblyInstance.get() );
 			bumpMainAssemblyVersionId();
+			assemblyInstance.reset();
 		}
 
-		void insertObject( asf::auto_release_ptr<asr::Object> object )
+		void insertObject( EntityPtr<asr::Object> &object )
 		{
 			LockGuardType lock( g_objectsMutex );
-			m_mainAssembly->objects().insert( object );
+			m_mainAssembly->objects().insert( object.release() );
 		}
 
-		void insertObjectInstance( asf::auto_release_ptr<asr::ObjectInstance> objectInstance )
+		void insertObjectInstance( EntityPtr<asr::ObjectInstance> &objectInstance )
 		{
 			LockGuardType lock( g_objectsInstancesMutex );
-			m_mainAssembly->object_instances().insert( objectInstance );
+			m_mainAssembly->object_instances().insert( objectInstance.release() );
 		}
 
-		void insertLight( asf::auto_release_ptr<asr::Light> light )
+		void insertLight( EntityPtr<asr::Light>& light )
 		{
 			LockGuardType lock( g_lightsMutex );
-			m_mainAssembly->lights().insert( light );
+			m_mainAssembly->lights().insert( light.release() );
 		}
 
-		void removeLight( asr::Light *light )
+		void removeLight( EntityPtr<asr::Light> &light )
 		{
 			LockGuardType lock( g_lightsMutex );
-			m_mainAssembly->lights().remove( light );
+			m_mainAssembly->lights().remove( light.get() );
+			light.reset();
 		}
 
-		void insertEDF( asf::auto_release_ptr<asr::EDF> edf )
+		void insertEDF( EntityPtr<asr::EDF> &edf )
 		{
 			LockGuardType lock( g_edfMutex );
-			m_mainAssembly->edfs().insert( edf );
+			m_mainAssembly->edfs().insert( edf.release() );
 		}
 
-		void removeEDF( asr::EDF *edf )
+		void removeEDF( EntityPtr<asr::EDF> &edf )
 		{
 			LockGuardType lock( g_edfMutex );
-			m_mainAssembly->edfs().remove( edf );
+			m_mainAssembly->edfs().remove( edf.get() );
+			edf.reset();
 		}
 
-		void insertMaterial( asf::auto_release_ptr<asr::Material> material )
+		void insertMaterial( EntityPtr<asr::Material> &material )
 		{
 			LockGuardType lock( g_materialsMutex );
-			m_mainAssembly->materials().insert( material );
+			m_mainAssembly->materials().insert( material.release() );
 		}
 
-		void removeMaterial( asr::Material *material )
+		void removeMaterial( EntityPtr<asr::Material> &material )
 		{
 			LockGuardType lock( g_materialsMutex );
-			m_mainAssembly->materials().remove( material );
+			m_mainAssembly->materials().remove( material.get() );
+			material.reset();
 		}
 
-		void insertSurfaceShader( asf::auto_release_ptr<asr::SurfaceShader> surfaceShader )
+		void insertSurfaceShader( EntityPtr<asr::SurfaceShader> &surfaceShader )
 		{
 			LockGuardType lock( g_surfaceShadersMutex );
-			m_mainAssembly->surface_shaders().insert( surfaceShader );
+			m_mainAssembly->surface_shaders().insert( surfaceShader.release() );
 		}
 
-		void removeSurfaceShader( asr::SurfaceShader *surfaceShader )
+		void removeSurfaceShader( EntityPtr<asr::SurfaceShader> &surfaceShader )
 		{
 			LockGuardType lock( g_surfaceShadersMutex );
-			m_mainAssembly->surface_shaders().remove( surfaceShader );
+			m_mainAssembly->surface_shaders().remove( surfaceShader.get() );
+			surfaceShader.reset();
 		}
 
-		void insertShaderGroup( asf::auto_release_ptr<asr::ShaderGroup> shaderGroup )
+		void insertShaderGroup( EntityPtr<asr::ShaderGroup> &shaderGroup )
 		{
 			LockGuardType lock( g_shaderGroupsMutex );
-			m_mainAssembly->shader_groups().insert( shaderGroup );
+			m_mainAssembly->shader_groups().insert( shaderGroup.release() );
 		}
 
-		void removeShaderGroup( asr::ShaderGroup *shaderGroup )
+		void removeShaderGroup( EntityPtr<asr::ShaderGroup> &shaderGroup )
 		{
 			LockGuardType lock( g_shaderGroupsMutex );
-			m_mainAssembly->shader_groups().remove( shaderGroup );
+			m_mainAssembly->shader_groups().remove( shaderGroup.get() );
+			shaderGroup.reset();
 		}
 
 		string createSceneTexture( const string &name, const string &fileName, bool alphaMap = false )
@@ -619,10 +657,9 @@ class AppleseedShader : public AppleseedEntity
 		AppleseedShader( asr::Project &project, const string &name, const ShaderNetwork *shader, bool interactiveRender )
 			:	AppleseedEntity( project, name, interactiveRender )
 		{
-			asf::auto_release_ptr<asr::ShaderGroup> shaderGroup( ShaderNetworkAlgo::convert( shader ) );
-			shaderGroup->set_name( name.c_str() );
-			m_shaderGroup = shaderGroup.get();
-			insertShaderGroup( shaderGroup );
+			m_shaderGroup.reset( ShaderNetworkAlgo::convert( shader ), true );
+			m_shaderGroup->set_name( name.c_str() );
+			insertShaderGroup( m_shaderGroup );
 		}
 
 		~AppleseedShader() override
@@ -653,7 +690,7 @@ class AppleseedShader : public AppleseedEntity
 
 	private :
 
-		asr::ShaderGroup *m_shaderGroup;
+		EntityPtr<asr::ShaderGroup> m_shaderGroup;
 };
 
 IE_CORE_DECLAREPTR( AppleseedShader )
@@ -669,13 +706,31 @@ class ShaderCache : public RefCounted
 		}
 
 		// Can be called concurrently with other get() calls.
-		AppleseedShaderPtr get( const ShaderNetwork *shader )
+		AppleseedShaderPtr get( const ShaderNetwork *shader, const IECore::CompoundObject *attributes )
 		{
+			IECore::MurmurHash h = shader->Object::hash();
+			IECore::MurmurHash hSubst;
+			if( attributes )
+			{
+				shader->hashSubstitutions( attributes, hSubst );
+				h.append( hSubst );
+			}
+
 			Cache::accessor a;
-			m_cache.insert( a, shader->Object::hash() );
+			m_cache.insert( a, h );
 			if( !a->second )
 			{
-				a->second = new AppleseedShader( m_project, shader->Object::hash().toString() + "_shadergroup", shader, m_isInteractive );
+				std::string name = h.toString() + "_shadergroup";
+				if( hSubst != IECore::MurmurHash() )
+				{
+					IECoreScene::ShaderNetworkPtr substitutedShader = shader->copy();
+					substitutedShader->applySubstitutions( attributes );
+					a->second = new AppleseedShader( m_project, name, substitutedShader.get(), m_isInteractive );
+				}
+				else
+				{
+					a->second = new AppleseedShader( m_project, name, shader, m_isInteractive );
+				}
 			}
 			return a->second;
 		}
@@ -795,7 +850,7 @@ class AppleseedAttributes : public IECoreScenePreview::Renderer::AttributesInter
 
 			if( surfaceShaderAttribute )
 			{
-				m_shaderGroup = shaderCache->get( surfaceShaderAttribute );
+				m_shaderGroup = shaderCache->get( surfaceShaderAttribute, attributes );
 			}
 		}
 
@@ -878,11 +933,9 @@ class AppleseedCamera : public AppleseedEntity
 		AppleseedCamera( asr::Project &project, const string &name, const Camera *camera, const IECoreScenePreview::Renderer::AttributesInterface *attributes, bool interactive )
 			:	AppleseedEntity( project, name, interactive )
 		{
-			asf::auto_release_ptr<asr::Camera> appleseedCamera( CameraAlgo::convert( camera ) );
-			appleseedCamera->set_name( name.c_str() );
-			m_camera = appleseedCamera.get();
-
-			insertCamera( appleseedCamera );
+			m_camera.reset( CameraAlgo::convert( camera ), true );
+			m_camera->set_name( name.c_str() );
+			insertCamera( m_camera );
 		}
 
 		~AppleseedCamera() override
@@ -911,7 +964,7 @@ class AppleseedCamera : public AppleseedEntity
 
 	private :
 
-		asr::Camera *m_camera;
+		EntityPtr<asr::Camera> m_camera;
 };
 
 } // namespace
@@ -999,7 +1052,7 @@ class AppleseedInstance : public AppleseedEntity
 			// Create an instance of the master primitive assembly and add it to the main assembly.
 			string assemblyName = m_masterName + "_assembly";
 			string assemblyInstanceName = name() + "_assembly_instance";
-			asf::auto_release_ptr<asr::AssemblyInstance> assInstance( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), assemblyName.c_str() ) );
+			EntityPtr<asr::AssemblyInstance> assInstance( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), assemblyName.c_str() ) );
 			assInstance->transform_sequence() = m_transformSequence;
 			insertAssemblyInstance( assInstance );
 		}
@@ -1088,7 +1141,7 @@ class AppleseedPrimitive : public AppleseedEntity
 			init();
 
 			// Create the object.
-			m_object = ObjectAlgo::convert( object );
+			m_object.reset( ObjectAlgo::convert( object ), true );
 			m_object->set_name( name.c_str() );
 
 			// Compute smooth normals and tangents if needed.
@@ -1114,7 +1167,7 @@ class AppleseedPrimitive : public AppleseedEntity
 			init();
 
 			// Create the object.
-			m_object = ObjectAlgo::convert( samples, times, shutterOpenTime, shutterCloseTime );
+			m_object.reset( ObjectAlgo::convert( samples, times, shutterOpenTime, shutterCloseTime ), true );
 			m_object->set_name( name.c_str() );
 
 			// Compute smooth normals and tangents if needed.
@@ -1166,9 +1219,9 @@ class AppleseedPrimitive : public AppleseedEntity
 		{
 			if( isInteractiveRender() )
 			{
+				clearMaterial();
 				removeAssemblyInstance( m_objectAssemblyInstance );
 				removeAssembly( m_objectAssembly );
-				clearMaterial();
 				return;
 			}
 
@@ -1179,20 +1232,20 @@ class AppleseedPrimitive : public AppleseedEntity
 				// The object has transformation motion blur.
 				// We have to create an assembly for it.
 				string assemblyName = name() + "_assembly";
-				asf::auto_release_ptr<asr::Assembly> ass( asr::AssemblyFactory().create( assemblyName.c_str() ) );
+				EntityPtr<asr::Assembly> ass( asr::AssemblyFactory().create( assemblyName.c_str() ) );
 
 				// Add the object to the object assembly.
-				ass->objects().insert( asf::auto_release_ptr<asr::Object>( m_object ) );
+				ass->objects().insert( m_object.release() );
 
 				// Add the object instance to the object assembly.
-				ass->object_instances().insert( asf::auto_release_ptr<asr::ObjectInstance>( m_objectInstance ) );
+				ass->object_instances().insert( m_objectInstance.release() );
 
 				// Add the object assembly to the main assembly.
 				insertAssembly( ass );
 
 				// Create an instance of the object assembly and add it to the main assembly.
 				string assemblyInstanceName = assemblyName + "_instance";
-				asf::auto_release_ptr<asr::AssemblyInstance> assInstance( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), assemblyName.c_str() ) );
+				EntityPtr<asr::AssemblyInstance> assInstance( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), assemblyName.c_str() ) );
 				assInstance->transform_sequence() = m_transformSequence;
 				insertAssemblyInstance( assInstance );
 			}
@@ -1200,14 +1253,11 @@ class AppleseedPrimitive : public AppleseedEntity
 			{
 				// The object does not have transformation motion blur.
 				// In this case, it's more efficient to put it in the main assembly.
-				insertObject( asf::auto_release_ptr<asr::Object>( m_object ) );
+				insertObject( m_object );
 
 				// To update the transform, we have to create a new object instance.
-				asf::auto_release_ptr<asr::ObjectInstance> newObjInstance;
-				newObjInstance = asr::ObjectInstanceFactory::create( m_objectInstance->get_name(), m_objectInstance->get_parameters(), m_objectInstance->get_object_name(), m_transformSequence.get_earliest_transform(), m_objectInstance->get_front_material_mappings(), m_objectInstance->get_back_material_mappings() );
-				m_objectInstance->release();
-				m_objectInstance = newObjInstance.get();
-				insertObjectInstance( newObjInstance );
+				m_objectInstance.reset( asr::ObjectInstanceFactory::create( m_objectInstance->get_name(), m_objectInstance->get_parameters(), m_objectInstance->get_object_name(), m_transformSequence.get_earliest_transform(), m_objectInstance->get_front_material_mappings(), m_objectInstance->get_back_material_mappings() ) );
+				insertObjectInstance( m_objectInstance );
 			}
 		}
 
@@ -1257,10 +1307,8 @@ class AppleseedPrimitive : public AppleseedEntity
 				asr::ParamArray params;
 				params.insert( "lighting_samples", appleseedAttributes->m_shadingSamples );
 
-				asf::auto_release_ptr<asr::SurfaceShader> surfaceShader;
-				surfaceShader = asr::PhysicalSurfaceShaderFactory().create( surfaceShaderName.c_str(), params );
-				m_surfaceShader = surfaceShader.get();
-				insertSurfaceShader( surfaceShader );
+				m_surfaceShader.reset( asr::PhysicalSurfaceShaderFactory().create( surfaceShaderName.c_str(), params ) );
+				insertSurfaceShader( m_surfaceShader );
 
 				// Create a material.
 				string materialName = name() + "_material";
@@ -1268,10 +1316,8 @@ class AppleseedPrimitive : public AppleseedEntity
 				params.insert( "surface_shader", surfaceShaderName.c_str() );
 				params.insert( "osl_surface", appleseedAttributes->m_shaderGroup->shaderGroupName() );
 
-				asf::auto_release_ptr<asr::Material> material;
-				material = asr::OSLMaterialFactory().create( materialName.c_str(), params );
-				m_material = material.get();
-				insertMaterial( material );
+				m_material.reset( asr::OSLMaterialFactory().create( materialName.c_str(), params ) );
+				insertMaterial( m_material );
 
 				// Assign the material to the object instance.
 				m_objectInstance->assign_material( "default", asr::ObjectInstance::FrontSide, materialName.c_str() );
@@ -1302,6 +1348,19 @@ class AppleseedPrimitive : public AppleseedEntity
 			m_objectInstance->get_parameters().insert( "visibility", appleseedAttributes->m_visibilityDictionary );
 
 			// todo: support edits of smooth normals and tangents attribute.
+
+			if( isInteractiveRender() )
+			{
+				// We need to re-create object instances after edits.
+				asf::auto_release_ptr<asr::ObjectInstance> oi = m_objectAssembly->object_instances().remove( m_objectInstance.get() );
+
+				m_objectInstance.reset( asr::ObjectInstanceFactory::create( oi->get_name(), oi->get_parameters(), oi->get_object_name(), oi->get_transform(), oi->get_front_material_mappings(), oi->get_back_material_mappings() ) );
+				m_objectAssembly->object_instances().insert( m_objectInstance.release() );
+
+				// Tell appleseed that we updated the contents of the object assembly.
+				m_objectAssembly->bump_version_id();
+			}
+
 			return true;
 		}
 
@@ -1309,36 +1368,37 @@ class AppleseedPrimitive : public AppleseedEntity
 
 		void init()
 		{
-			m_objectAssembly = nullptr;
-			m_objectAssemblyInstance = nullptr;
-			m_object = nullptr;
-			m_objectInstance = nullptr;
-			m_surfaceShader = nullptr;
-			m_material = nullptr;
+			m_objectAssembly.reset();
+			m_objectAssemblyInstance.reset();
+			m_object.reset();
+			m_objectInstance.reset();
+			m_surfaceShader.reset();
+			m_material.reset();
 		}
 
 		void clearMaterial()
 		{
 			removeMainAssemblyTextures();
 
-			if( m_surfaceShader )
+			if( m_surfaceShader.get() )
 			{
 				removeSurfaceShader( m_surfaceShader );
-				m_surfaceShader = nullptr;
 			}
 
 			m_shaderGroup.reset();
 
-			if( m_material )
+			if( m_material.get() )
 			{
 				removeMaterial( m_material );
-				m_material = nullptr;
 			}
+
+			m_objectInstance->clear_front_materials();
+			m_objectInstance->clear_back_materials();
 		}
 
 		void computeSmoothNormalsAndTangents( bool normals, bool tangents )
 		{
-			asr::MeshObject *meshObject = static_cast<asr::MeshObject*>( m_object );
+			asr::MeshObject *meshObject = static_cast<asr::MeshObject*>( m_object.get() );
 
 			if( normals && meshObject->get_vertex_normal_count() == 0 )
 			{
@@ -1356,31 +1416,29 @@ class AppleseedPrimitive : public AppleseedEntity
 			string objectInstanceName = name() + "_instance";
 			asf::StringDictionary materials;
 			materials.insert( "default", g_defaultMaterialName );
-			m_objectInstance = asr::ObjectInstanceFactory::create( objectInstanceName.c_str(), asr::ParamArray(), objectName.c_str(), asf::Transformd::identity(), materials, materials ).release();
+			m_objectInstance.reset( asr::ObjectInstanceFactory::create( objectInstanceName.c_str(), asr::ParamArray(), objectName.c_str(), asf::Transformd::identity(), materials, materials ) );
 		}
 
 		void createObjectAssembly()
 		{
 			// Create an assembly for the object.
 			string assemblyName = name() + "_assembly";
-			asf::auto_release_ptr<asr::Assembly> ass( asr::AssemblyFactory().create( assemblyName.c_str() ) );
+			m_objectAssembly.reset( asr::AssemblyFactory().create( assemblyName.c_str() ) );
 
 			// Add the object to the object assembly.
-			ass->objects().insert( asf::auto_release_ptr<asr::Object>( m_object ) );
+			m_objectAssembly->objects().insert( m_object.release() );
 
 			// Add the object instance to the object assembly.
-			ass->object_instances().insert( asf::auto_release_ptr<asr::ObjectInstance>( m_objectInstance ) );
+			m_objectAssembly->object_instances().insert( m_objectInstance.release() );
 
 			// Add the object assembly to the main assembly.
-			m_objectAssembly = ass.get();
-			insertAssembly( ass );
+			insertAssembly( m_objectAssembly );
 
 			// Create an instance of the object assembly and
 			// add it to the main assembly.
 			string assemblyInstanceName = assemblyName + "_instance";
-			asf::auto_release_ptr<asr::AssemblyInstance> assInstance( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), m_objectAssembly->get_name() ) );
-			m_objectAssemblyInstance = assInstance.get();
-			insertAssemblyInstance( assInstance );
+			m_objectAssemblyInstance.reset( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), m_objectAssembly->get_name() ) );
+			insertAssemblyInstance( m_objectAssemblyInstance );
 		}
 
 		const char *filenameExtensionForObject( const Object *object ) const
@@ -1458,7 +1516,7 @@ class AppleseedPrimitive : public AppleseedEntity
 			}
 
 			// Create a mesh object referencing the geom file.
-			m_object = asr::MeshObjectFactory().create( name().c_str(), params ).release();
+			m_object.reset( asr::MeshObjectFactory().create( name().c_str(), params ) );
 
 			// Create the object instance.
 			createObjectInstance( name() + ".mesh" );
@@ -1471,15 +1529,15 @@ class AppleseedPrimitive : public AppleseedEntity
 
 		asr::TransformSequence m_transformSequence;
 
-		asr::Assembly *m_objectAssembly;
-		asr::AssemblyInstance *m_objectAssemblyInstance;
+		EntityPtr<asr::Assembly> m_objectAssembly;
+		EntityPtr<asr::AssemblyInstance> m_objectAssemblyInstance;
 
-		asr::Object *m_object;
-		asr::ObjectInstance *m_objectInstance;
+		EntityPtr<asr::Object> m_object;
+		EntityPtr<asr::ObjectInstance> m_objectInstance;
 
 		AppleseedShaderPtr m_shaderGroup;
-		asr::SurfaceShader *m_surfaceShader;
-		asr::Material *m_material;
+		EntityPtr<asr::SurfaceShader> m_surfaceShader;
+		EntityPtr<asr::Material> m_material;
 
 };
 
@@ -1578,7 +1636,6 @@ class AppleseedEnvironmentLight : public AppleseedLight
 
 		AppleseedEnvironmentLight( asr::Project &project, const string &name,  const IECoreScenePreview::Renderer::AttributesInterface *attributes, bool interactive )
 			:	AppleseedLight( project, name, attributes, interactive )
-			,	m_environment( nullptr )
 		{
 			AppleseedEnvironmentLight::attributes( attributes );
 		}
@@ -1595,7 +1652,7 @@ class AppleseedEnvironmentLight : public AppleseedLight
 		{
 			TransformAlgo::makeTransformSequence( transform, m_transformSequence );
 
-			if( m_environment )
+			if( m_environment.get() )
 			{
 				m_environment->transform_sequence() = m_transformSequence;
 			}
@@ -1605,7 +1662,7 @@ class AppleseedEnvironmentLight : public AppleseedLight
 		{
 			TransformAlgo::makeTransformSequence( times, samples, m_transformSequence );
 
-			if( m_environment )
+			if( m_environment.get() )
 			{
 				m_environment->transform_sequence() = m_transformSequence;
 			}
@@ -1624,15 +1681,14 @@ class AppleseedEnvironmentLight : public AppleseedLight
 				asr::EnvironmentEDFFactoryRegistrar envFactoryRegistrar;
 				if( const asr::IEnvironmentEDFFactory *factory = envFactoryRegistrar.lookup( lightModel.c_str() ) )
 				{
-					asf::auto_release_ptr<asr::EnvironmentEDF> envLight( factory->create( name().c_str(), asr::ParamArray() ) );
-					envLight->transform_sequence() = m_transformSequence;
+					m_environment.reset( factory->create( name().c_str(), asr::ParamArray() ) );
+					m_environment->transform_sequence() = m_transformSequence;
 
 					const CompoundDataMap *lightParams = getLightParameters( appleseedAttributes->m_lightShader.get() );
 					assert( lightParams );
-					convertLightParams( lightParams, envLight->get_parameters(), true );
+					convertLightParams( lightParams, m_environment->get_parameters(), true );
 
-					m_environment = envLight.get();
-					insertEnvironmentEDF( envLight );
+					insertEnvironmentEDF( m_environment );
 				}
 			}
 
@@ -1643,16 +1699,15 @@ class AppleseedEnvironmentLight : public AppleseedLight
 
 		void removeEnvironmentEntities()
 		{
-			if( m_environment )
+			if( m_environment.get() )
 			{
 				removeEnvironmentEDF( m_environment );
 				removeSceneTextures();
 				removeSceneColors();
-				m_environment = nullptr;
 			}
 		}
 
-		asr::EnvironmentEDF *m_environment;
+		EntityPtr<asr::EnvironmentEDF> m_environment;
 		asr::TransformSequence m_transformSequence;
 };
 
@@ -1662,7 +1717,7 @@ class AppleseedDeltaLight : public AppleseedLight
 	public :
 
 		AppleseedDeltaLight( asr::Project &project, const string &name, const IECoreScenePreview::Renderer::AttributesInterface *attributes, bool interactive )
-			:	AppleseedLight( project, name, attributes, interactive ) , m_light( nullptr ) , m_transform( asf::Transformd::identity() )
+			:	AppleseedLight( project, name, attributes, interactive ) , m_transform( asf::Transformd::identity() )
 		{
 			AppleseedDeltaLight::attributes( attributes );
 		}
@@ -1679,7 +1734,7 @@ class AppleseedDeltaLight : public AppleseedLight
 		{
 			TransformAlgo::makeTransform( transform, m_transform );
 
-			if( m_light )
+			if( m_light.get() )
 			{
 				m_light->set_transform( m_transform );
 			}
@@ -1706,14 +1761,13 @@ class AppleseedDeltaLight : public AppleseedLight
 				asr::LightFactoryRegistrar lightFactoryRegistrar;
 				if( const asr::ILightFactory *factory = lightFactoryRegistrar.lookup( lightModel.c_str() ) )
 				{
-					asf::auto_release_ptr<asr::Light> light( factory->create( name().c_str(), asr::ParamArray() ) );
-					light->set_transform( m_transform );
+					m_light.reset( factory->create( name().c_str(), asr::ParamArray() ) );
+					m_light->set_transform( m_transform );
 
 					const CompoundDataMap *lightParams = getLightParameters( appleseedAttributes->m_lightShader.get() );
-					convertLightParams( lightParams, light->get_parameters(), false );
+					convertLightParams( lightParams, m_light->get_parameters(), false );
 
-					m_light = light.get();
-					insertLight( light );
+					insertLight( m_light );
 				}
 			}
 
@@ -1724,16 +1778,15 @@ class AppleseedDeltaLight : public AppleseedLight
 
 		void removeLightEntities()
 		{
-			if( m_light )
+			if( m_light.get() )
 			{
 				removeLight( m_light );
 				removeSceneTextures();
 				removeSceneColors();
-				m_light = nullptr;
 			}
 		}
 
-		asr::Light *m_light;
+		EntityPtr<asr::Light> m_light;
 		asf::Transformd m_transform;
 };
 
@@ -1766,8 +1819,11 @@ class AppleseedAreaLight : public AppleseedLight
 
 				// Create an object instance for the light.
 				string objectInstanceName = name() + "_instance";
-				asf::auto_release_ptr<asr::ObjectInstance> objectInstance;
-				objectInstance = asr::ObjectInstanceFactory::create( objectInstanceName.c_str(), asr::ParamArray(), name().c_str(), m_transform, frontMaterialMappings, backMaterialMappings );
+
+				asr::ParamArray params;
+				params.insert( "visibility", m_visibilityDictionary );
+
+				EntityPtr<asr::ObjectInstance> objectInstance( asr::ObjectInstanceFactory::create( objectInstanceName.c_str(), params, name().c_str(), m_transform, frontMaterialMappings, backMaterialMappings ) );
 				insertObjectInstance( objectInstance );
 			}
 		}
@@ -1802,6 +1858,7 @@ class AppleseedAreaLight : public AppleseedLight
 
 			// Create a new light.
 			const AppleseedAttributes *appleseedAttributes = static_cast<const AppleseedAttributes*>( attributes );
+			m_visibilityDictionary = appleseedAttributes->m_visibilityDictionary;
 
 			if( appleseedAttributes && appleseedAttributes->m_lightShader )
 			{
@@ -1811,19 +1868,17 @@ class AppleseedAreaLight : public AppleseedLight
 				string lightModel = getLightModel( appleseedAttributes->m_lightShader.get() );
 				const asr::IEDFFactory *factory = edfFactoryRegistrar.lookup( lightModel.c_str() );
 
-				asf::auto_release_ptr<asr::EDF> edf( factory->create( edfName.c_str(), asr::ParamArray() ) );
+				m_edf.reset( factory->create( edfName.c_str(), asr::ParamArray() ) );
 				const CompoundDataMap *lightParams = getLightParameters( appleseedAttributes->m_lightShader.get() );
-				convertLightParams( lightParams, edf->get_parameters(), false );
-				m_edf = edf.get();
-				insertEDF( edf );
+				convertLightParams( lightParams, m_edf->get_parameters(), false );
+				insertEDF( m_edf );
 
 				// Create a material for each side of the light.
 				string materialName = name() + "_front_material";
 				asr::ParamArray params;
 				params.insert( "edf", m_edf->get_name() );
-				asf::auto_release_ptr<asr::Material> material = asr::GenericMaterialFactory().create( materialName.c_str(), params );
-				m_material = material.get();
-				insertMaterial( material );
+				m_material.reset( asr::GenericMaterialFactory().create( materialName.c_str(), params ) );
+				insertMaterial( m_material );
 
 				// Create the geometry for the area light.
 				params.clear();
@@ -1833,32 +1888,30 @@ class AppleseedAreaLight : public AppleseedLight
 				params.insert("width", 2.0f);
 				params.insert("height", 2.0f);
 
-				asf::auto_release_ptr<asr::Object> object;
+				EntityPtr<asr::Object> object;
 				if( m_renderType == IECoreScenePreview::Renderer::SceneDescription )
 				{
-					object = asr::MeshObjectFactory().create( name().c_str(), params );
+					object.reset( asr::MeshObjectFactory().create( name().c_str(), params ) );
 				}
 				else
 				{
-					object = asr::create_primitive_mesh( name().c_str(), params );
+					object.reset( asr::create_primitive_mesh( name().c_str(), params ) );
 				}
 
 				if( isInteractiveRender() )
 				{
 					// Create an assembly and an assembly instance to allow quick transform updating.
 					string assemblyName = name() + "_assembly";
-					asf::auto_release_ptr<asr::Assembly> assembly = asr::AssemblyFactory().create( assemblyName.c_str() );
-					m_assembly = assembly.get();
-					insertAssembly( assembly );
+					m_assembly.reset( asr::AssemblyFactory().create( assemblyName.c_str() ) );
+					insertAssembly( m_assembly );
 
 					string assemblyInstanceName = assemblyName + "_instance";
-					asf::auto_release_ptr<asr::AssemblyInstance> assInstance( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), assemblyName.c_str() ) );
-					assInstance->transform_sequence().set_transform( 0.0f, m_transform );
-					m_assemblyInstance = assInstance.get();
-					insertAssemblyInstance( assInstance );
+					m_assemblyInstance.reset( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), assemblyName.c_str() ) );
+					m_assemblyInstance->transform_sequence().set_transform( 0.0f, m_transform );
+					insertAssemblyInstance( m_assemblyInstance );
 
 					// Add the geometry to the light assembly.
-					m_assembly->objects().insert( object );
+					m_assembly->objects().insert( object.release() );
 
 					// Create the material assignments.
 					asf::StringDictionary frontMaterialMappings;
@@ -1869,8 +1922,12 @@ class AppleseedAreaLight : public AppleseedLight
 
 					// Create an object instance for the light.
 					string objectInstanceName = name() + "_instance";
+
+					asr::ParamArray params;
+					params.insert( "visibility", m_visibilityDictionary );
+
 					asf::auto_release_ptr<asr::ObjectInstance> objectInstance;
-					objectInstance = asr::ObjectInstanceFactory::create( objectInstanceName.c_str(), asr::ParamArray(), name().c_str(), asf::Transformd::identity(), frontMaterialMappings, backMaterialMappings );
+					objectInstance = asr::ObjectInstanceFactory::create( objectInstanceName.c_str(), params, name().c_str(), asf::Transformd::identity(), frontMaterialMappings, backMaterialMappings );
 					m_assembly->object_instances().insert( objectInstance );
 				}
 				else
@@ -1887,36 +1944,32 @@ class AppleseedAreaLight : public AppleseedLight
 
 		void init()
 		{
-			m_edf = nullptr;
-			m_material = nullptr;
-			m_assembly = nullptr;
-			m_assemblyInstance = nullptr;
+			m_edf.reset();
+			m_material.reset();
+			m_assembly.reset();
+			m_assemblyInstance.reset();
 		}
 
 		void removeAreaLightEntities()
 		{
-			if( m_edf )
+			if( m_edf.get() )
 			{
 				removeEDF( m_edf );
-				m_edf = nullptr;
 			}
 
-			if( m_material )
+			if( m_material.get() )
 			{
 				removeMaterial( m_material );
-				m_material = nullptr;
 			}
 
-			if( m_assembly )
+			if( m_assembly.get() )
 			{
 				removeAssembly( m_assembly );
-				m_assembly = nullptr;
 			}
 
-			if( m_assemblyInstance )
+			if( m_assemblyInstance.get() )
 			{
 				removeAssemblyInstance( m_assemblyInstance );
-				m_assemblyInstance = nullptr;
 			}
 
 			removeSceneColors();
@@ -1925,11 +1978,12 @@ class AppleseedAreaLight : public AppleseedLight
 
 		IECoreScenePreview::Renderer::RenderType m_renderType;
 		asf::Transformd m_transform;
+		asr::ParamArray m_visibilityDictionary;
 
-		asr::EDF *m_edf;
-		asr::Material *m_material;
-		asr::Assembly *m_assembly;
-		asr::AssemblyInstance *m_assemblyInstance;
+		EntityPtr<asr::EDF> m_edf;
+		EntityPtr<asr::Material> m_material;
+		EntityPtr<asr::Assembly> m_assembly;
+		EntityPtr<asr::AssemblyInstance> m_assemblyInstance;
 };
 
 } // namespace
@@ -2023,26 +2077,22 @@ class AppleseedProcedural : public AppleseedEntity
 
 		AppleseedProcedural( asr::Project &project, const string &name, const IECoreScenePreview::Procedural *procedural, ProceduralRenderer* renderer , bool interactiveRender )
 			:	AppleseedEntity( project, name, interactiveRender )
-			,	m_assembly( nullptr )
-			,	m_assemblyInstance( nullptr )
 		{
 			// Expand the procedural into the renderer's project.
 			procedural->render( renderer );
 
 			// Remove the main assembly from the renderer's project.
-			asf::auto_release_ptr<asr::Assembly> ass = renderer->releaseMainAssembly();
+			m_assembly.reset( renderer->releaseMainAssembly() );
 
 			// Remove the default surface shader and materials from the assembly.
-			ass->surface_shaders().remove(ass->surface_shaders().get_by_name(g_defaultSurfaceShaderlName));
-			ass->materials().remove(ass->materials().get_by_name(g_defaultMaterialName));
-			ass->materials().remove(ass->materials().get_by_name(g_nullMaterialName));
+			m_assembly->surface_shaders().remove(m_assembly->surface_shaders().get_by_name(g_defaultSurfaceShaderlName));
+			m_assembly->materials().remove(m_assembly->materials().get_by_name(g_defaultMaterialName));
+			m_assembly->materials().remove(m_assembly->materials().get_by_name(g_nullMaterialName));
 
 			// Rename the assembly and insert it into out main assembly.
 			string assemblyName = name + "_assembly";
-			ass->set_name( assemblyName.c_str() );
-
-			m_assembly = ass.get();
-			mainAssembly().assemblies().insert( ass );
+			m_assembly->set_name( assemblyName.c_str() );
+			mainAssembly().assemblies().insert( m_assembly.release() );
 
 			if( isInteractiveRender() )
 			{
@@ -2102,15 +2152,13 @@ class AppleseedProcedural : public AppleseedEntity
 		{
 			string assemblyName = name() + "_assembly";
 			string assemblyInstanceName = assemblyName + "_instance";
-			asf::auto_release_ptr<asr::AssemblyInstance> assInstance( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), assemblyName.c_str() ) );
-			assInstance->transform_sequence() = m_transformSequence;
-
-			m_assemblyInstance = assInstance.get();
-			insertAssemblyInstance( assInstance );
+			m_assemblyInstance.reset( asr::AssemblyInstanceFactory::create( assemblyInstanceName.c_str(), asr::ParamArray(), assemblyName.c_str() ) );
+			m_assemblyInstance->transform_sequence() = m_transformSequence;
+			insertAssemblyInstance( m_assemblyInstance );
 		}
 
-		asr::Assembly *m_assembly;
-		asr::AssemblyInstance *m_assemblyInstance;
+		EntityPtr<asr::Assembly> m_assembly;
+		EntityPtr<asr::AssemblyInstance> m_assemblyInstance;
 		asr::TransformSequence m_transformSequence;
 
 };
@@ -2285,13 +2333,17 @@ void AppleseedRendererBase::createProject()
 	cfg_params = &cfg->get_parameters();
 	cfg_params->insert( "sample_renderer", "generic" );
 	cfg_params->insert( "sample_generator", "generic" );
-	cfg_params->insert( "tile_renderer", "generic" );
+	cfg_params->insert( "tile_renderer", "adaptive" );
 	cfg_params->insert( "frame_renderer", "generic" );
 	cfg_params->insert( "lighting_engine", "pt" );
 	cfg_params->insert( "pixel_renderer", "uniform" );
 	cfg_params->insert( "sampling_mode", "qmc" );
 	cfg_params->insert( "spectrum_mode", "rgb" );
-	cfg_params->insert_path( "uniform_pixel_renderer.samples", "16" );
+	cfg_params->insert_path( "uniform_pixel_renderer.samples", "32" );
+	cfg_params->insert_path( "adaptive_tile_renderer.min_samples", "0" );
+	cfg_params->insert_path( "adaptive_tile_renderer.max_samples", "32" );
+	cfg_params->insert_path( "adaptive_tile_renderer.batch_size", "16" );
+	cfg_params->insert_path( "adaptive_tile_renderer.noise_threshold", "1.0" );
 
 	// Create some basic project entities.
 	asf::auto_release_ptr<asr::Frame> frame( asr::FrameFactory::create( "beauty", asr::ParamArray().insert( "resolution", "640 480" ) ) );
@@ -2368,11 +2420,20 @@ InternedString g_environmentEDFName( "as:environment_edf" );
 InternedString g_environmentEDFBackground( "as:environment_edf_background" );
 InternedString g_logLevelOptionName( "as:log:level" );
 InternedString g_logFileNameOptionName( "as:log:filename" );
-InternedString g_renderPasses( "as:cfg:generic_frame_renderer:passes" );
+InternedString g_renderPasses( "as:cfg:passes" );
+InternedString g_antialiasSampler( "as:cfg:sampler" );
+InternedString g_maxAASamples( "as:cfg:adaptive_tile_renderer:max_samples" );
 InternedString g_ptMaxRayIntensity( "as:cfg:pt:max_ray_intensity" );
 InternedString g_overrideShadingMode( "as:cfg:shading_engine:override_shading:mode" );
 InternedString g_searchPath( "as:searchpath" );
 InternedString g_maxInteractiveRenderSamples( "as:cfg:progressive_frame_renderer:max_samples" );
+InternedString g_textureCacheSize( "as:cfg:texture_store:max_size" );
+// Appleseed 2.1 wants to be given a set of resource search paths, that
+// are distinct from the project searchpaths. At the time of writing it
+// only uses them to find `stdosl.h` for compiling shaders from source
+// on the fly. This isn't a feature we use, so we just use an empty
+// searchpath.
+foundation::SearchPaths g_resourceSearchPaths;
 
 /// The full renderer implementation as presented to the outside world.
 class AppleseedRenderer final : public AppleseedRendererBase
@@ -2380,10 +2441,11 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 	public :
 
-		AppleseedRenderer( RenderType renderType, const string &fileName )
+		AppleseedRenderer( RenderType renderType, const string &fileName, const IECore::MessageHandlerPtr &messageHandler )
 			:	AppleseedRendererBase( renderType , fileName, 0.0f, 0.0f )
 			,	m_environmentEDFVisible( false )
 			,	m_maxInteractiveRenderSamples( 0 )
+			,	m_messageHandler( messageHandler )
 		{
 			// Create the renderer controller.
 			m_rendererController = new RendererController();
@@ -2397,6 +2459,8 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 		void option( const InternedString &name, const Object *value ) override
 		{
+			IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			if( name == g_cameraOptionName )
 			{
 				if( value == nullptr )
@@ -2444,6 +2508,37 @@ class AppleseedRenderer final : public AppleseedRendererBase
 						// enable decorrelate pixels if the number of render passes is greater than one.
 						m_project->configurations().get_by_name( "final" )->get_parameters().insert_path( "uniform_pixel_renderer.decorrelate_pixels", numPasses > 1 ? "true" : "false" );
 						m_project->configurations().get_by_name( "final" )->get_parameters().insert_path( optName.c_str(), numPasses );
+					}
+					return;
+				}
+
+				if( name == g_antialiasSampler )
+				{
+					if( value == nullptr )
+					{
+						m_project->configurations().get_by_name( "final" )->get_parameters().insert( "tile_renderer", "adaptive" );
+					}
+					else if( const StringData *d = reportedCast<const StringData>( value, "option", name ) )
+					{
+						const string& sampler = d->readable();
+						m_project->configurations().get_by_name( "final" )->get_parameters().insert( "tile_renderer", sampler.c_str() );
+					}
+					return;
+				}
+
+				if ( name == g_maxAASamples )
+				{
+					const IECore::Data *dataValue = IECore::runTimeCast<const IECore::Data>( value );
+					if( dataValue == nullptr )
+					{
+						m_project->configurations().get_by_name( "final" )->get_parameters().remove_path( optName.c_str() );
+						m_project->configurations().get_by_name( "final" )->get_parameters().remove_path( "uniform_pixel_renderer.samples" );
+					}
+					else if( const IntData *d = reportedCast<const IntData>( value, "option", name ) )
+					{
+						int samples = d->readable();
+						m_project->configurations().get_by_name( "final" )->get_parameters().insert_path( optName.c_str(), samples );
+						m_project->configurations().get_by_name( "final" )->get_parameters().insert_path( "uniform_pixel_renderer.samples", samples );
 					}
 					return;
 				}
@@ -2542,16 +2637,32 @@ class AppleseedRenderer final : public AppleseedRendererBase
 					return;
 				}
 
-				// PT and SPPM per ray type bounces.
-				if( boost::algorithm::ends_with( optName, "_bounces" ) )
- 				{
- 					if( value == nullptr )
- 					{
+				if ( name == g_textureCacheSize )
+				{
+					if ( value == nullptr )
+					{
+						// Reset texture cache size.
 						m_project->configurations().get_by_name( "final" )->get_parameters().remove_path( optName.c_str() );
 						m_project->configurations().get_by_name( "interactive" )->get_parameters().remove_path( optName.c_str() );
- 					}
- 					else if( const IntData *d = reportedCast<const IntData>( value, "option", name ) )
- 					{
+					}
+					else if( const IntData *d = reportedCast<const IntData>( value, "option", name ) )
+					{
+						const uint64_t size = static_cast<uint64_t>( d->readable() ) * 1024 * 1024;
+						m_project->configurations().get_by_name( "final" )->get_parameters().insert_path( optName.c_str(), size );
+						m_project->configurations().get_by_name( "interactive" )->get_parameters().insert_path( optName.c_str(), size );
+					}
+				}
+
+				// PT and SPPM per ray type bounces.
+				if( boost::algorithm::ends_with( optName, "_bounces" ) )
+				{
+					if( value == nullptr )
+					{
+						m_project->configurations().get_by_name( "final" )->get_parameters().remove_path( optName.c_str() );
+						m_project->configurations().get_by_name( "interactive" )->get_parameters().remove_path( optName.c_str() );
+					}
+					else if( const IntData *d = reportedCast<const IntData>( value, "option", name ) )
+					{
 						int maxBounces = d->readable();
 						if( maxBounces < 0 )
 						{
@@ -2564,8 +2675,8 @@ class AppleseedRenderer final : public AppleseedRendererBase
 							m_project->configurations().get_by_name( "final" )->get_parameters().insert_path( optName.c_str(), maxBounces );
 							m_project->configurations().get_by_name( "interactive" )->get_parameters().insert_path( optName.c_str(), maxBounces );
 						}
- 					}
- 					return;
+					}
+					return;
 				 }
 
 				// general case.
@@ -2618,12 +2729,17 @@ class AppleseedRenderer final : public AppleseedRendererBase
 				{
 					if( value == nullptr )
 					{
-						m_project->search_paths().reset();
+						m_project->search_paths().clear_explicit_paths();
 					}
 					else if( const StringData *d = reportedCast<const StringData>( value, "option", name ) )
 					{
-						m_project->search_paths().reset();
-						m_project->search_paths().split_and_push_back(d->readable().c_str(), ':');
+						m_project->search_paths().clear_explicit_paths();
+
+						vector<string> path_list;
+						asf::split(d->readable().c_str(), ":", path_list);
+
+						for (const auto& i:path_list)
+							m_project->search_paths().push_back_explicit_path(i);
 					}
 					return;
 				}
@@ -2720,6 +2836,8 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 		void output( const InternedString &name, const Output *output ) override
 		{
+			IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			if( output == nullptr )
 			{
 				// Reset display / image output related params and recreate the frame.
@@ -2813,6 +2931,8 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 		ObjectInterfacePtr camera( const string &name, const Camera *camera, const AttributesInterface *attributes ) override
 		{
+			IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			// Check if this is the active camera.
 			if( name == m_cameraName )
 			{
@@ -2829,6 +2949,8 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 		ObjectInterfacePtr light( const string &name, const Object *object, const AttributesInterface *attributes ) override
 		{
+			IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			// For now we only do area lights using OSL emission().
 			if( object == nullptr )
 			{
@@ -2862,6 +2984,8 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 		void render() override
 		{
+			IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			// Clear unused shaders.
 			m_shaderCache->clearUnused();
 
@@ -2908,7 +3032,7 @@ class AppleseedRenderer final : public AppleseedRendererBase
 			else
 			{
 				asr::Frame *frame = m_project->get_frame();
-				size_t numPixels = frame->get_pixel_count();
+				size_t numPixels = frame->get_crop_window().volume();
 				m_project->configurations().get_by_name( "interactive" )->get_parameters().insert_path( "progressive_frame_renderer.max_samples", numPixels * m_maxInteractiveRenderSamples );
 			}
 
@@ -2930,6 +3054,8 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 		void pause() override
 		{
+			IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			m_rendererController->set_status( asr::IRendererController::AbortRendering );
 
 			if( m_renderThread.joinable() )
@@ -2946,7 +3072,13 @@ class AppleseedRenderer final : public AppleseedRendererBase
 			m_rendererController->set_status( asr::IRendererController::ContinueRendering );
 
 			// Logging.
-			ScopedLogTarget logTarget;
+			ScopedLogTarget cortexLogTarget;
+			if( m_messageHandler )
+			{
+				asf::auto_release_ptr<asf::ILogTarget> l( new CortexLogTarget( m_messageHandler.get() ) );
+				cortexLogTarget.setLogTarget( asf::auto_release_ptr<asf::ILogTarget>( l.release() ) );
+			}
+			ScopedLogTarget fileLogTarget;
 			if( !m_logFileName.empty() )
 			{
 				// Create the file log target and make sure it's open.
@@ -2959,7 +3091,7 @@ class AppleseedRenderer final : public AppleseedRendererBase
 					return;
 				}
 
-				logTarget.setLogTarget( asf::auto_release_ptr<asf::ILogTarget>( l.release() ) );
+				fileLogTarget.setLogTarget( asf::auto_release_ptr<asf::ILogTarget>( l.release() ) );
 			}
 
 			// Render progress logging.
@@ -2977,7 +3109,11 @@ class AppleseedRenderer final : public AppleseedRendererBase
 			// Create the master renderer.
 			asr::Configuration *cfg = m_project->configurations().get_by_name( "final" );
 			const asr::ParamArray &params = cfg->get_parameters();
+#if APPLESEED_VERSION >= 20100
+			m_renderer.reset( new asr::MasterRenderer( *m_project, params, g_resourceSearchPaths, tileCallbackFactoryPtr ) );
+#else
 			m_renderer.reset( new asr::MasterRenderer( *m_project, params, m_rendererController, tileCallbackFactoryPtr ) );
+#endif
 
 			// Render!.
 			RENDERER_LOG_INFO( "rendering frame..." );
@@ -2986,7 +3122,11 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 			try
 			{
+#if APPLESEED_VERSION >= 20100
+				m_renderer->render( *m_rendererController );
+#else
 				m_renderer->render();
+#endif
 			}
 			catch( const exception &e )
 			{
@@ -3019,7 +3159,11 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 			if( !m_renderer.get() )
 			{
+#if APPLESEED_VERSION >= 20100
+				m_renderer.reset( new asr::MasterRenderer( *m_project, params, g_resourceSearchPaths ) );
+#else
 				m_renderer.reset( new asr::MasterRenderer( *m_project, params, m_rendererController ) );
+#endif
 			}
 			else
 			{
@@ -3033,9 +3177,21 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 		void interactiveRenderThreadFun()
 		{
+			ScopedLogTarget logTarget;
+			{
+				asf::auto_release_ptr<asf::ILogTarget> l(
+					m_messageHandler ? new CortexLogTarget( m_messageHandler.get() ) : asf::create_console_log_target( stderr )
+				);
+				logTarget.setLogTarget( l );
+			}
+
 			try
 			{
+#if APPLESEED_VERSION >= 20100
+				m_renderer->render( *m_rendererController );
+#else
 				m_renderer->render();
+#endif
 			}
 			catch( const exception &e )
 			{
@@ -3120,6 +3276,7 @@ class AppleseedRenderer final : public AppleseedRendererBase
 
 		int m_maxInteractiveRenderSamples;
 		boost::thread m_renderThread;
+		IECore::MessageHandlerPtr m_messageHandler;
 
 		// Registration with factory
 

@@ -39,7 +39,7 @@ import IECore
 import Gaffer
 import GafferUI
 import GafferImage
-import OpenColorIOTransformUI
+from . import OpenColorIOTransformUI
 
 Gaffer.Metadata.registerNode(
 
@@ -130,7 +130,7 @@ Gaffer.Metadata.registerNode(
 			The mode used detemine the mask behaviour for the start frame.
 			""",
 
-			"preset:None", GafferImage.ImageReader.FrameMaskMode.None,
+			"preset:None", GafferImage.ImageReader.FrameMaskMode.None_,
 			"preset:Black Outside", GafferImage.ImageReader.FrameMaskMode.BlackOutside,
 			"preset:Clamp to Range", GafferImage.ImageReader.FrameMaskMode.ClampToFrame,
 
@@ -172,7 +172,7 @@ Gaffer.Metadata.registerNode(
 			The mode used detemine the mask behaviour for the end frame.
 			""",
 
-			"preset:None", GafferImage.ImageReader.FrameMaskMode.None,
+			"preset:None", GafferImage.ImageReader.FrameMaskMode.None_,
 			"preset:Black Outside", GafferImage.ImageReader.FrameMaskMode.BlackOutside,
 			"preset:Clamp to Range", GafferImage.ImageReader.FrameMaskMode.ClampToFrame,
 
@@ -251,7 +251,7 @@ class _FrameMaskPlugValueWidget( GafferUI.PlugValueWidget ) :
 			if isinstance( w, GafferUI.PlugValueWidget ) :
 				w.setReadOnly( readOnly )
 
-	def childPlugValueWidget( self, childPlug, lazy=True ) :
+	def childPlugValueWidget( self, childPlug ) :
 
 		for i, p in enumerate( self.getPlug().children() ) :
 			if p.isSame( childPlug ) :
@@ -264,4 +264,4 @@ class _FrameMaskPlugValueWidget( GafferUI.PlugValueWidget ) :
 		with self.getContext() :
 			mode = self.getPlug()["mode"].getValue()
 
-		self.childPlugValueWidget( self.getPlug()["frame"] ).setEnabled( mode != GafferImage.ImageReader.FrameMaskMode.None )
+		self.childPlugValueWidget( self.getPlug()["frame"] ).setEnabled( mode != GafferImage.ImageReader.FrameMaskMode.None_ )

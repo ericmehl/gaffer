@@ -273,7 +273,7 @@ class CustomAttributesTest( GafferSceneTest.SceneTestCase ) :
 		s["a"] = GafferScene.CustomAttributes()
 
 		ss = s.serialise()
-		self.failIf( "out" in ss )
+		self.assertFalse( "out" in ss )
 
 	def testAffects( self ) :
 
@@ -322,6 +322,25 @@ class CustomAttributesTest( GafferSceneTest.SceneTestCase ) :
 			} )
 		)
 
+	def testExtraAttributesOnlyEvaluatedForFilteredLocations( self ) :
+
+		script = Gaffer.ScriptNode()
+		script["grid"] = GafferScene.Grid()
+
+		script["filter"] = GafferScene.PathFilter()
+		script["filter"]["paths"].setValue( IECore.StringVectorData( [ "/grid" ] ) )
+
+		script["customAttributes"] = GafferScene.CustomAttributes()
+		script["customAttributes"]["in"].setInput( script["grid"]["out"] )
+		script["customAttributes"]["filter"].setInput( script["filter"]["out"] )
+
+		script["expression"] = Gaffer.Expression()
+		script["expression"].setExpression( """parent["customAttributes"]["extraAttributes"] = IECore.CompoundData( { "a" : IECore.StringData( str( context.get( "scene:path" ) ) ) } )""" )
+
+		with Gaffer.ContextMonitor( script["expression"] ) as monitor :
+			GafferSceneTest.traverseScene( script["customAttributes"]["out"] )
+
+		self.assertEqual( monitor.combinedStatistics().numUniqueValues( "scene:path" ), 1 )
 
 if __name__ == "__main__":
 	unittest.main()

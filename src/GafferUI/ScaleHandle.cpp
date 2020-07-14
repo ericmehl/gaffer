@@ -45,7 +45,7 @@ using namespace Imath;
 using namespace IECore;
 using namespace GafferUI;
 
-IE_CORE_DEFINERUNTIMETYPED( ScaleHandle );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ScaleHandle );
 
 ScaleHandle::ScaleHandle( Style::Axes axes )
 	:	Handle( defaultName<ScaleHandle>() ), m_axes( Style::X )
@@ -96,46 +96,57 @@ Imath::V3i ScaleHandle::axisMask() const
 	}
 }
 
-Imath::V3f ScaleHandle::scaling( const DragDropEvent &event ) const
+Imath::V3f ScaleHandle::scaling( const DragDropEvent &event )
 {
+	float scale = 1;
+
+	if( m_axes != Style::XYZ )
+	{
+		// When performing per-axis scale, the user has clicked and dragged a
+		// handle. This means the start position is far enough away from the
+		// origin that we can treat the click point as scale=1 and the gadget's
+		// origin as scale=0.
+		scale = m_drag.updatedPosition( event ) / m_drag.startPosition() - 1;
+	}
+	else
+	{
+		// When performing uniform scales, the handle is at the origin, so the
+		// pattern we use above gets very twitchy. We instead need to treat the
+		// click point as scale=1 and relative movement in +ve x as a scale
+		// increase and anything in -ve x as a scale decrease.
+		scale = m_drag.updatedPosition( event ) - m_drag.startPosition();
+	}
+
+	// snap
+	if( event.modifiers & ButtonEvent::Control )
+	{
+		// Offset such that it behaves like round not floor.
+		const float snapIncrement = event.modifiers & ButtonEvent::Shift ? 0.1f : 1.0f;
+		const float snapOffset = snapIncrement * 0.5f;
+		scale = scale - fmodf( scale - snapOffset, snapIncrement ) + snapOffset;
+	}
+
+	scale = 1 + scale;
+
+	// guard against scaling to 0
+	scale = scale == 0 ? 1 : scale;
+
 	switch( m_axes )
 	{
 		case Style::X :
-			return V3f(
-				m_drag.position( event ) / m_drag.startPosition(),
-				1,
-				1
-			);
+			return V3f( scale, 1, 1 );
 		case Style::Y :
-			return V3f(
-				1,
-				m_drag.position( event ) / m_drag.startPosition(),
-				1
-			);
+			return V3f( 1, scale, 1 );
 		case Style::Z :
-			return V3f(
-				1,
-				1,
-				m_drag.position( event ) / m_drag.startPosition()
-			);
-		case Style::XY : {
-			const float s = m_drag.position( event ) / m_drag.startPosition();
-			return V3f( s, s, 1 );
-		}
-		case Style::XZ : {
-			const float s = m_drag.position( event ) / m_drag.startPosition();
-			return V3f( s, 1, s );
-		}
-		case Style::YZ : {
-			const float s = m_drag.position( event ) / m_drag.startPosition();
-			return V3f( 1, s, s );
-		}
-		case Style::XYZ : {
-			const ViewportGadget *viewport = ancestor<ViewportGadget>();
-			const V2f p = viewport->gadgetToRasterSpace( event.line.p1, this );
-			const float d = (p.x - m_uniformDragStartPosition.x) / (float)viewport->getViewport().x;
-			return V3f( 1.0f + d * 3.0f );
-		}
+			return V3f( 1, 1, scale );
+		case Style::XY :
+			return V3f( scale, scale, 1 );
+		case Style::XZ :
+			return V3f( scale, 1, scale );
+		case Style::YZ :
+			return V3f( 1, scale, scale );
+		case Style::XYZ :
+			return V3f( scale );
 		default :
 			return V3f( 1 );
 	}
@@ -168,9 +179,7 @@ void ScaleHandle::dragBegin( const DragDropEvent &event )
 		case Style::YZ :
 			m_drag = LinearDrag( this, LineSegment3f( V3f( 0 ), V3f( 0, 1, 1 ) ), event );
 			break;
-		case Style::XYZ : {
-			const ViewportGadget *viewport = ancestor<ViewportGadget>();
-			m_uniformDragStartPosition = viewport->gadgetToRasterSpace( event.line.p1, this );
-		}
+		case Style::XYZ :
+			m_drag = LinearDrag( this, V2f( 1, 0 ), event );
 	}
 }

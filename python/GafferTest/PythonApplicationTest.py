@@ -51,11 +51,12 @@ class PythonApplicationTest( GafferTest.TestCase ) :
 		p = subprocess.Popen(
 			[ "gaffer", "python", os.path.dirname( __file__ ) + "/pythonScripts/exception.py" ],
 			stderr = subprocess.PIPE,
+			universal_newlines = True,
 		)
 		p.wait()
 
-		self.failUnless( "RuntimeError" in "".join( p.stderr.readlines() ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "RuntimeError", "".join( p.stderr.readlines() ) )
+		self.assertTrue( p.returncode )
 
 	def testFlagArguments( self ) :
 

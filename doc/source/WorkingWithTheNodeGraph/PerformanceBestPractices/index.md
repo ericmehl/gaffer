@@ -13,13 +13,13 @@ A very rough estimate for the complexity of a scene can be made by considering t
 
 Consider a scene containing 4 assets, with the geometry cache for each imported into Gaffer through separate SceneReader nodes. Each asset has a lookdev setup from an accompanying Reference node, placed downstream of the SceneReader nodes. This presents us with two options for structuring the node graph. We can either:
 
-- _Graph1:_ Group all the assets together, and then apply the lookdev nodes in series.
+- Graph1: Group all the assets together, and then apply the lookdev nodes in series.
 
-![Grouping, then applying lookdev](images/graphEditorGroupFirst.png "Grouping, then applying lookdev")
+![](images/graphEditorGroupFirst.png "Grouping, then applying lookdev")
 
-- _Graph2:_ First apply the lookdev nodes, and then group all the resulting scenes together.
+- Graph2: First apply the lookdev nodes, and then group all the resulting scenes together.
 
-![Applying lookdev, then grouping](images/graphEditorGroupSecond.png "Applying lookdev, then grouping")
+![](images/graphEditorGroupSecond.png "Applying lookdev, then grouping")
 
 For the sake of simplicity, let's assume that each asset's scene contains 1000 locations, and each lookdev subgraph contains 100 nodes. Now we can estimate each graph's performance load.
 
@@ -58,12 +58,12 @@ This can be very useful, but it comes at a price. Certain operations in Gaffer r
 > Caution :
 > Limit the use of `'...'` in path expressions.
 
-The most expensive expression possible is `'/.../something'`, because it instructs Gaffer to "search _every_ location of the whole scene." While this can be necessary at times, it is likely that a more precise wildcard search will provide the same results, with better performance. 
+The most expensive expression possible is `'/.../something'`, because it instructs Gaffer to "search **every** location of the whole scene." While this can be necessary at times, it is likely that a more precise wildcard search will provide the same results, with better performance. 
 
 For instance, if you know that all the matching results are within a single asset, an expression such as `/AssetA/.../something` will limit the search to that asset only. Alternatively, if you know that all the matches are at a specific depth, expressions such as `/*/something` or `/*/*/something` would yield the same result without needing to visit deeper locations. Small changes such as this can have a significant impact on scene performance, so it is always worth your time to make your expressions as precise as possible.
 
 > Note :
-> The `'...'` wildcard is not _always_ costly. For simple nodes such as ShaderAssignment and Attributes, the performance difference is negligible. Those nodes can operate on a single location in isolation, and never need to consider the big picture of the scene as a whole. Generally, only hierarchy-altering nodes such as Prune and Isolate are particularly performance sensitive to the `'...'` wildcard. In general, it is best to keep wary of `'...'`.
+> The `'...'` wildcard isn't always costly. For simple nodes such as ShaderAssignment and Attributes, the performance difference is negligible. Those nodes can operate on a single location in isolation, and never need to consider the big picture of the scene as a whole. Generally, only hierarchy-altering nodes such as Prune and Isolate are particularly performance sensitive to the `'...'` wildcard. In general, it is best to keep wary of `'...'`.
 
 
 ## Expressions ##
@@ -83,7 +83,7 @@ The Instancer node is capable of generating a very high number of locations, so 
 Keep in mind the rough complexity metric of `complexity = numberOfLocations * numberOfNodes` from earlier, and consider these guidelines when using the Instancer node:
 
 - Use the Instancer node carefully and with moderation.
-- Use a minimum of nodes to generate the input for the upstream instance graph that connects to the _instance_ input plug. If necessary, consider baking the instance graph to a cache and loading it in with a SceneReader node.
+- Use a minimum of nodes to generate the input for the upstream instance graph that connects to the Instancer node's in plug. If necessary, consider baking the instance graph to a cache and loading it in with a SceneReader node.
 - Use a minimum of nodes below the Instancer node to modify the scene containing all the resulting instances.
 - Group or parent the instances into the main scene as late as possible in the node graph.
 - Try and assign shaders and set attributes at a location in the scene hierarchy above all the instances, rather than on a per-instance basis.
@@ -97,9 +97,62 @@ Gaffer has a [performance monitor](../UsingThePerformanceMonitor/index.md) and a
 > When performance is critical, use the performance monitor or the stats app.
 
 
+## Contexts ##
+
+The number of unique [Contexts](../Contexts/index.md) used to compute a graph can increase the memory overhead and compute time it requires. The number of unique Contexts is dependent on the structure of the graph and the use of nodes that add or change Context Variables. As a general rule, the number of Contexts necessary for a particular graph is exponentially proportional to its number of locations or channels, sets, and iterative nodes like Loop or CollectScenes. Hundreds of thousands of Contexts could be needed for a moderately complex graph.
+
+The main performance pitfall you want to avoid is **leakage**, which is when nodes compute upstream plugs with unnecessarily varying Contexts.
+
+An example case of Context leakage would be a network that iterates on a scene:
+
+```eval_rst
+.. image:: images/conceptPerformanceBestPracticesContextsViewer.png
+    :width: 100%
+    :alt: A scene with multiple cowboy robots rotated along the x-axis.
+```
+
+If we look at the graph, we can see that the `collect:rootName` Context Variable is used to vary the object's rotations. However, when the network is computed, `collect:rootName` is passed to the SceneReader, even though it doesn't use it:
+
+```eval_rst
+.. image:: images/conceptPerformanceBestPracticesContextsGraphEditor.png
+    :width: 100%
+    :alt: The graph for the prior scene, using a CollectScenes node to duplicate the robots.
+```
+
+Despite being unaffected by `collect:rootName`, the SceneReader node will nonetheless be repeatedly checked in memory to verify that it doesn’t vary with the Context Variable.
+
+The more optimal solution would be to delete the Context Variable with a DeleteContextVariables node above the last node that uses it. We can directly compare the effect this has on the number of Contexts used by running the stats app, by [annotating](../UsingThePerformanceMonitor/index.html#annotating-scripts-with-performance-data) the script with the `-contextMonitor` and `-annotatedScript` options:
+
+```eval_rst
+.. image:: images/conceptPerformanceBestPracticesContextsStats.png
+    :width: 100%
+    :alt: The graph, but with annotated performance stats.
+```
+
+```eval_rst
+.. image:: images/conceptPerformanceBestPracticesContextsImprovedStats.png
+    :width: 100%
+    :alt: The graph with stats again, but a DeleteContextVariables node inserted, greatly reducing the number of Contexts used in the scene generation.
+```
+
+Observe how the SceneReader and Group nodes are queried with around 10 times fewer unique Contexts.
+
+
+## Annotating scripts with performance data ##
+
+The above graphs with per-node performance annotations were automatically generated by the stats app using the built-in `-annotatedScript` option. This feature will make a copy of the monitored script and add each node's performance statistics as graph metadata.
+
+To annotate a script with performance data, use the following command:
+
+```
+gaffer stats <script> -performanceMonitor -annotatedScript <annotatedScript>
+```
+
+For more details on the stats app's command-line options, see the [stats app reference](../../Reference/CommandLineReference/stats.md).
+
+
 ## See also ##
 
-<!-- TODO: - [Multithreading](Multithreading/index.md) -->
-<!-- TODO: - [Deferred execution](DeferredExecution/index.md) -->
-
+- [Contexts](../Contexts/index.md)
 - [Using the performance monitor](../UsingThePerformanceMonitor/index.md)
+- [stats app reference](../../Reference/CommandLineReference/stats.md)

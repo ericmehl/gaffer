@@ -48,7 +48,7 @@ using namespace IECoreScene;
 using namespace Gaffer;
 using namespace GafferScene;
 
-IE_CORE_DEFINERUNTIMETYPED( Grid );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Grid );
 
 size_t Grid::g_firstPlugIndex = 0;
 static InternedString g_gridLinesName( "gridLines" );
@@ -220,7 +220,7 @@ void Grid::hashBound( const SceneNode::ScenePath &path, const Gaffer::Context *c
 {
 	if( path.size() == 0 )
 	{
-		h = hashOfTransformedChildBounds( path, parent );
+		h = parent->childBoundsHash();
 	}
 	else
 	{
@@ -233,7 +233,7 @@ Imath::Box3f Grid::computeBound( const SceneNode::ScenePath &path, const Gaffer:
 {
 	if( path.size() == 0 )
 	{
-		return unionOfTransformedChildBounds( path, parent );
+		return parent->childBounds();
 	}
 	else
 	{

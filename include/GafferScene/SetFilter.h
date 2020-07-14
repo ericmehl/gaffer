@@ -57,7 +57,7 @@ class GAFFERSCENE_API SetFilter : public Filter
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::SetFilter, SetFilterTypeId, Filter );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::SetFilter, SetFilterTypeId, Filter );
 
 		SetFilter( const std::string &name=defaultName<SetFilter>() );
 		~SetFilter() override;
@@ -66,8 +66,6 @@ class GAFFERSCENE_API SetFilter : public Filter
 		const Gaffer::StringPlug *setExpressionPlug() const;
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
-
-		bool sceneAffectsMatch( const ScenePlug *scene, const Gaffer::ValuePlug *child ) const override;
 
 	protected :
 

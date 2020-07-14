@@ -136,9 +136,10 @@ class Catalogue::InternalImage : public ImageNode
 			// Adds on a description to the output
 			addChild( new ImageMetadata() );
 			imageMetadata()->inPlug()->setInput( imageSwitch()->outPlug() );
-			NameValuePlugPtr meta = new NameValuePlug( "ImageDescription", new StringData(), "member1" );
+			NameValuePlugPtr meta = new NameValuePlug( "ImageDescription", new StringData(), true, "member1" );
 			imageMetadata()->metadataPlug()->addChild( meta );
-			meta->valuePlug<StringPlug>()->setInput( descriptionPlug() );
+			meta->valuePlug()->setInput( descriptionPlug() );
+			meta->enabledPlug()->setInput( descriptionPlug() ); // Enable only for non-empty strings
 
 			outPlug()->setInput( imageMetadata()->outPlug() );
 		}
@@ -578,7 +579,7 @@ size_t Catalogue::InternalImage::g_firstChildIndex = 0;
 // Image
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( Catalogue::Image );
+GAFFER_PLUG_DEFINE_TYPE( Catalogue::Image );
 
 Catalogue::Image::Image( const std::string &name, Direction direction, unsigned flags )
 	:	Plug( name, direction, flags )
@@ -614,20 +615,26 @@ void Catalogue::Image::copyFrom( const Image *other )
 
 Catalogue::Image::Ptr Catalogue::Image::load( const std::string &fileName )
 {
-	// Names of Plugs can not contain '.' - we want to load files like 'test.1001.exr', though
+	// GraphComponent names are much more restrictive than filenames, so
+	// we must replace all non-alphanumeric characters with `_`, and make
+	// sure it doesn't start with a number.
+	/// \todo Relax these restrictions and/or provide automatic name
+	/// sanitisation in GraphComponent.
 	std::string name = boost::filesystem::path( fileName ).stem().string();
-	boost::replace_all( name, ".", "_" );
+	std::replace_if(
+		name.begin(), name.end(),
+		[] ( char c ) {
+			return !std::isalnum( c, std::locale::classic() );
+		},
+		'_'
+	);
+	if( std::isdigit( name[0], std::locale::classic() ) )
+	{
+		name = "_" + name;
+	}
 
 	Ptr image = new Image( name, Plug::In, Plug::Default | Plug::Dynamic );
 	image->fileNamePlug()->setValue( fileName );
-
-	ImageReaderPtr reader = new ImageReader;
-	reader->fileNamePlug()->setValue( fileName );
-	ConstCompoundDataPtr meta = reader->outPlug()->metadataPlug()->getValue();
-	if( const StringData *description = meta->member<const StringData>( "ImageDescription" ) )
-	{
-		image->descriptionPlug()->setValue( description->readable() );
-	}
 
 	return image;
 }
@@ -665,7 +672,7 @@ bool undoingOrRedoing( const Node *node )
 
 } // namespace
 
-IE_CORE_DEFINERUNTIMETYPED( Catalogue );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Catalogue );
 
 size_t Catalogue::g_firstPlugIndex = 0;
 
@@ -841,7 +848,7 @@ std::string Catalogue::generateFileName( const ImagePlug *image ) const
 	{
 		directory = script->context()->substitute( directory );
 	}
-	else if( Context::hasSubstitutions( directory ) )
+	else if( IECore::StringAlgo::hasSubstitutions( directory ) )
 	{
 		// Its possible for a Catalogue to have been removed from its script
 		// and still receive an image. If it will attempt to save that image
@@ -858,7 +865,7 @@ std::string Catalogue::generateFileName( const ImagePlug *image ) const
 	}
 
 	boost::filesystem::path result( directory );
-	result /= image->imageHash().toString();
+	result /= ImageAlgo::imageHash( image ).toString();
 	result.replace_extension( "exr" );
 
 	return result.string();

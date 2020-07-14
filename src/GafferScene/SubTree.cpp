@@ -48,7 +48,7 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;
 
-IE_CORE_DEFINERUNTIMETYPED( SubTree );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( SubTree );
 
 size_t SubTree::g_firstPlugIndex = 0;
 
@@ -118,7 +118,7 @@ void SubTree::hashBound( const ScenePath &path, const Gaffer::Context *context, 
 			h = inPlug()->boundHash( source );
 			break;
 		case CreateRoot :
-			h = hashOfTransformedChildBounds( path, parent );
+			h = parent->childBoundsHash();
 			break;
 		case EmptyRoot :
 			SceneProcessor::hashBound( path, context, parent, h );
@@ -135,7 +135,7 @@ Imath::Box3f SubTree::computeBound( const ScenePath &path, const Gaffer::Context
 		case Default :
 			return inPlug()->bound( source );
 		case CreateRoot :
-			return unionOfTransformedChildBounds( path, parent );
+			return parent->childBounds();
 		default : // EmptyRoot
 			return Imath::Box3f();
 	}
@@ -287,7 +287,7 @@ SceneNode::ScenePath SubTree::sourcePath( const ScenePath &outputPath, SourceMod
 		// mode so that we output an empty scene. This guarantees that we will never
 		// request an invalid source location from our input, provided that we are not
 		// asked for an invalid output location.
-		if( !SceneAlgo::exists( inPlug(), result ) )
+		if( !inPlug()->exists( result ) )
 		{
 			sourceMode = EmptyRoot;
 		}

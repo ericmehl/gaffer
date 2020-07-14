@@ -1,13 +1,12 @@
 trigger:
-- master
-
-schedules:
-- cron: "0 23 * * *"
-  displayName: Nightly
-  always: false
   branches:
     include:
-    - master
+    - '*'
+  tags:
+    include:
+    - '*'
+pr:
+  - '*'
 
 jobs :
 
@@ -22,7 +21,7 @@ jobs :
       name: Centos
       buildType: RELEASE
       vmImage: 'Ubuntu-16.04'
-      container: 'gafferhq/build:0.0.0'
+      container: 'gafferhq/build:1.1.0'
       publish: true
 
   - template: config/azure/build.yaml
@@ -30,11 +29,11 @@ jobs :
       name: Centos
       buildType: DEBUG
       vmImage: 'Ubuntu-16.04'
-      container: 'gafferhq/build:0.0.0'
+      container: 'gafferhq/build:1.1.0'
 
   - template: config/azure/build.yaml
     parameters:
-      name: OSX
+      name: MacOS
       vmImage: 'macOS-10.14'
       publish: true
 

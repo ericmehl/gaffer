@@ -118,38 +118,46 @@ def appendPlugContextMenuDefinitions( graphEditor, plug, menuDefinition ) :
 
 def appendNodeSetMenuDefinitions( editor, menuDefinition ) :
 
-	if len( editor.getNodeSet() ) :
-		primaryNode = editor.getNodeSet()[-1]
-	else :
-		primaryNode = None
+	weakEditor = weakref.ref( editor )
 
-	menuDefinition.append(
-		"/Bookmarked",
-		{
-			"checkBox" : primaryNode is not None and Gaffer.MetadataAlgo.getBookmarked( primaryNode ),
-			"command" : functools.partial( __setBookmarked, primaryNode ),
-			"active" : primaryNode is not None and not Gaffer.MetadataAlgo.readOnly( primaryNode ),
-		}
-	)
+	# Follow bookmarks
+
+	def followBookmark( number, weakEditor, _ ) :
+		editor = weakEditor()
+		if editor is not None :
+			b = Gaffer.NumericBookmarkSet( editor.scriptNode(), number )
+			editor.setNodeSet( b )
+
+	n = editor.getNodeSet()
 
 	for i in range( 1, 10 ) :
-	  menuDefinition.append(
-		  "/Numeric Bookmark/%s" % i,
-		  {
-			  "command" : functools.partial( __findNumericBookmark, editor, i ),
-			  "active" : Gaffer.MetadataAlgo.getNumericBookmark( editor.scriptNode(), i ) is not None,
-		  }
-	  )
+		isCurrent = isinstance( n, Gaffer.NumericBookmarkSet ) and n.getBookmark() == i
+		menuDefinition.insertBefore( "/Numeric Bookmark/%d" % i, {
+			"command" : functools.partial( followBookmark, i, weakEditor ),
+			"checkBox" : isCurrent
+		}, "/Pin Divider" )
+
+
+	# Pin bookmarks
+
+	for i in range( 1, 10 ) :
+		menuDefinition.append( "/Bookmark/%s" % i, {
+				"command" : functools.partial( __findNumericBookmark, editor, i ),
+				"active" : Gaffer.MetadataAlgo.getNumericBookmark( editor.scriptNode(), i ) is not None,
+		} )
+
+	menuDefinition.append( "/Bookmark/Divider", { "divider" : True } )
 
 	bookmarks = __findableBookmarks( editor )
 	menuDefinition.append(
-		"/Find Bookmark...",
+		"/Bookmark/Other...",
 		{
 			"command" : functools.partial( __findBookmark, editor, bookmarks ),
 			"active" : len( bookmarks ),
 			"shortCut" : "B",
 		}
 	)
+
 
 def connectToEditor( editor ) :
 
@@ -298,7 +306,8 @@ def __findNumericBookmark( editor, numericBookmark ) :
 		editor.graphGadget().setRoot( node.parent() )
 		editor.frame( [ node ] )
 	else :
-		editor.setNodeSet( Gaffer.StandardSet( [ node ] ) )
+		s = Gaffer.StandardSet( [ node ] )
+		editor.setNodeSet( s )
 
 	return True
 
@@ -335,6 +344,9 @@ def __editorKeyPress( editor, event ) :
 		elif not event.modifiers :
 
 			# Find
+
+			# For linked editors, its more intuitive for the user if we update
+			# the driving editor, rather than breaking the link.
 
 			if numericBookmark != 0 :
 				__findNumericBookmark( editor, numericBookmark )

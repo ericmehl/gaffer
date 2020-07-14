@@ -53,12 +53,12 @@ class GAFFERSCENETEST_API TestLight : public GafferScene::Light
 		TestLight( const std::string &name=defaultName<TestLight>() );
 		~TestLight() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferSceneTest::TestLight, TestLightTypeId, GafferScene::Light );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferSceneTest::TestLight, TestLightTypeId, GafferScene::Light );
 
 	protected :
 
 		void hashLight( const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
-		IECoreScene::ShaderNetworkPtr computeLight( const Gaffer::Context *context ) const override;
+		IECoreScene::ConstShaderNetworkPtr computeLight( const Gaffer::Context *context ) const override;
 
 };
 

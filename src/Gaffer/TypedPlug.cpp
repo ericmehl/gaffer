@@ -38,19 +38,20 @@
 #include "Gaffer/TypedPlug.h"
 
 #include "Gaffer/NumericPlug.h"
+#include "Gaffer/StringPlug.h"
 #include "Gaffer/TypedPlug.inl"
 
 namespace Gaffer
 {
 
-IECORE_RUNTIMETYPED_DEFINETEMPLATESPECIALISATION( Gaffer::BoolPlug, BoolPlugTypeId )
-IECORE_RUNTIMETYPED_DEFINETEMPLATESPECIALISATION( Gaffer::M33fPlug, M33fPlugTypeId )
-IECORE_RUNTIMETYPED_DEFINETEMPLATESPECIALISATION( Gaffer::M44fPlug, M44fPlugTypeId )
-IECORE_RUNTIMETYPED_DEFINETEMPLATESPECIALISATION( Gaffer::AtomicBox2fPlug, AtomicBox2fPlugTypeId )
-IECORE_RUNTIMETYPED_DEFINETEMPLATESPECIALISATION( Gaffer::AtomicBox3fPlug, AtomicBox3fPlugTypeId )
-IECORE_RUNTIMETYPED_DEFINETEMPLATESPECIALISATION( Gaffer::AtomicBox2iPlug, AtomicBox2iPlugTypeId )
+GAFFER_PLUG_DEFINE_TEMPLATE_TYPE( Gaffer::BoolPlug, BoolPlugTypeId )
+GAFFER_PLUG_DEFINE_TEMPLATE_TYPE( Gaffer::M33fPlug, M33fPlugTypeId )
+GAFFER_PLUG_DEFINE_TEMPLATE_TYPE( Gaffer::M44fPlug, M44fPlugTypeId )
+GAFFER_PLUG_DEFINE_TEMPLATE_TYPE( Gaffer::AtomicBox2fPlug, AtomicBox2fPlugTypeId )
+GAFFER_PLUG_DEFINE_TEMPLATE_TYPE( Gaffer::AtomicBox3fPlug, AtomicBox3fPlugTypeId )
+GAFFER_PLUG_DEFINE_TEMPLATE_TYPE( Gaffer::AtomicBox2iPlug, AtomicBox2iPlugTypeId )
 
-// specialise BoolPlug to accept connections from NumericPlugs
+// Specialise BoolPlug to accept connections from NumericPlugs and StringPlugs
 
 template<>
 bool BoolPlug::acceptsInput( const Plug *input ) const
@@ -63,7 +64,9 @@ bool BoolPlug::acceptsInput( const Plug *input ) const
 	{
 		return input->isInstanceOf( staticTypeId() ) ||
 		       input->isInstanceOf( IntPlug::staticTypeId() ) ||
-		       input->isInstanceOf( FloatPlug::staticTypeId() );
+		       input->isInstanceOf( FloatPlug::staticTypeId() ) ||
+		       input->isInstanceOf( StringPlug::staticTypeId() )
+		;
 	}
 	return true;
 }
@@ -81,6 +84,9 @@ void BoolPlug::setFrom( const ValuePlug *other )
 			break;
 		case IntPlugTypeId :
 			setValue( static_cast<const IntPlug *>( other )->getValue() );
+			break;
+		case StringPlugTypeId :
+			setValue( static_cast<const StringPlug *>( other )->getValue().size() );
 			break;
 		default :
 			throw IECore::Exception( "Unsupported plug type" );

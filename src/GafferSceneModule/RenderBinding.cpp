@@ -109,6 +109,12 @@ ContextPtr interactiveRenderGetContext( InteractiveRender &r )
 	return r.getContext();
 }
 
+void interactiveRenderSetContext( InteractiveRender &r, Context &context )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	r.setContext( &context );
+}
+
 list rendererTypes()
 {
 	std::vector<IECore::InternedString> t = Renderer::types();
@@ -170,6 +176,12 @@ void objectInterfaceLink( Renderer::ObjectInterface &objectInterface, const IECo
 	container_utils::extend_container( objectVector, pythonObjectSet );
 	auto objectSet = std::make_shared<Renderer::ObjectSet>( objectVector.begin(), objectVector.end() );
 	objectInterface.link( type, objectSet );
+}
+
+void render( Renderer &renderer )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	renderer.render();
 }
 
 class ProceduralWrapper : public IECorePython::RunTimeTypedWrapper<IECoreScenePreview::Procedural>
@@ -275,7 +287,7 @@ void GafferSceneModule::bindRender()
 	{
 		scope s = GafferBindings::NodeClass<InteractiveRender>()
 			.def( "getContext", &interactiveRenderGetContext )
-			.def( "setContext", &InteractiveRender::setContext )
+			.def( "setContext", &interactiveRenderSetContext )
 		;
 
 		enum_<InteractiveRender::State>( "State" )
@@ -328,7 +340,7 @@ void GafferSceneModule::bindRender()
 
 			.def( "types", &rendererTypes )
 			.staticmethod( "types" )
-			.def( "create", &Renderer::create, ( arg( "type" ), arg( "renderType" ) = Renderer::Batch, arg( "fileName" ) = "" ) )
+			.def( "create", &Renderer::create, ( arg( "type" ), arg( "renderType" ) = Renderer::Batch, arg( "fileName" ) = "", arg( "messageHandler" ) = IECore::MessageHandlerPtr() ) )
 			.staticmethod( "create" )
 
 			.def( "name", &rendererName )
@@ -340,11 +352,12 @@ void GafferSceneModule::bindRender()
 
 			.def( "camera", &Renderer::camera )
 			.def( "light", &Renderer::light )
+			.def( "lightFilter", &Renderer::lightFilter )
 
 			.def( "object", &rendererObject1 )
 			.def( "object", &rendererObject2 )
 
-			.def( "render", &Renderer::render )
+			.def( "render", render )
 			.def( "pause", &Renderer::pause )
 			.def( "command", &rendererCommand )
 
@@ -376,7 +389,7 @@ void GafferSceneModule::bindRender()
 		;
 
 		scope capturingRendererScope = IECorePython::RefCountedClass<CapturingRenderer, Renderer>( "CapturingRenderer" )
-			.def( init<Renderer::RenderType, const std::string &>( ( arg( "renderType" ) = Renderer::RenderType::Interactive, arg( "fileName" ) = "" ) ) )
+			.def( init<Renderer::RenderType, const std::string &, const IECore::MessageHandlerPtr &>( ( arg( "renderType" ) = Renderer::RenderType::Interactive, arg( "fileName" ) = "", arg( "messageHandler") = IECore::MessageHandlerPtr() ) ) )
 			.def( "capturedObject", &capturingRendererCapturedObject )
 		;
 

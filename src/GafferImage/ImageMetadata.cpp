@@ -42,7 +42,7 @@ using namespace Gaffer;
 namespace GafferImage
 {
 
-IE_CORE_DEFINERUNTIMETYPED( ImageMetadata );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ImageMetadata );
 
 size_t ImageMetadata::g_firstPlugIndex = 0;
 
@@ -71,7 +71,7 @@ void ImageMetadata::affects( const Gaffer::Plug *input, AffectedPlugsContainer &
 {
 	MetadataProcessor::affects( input, outputs );
 
-	if ( input == inPlug()->metadataPlug() )
+	if( metadataPlug()->isAncestorOf( input ) )
 	{
 		outputs.push_back( outPlug()->metadataPlug() );
 	}

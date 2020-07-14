@@ -49,7 +49,7 @@ class GAFFERSCENE_API Camera : public ObjectSource
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Camera, CameraTypeId, ObjectSource );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Camera, CameraTypeId, ObjectSource );
 
 		Camera( const std::string &name=defaultName<Camera>() );
 		~Camera() override;
@@ -99,12 +99,18 @@ class GAFFERSCENE_API Camera : public ObjectSource
 		Gaffer::CompoundDataPlug *renderSettingOverridesPlug();
 		const Gaffer::CompoundDataPlug *renderSettingOverridesPlug() const;
 
+		Gaffer::CompoundDataPlug *visualiserAttributesPlug();
+		const Gaffer::CompoundDataPlug *visualiserAttributesPlug() const;
+
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
 	protected :
 
 		void hashSource( const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstObjectPtr computeSource( const Gaffer::Context *context ) const override;
+
+		void hashAttributes( const SceneNode::ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const override;
+		IECore::ConstCompoundObjectPtr computeAttributes( const SceneNode::ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const override;
 
 		IECore::ConstInternedStringVectorDataPtr computeStandardSetNames() const override;
 

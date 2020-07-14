@@ -39,6 +39,8 @@ import inspect
 import math
 import os
 import imath
+import re
+import six
 
 import IECore
 
@@ -151,7 +153,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 		s["n"]["user"]["o"] = Gaffer.ObjectPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic, defaultValue = IECore.NullObject.defaultNullObject() )
 
 		s["e"] = Gaffer.Expression()
-		self.assertRaisesRegexp(
+		six.assertRaisesRegex( self,
 			RuntimeError, "Unsupported plug type \"Gaffer::ObjectPlug\"",
 			s["e"].setExpression,
 			"parent.n.user.o = 1",
@@ -181,6 +183,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 		s["n"]["user"]["c"] = Gaffer.Color3fPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 		s["n"]["user"]["v"] = Gaffer.V3fPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 		s["n"]["user"]["s"] = Gaffer.StringPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+		s["n"]["user"]["b"] = Gaffer.BoolPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 
 		s["e"] = Gaffer.Expression()
 		s["e"].setExpression(
@@ -191,6 +194,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 				parent.n.user.c = context( "c", color( 1, 2, 3 ) );
 				parent.n.user.v = context( "v", vector( 0, 1, 2 ) );
 				parent.n.user.s = context( "s", "default" );
+				parent.n.user.b = context( "b", 0 );
 				"""
 			),
 			"OSL"
@@ -203,18 +207,21 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 			self.assertEqual( s["n"]["user"]["c"].getValue(), imath.Color3f( 1, 2, 3 ) )
 			self.assertEqual( s["n"]["user"]["v"].getValue(), imath.V3f( 0, 1, 2 ) )
 			self.assertEqual( s["n"]["user"]["s"].getValue(), "default" )
+			self.assertEqual( s["n"]["user"]["b"].getValue(), False )
 
 			c["f"] = 10
 			c["i"] = 11
 			c["c"] = imath.Color3f( 4, 5, 6 )
 			c["v"] = imath.V3f( 1, 2, 3 )
 			c["s"] = "non-default"
+			c["b"] = IECore.BoolData( True )
 
 			self.assertEqual( s["n"]["user"]["f"].getValue(), 10 )
 			self.assertEqual( s["n"]["user"]["i"].getValue(), 11 )
 			self.assertEqual( s["n"]["user"]["c"].getValue(), imath.Color3f( 4, 5, 6 ) )
 			self.assertEqual( s["n"]["user"]["v"].getValue(), imath.V3f( 1, 2, 3 ) )
 			self.assertEqual( s["n"]["user"]["s"].getValue(), "non-default" )
+			self.assertEqual( s["n"]["user"]["b"].getValue(), True )
 
 	def testDefaultExpression( self ) :
 
@@ -333,7 +340,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 		s = Gaffer.ScriptNode()
 
 		s["e"] = Gaffer.Expression()
-		self.assertRaisesRegexp( RuntimeError, ".*does not exist.*", s["e"].setExpression, 'parent.notANode.notAPlug = 2;', "OSL" )
+		six.assertRaisesRegex( self, RuntimeError, ".*does not exist.*", s["e"].setExpression, 'parent.notANode.notAPlug = 2;', "OSL" )
 
 	def testNoSemiColon( self ) :
 
@@ -392,7 +399,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 			c.setTime( 2 )
 			self.assertEqual( s["n"]["user"]["f"].getValue(), 2 )
 
-	def testHashIgnoresTimeWhenTimeNotReferenced( self ) :
+	def testIgnoresTimeWhenTimeNotReferenced( self ) :
 
 		s = Gaffer.ScriptNode()
 
@@ -409,6 +416,10 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 			h2 = s["n"]["user"]["f"].hash()
 
 		self.assertEqual( h1, h2 )
+
+		with Gaffer.Context() as c :
+			del c["frame"]
+			self.assertEqual( s["n"]["user"]["f"].getValue(), 1 )
 
 	def testDeleteOutputPlug( self ) :
 
@@ -606,6 +617,90 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 
 			c["str"] = "abc"
 			self.assertEqual( s["n"]["user"]["i"].getValue(), 1 )
+
+	def testDuplicateDeserialise( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		s["source"] = Gaffer.Node()
+		s["source"]["p"] = Gaffer.V3fPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+		s["source"]["p"].setValue( imath.V3f( 0.1, 0.2, 0.3 ) )
+
+		s["dest"] = Gaffer.Node()
+		s["dest"]["p"] = Gaffer.V3fPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+
+		s["e"] = Gaffer.Expression()
+		s["e"].setExpression(
+			"parent.dest.p.x = parent.source.p.x + 1;\n" +
+			"parent.dest.p.y = parent.source.p.y + 2;\n" +
+			"parent.dest.p.z = parent.source.p.z + 3;\n",
+			"OSL",
+		)
+
+		ss = s.serialise()
+
+		s.execute( ss )
+		s.execute( ss )
+
+		self.assertEqual( s["dest"]["p"].getValue(), imath.V3f( 1.1, 2.2, 3.3 ) )
+		self.assertEqual( s["dest1"]["p"].getValue(), imath.V3f( 1.1, 2.2, 3.3 ) )
+		self.assertEqual( s["dest2"]["p"].getValue(), imath.V3f( 1.1, 2.2, 3.3 ) )
+
+		# Working well so far, but we've had a bug that could be hidden by the caching.  Lets
+		# try evaluating the plugs again, but flushing the cache each time
+
+		Gaffer.ValuePlug.clearCache()
+		self.assertEqual( s["dest"]["p"].getValue(), imath.V3f( 1.1, 2.2, 3.3 ) )
+		self.assertEqual( s["dest1"]["p"].getValue(), imath.V3f( 1.1, 2.2, 3.3 ) )
+		self.assertEqual( s["dest2"]["p"].getValue(), imath.V3f( 1.1, 2.2, 3.3 ) )
+
+	def testIndependentOfOrderOfPlugNames( self ) :
+
+		# We shouldn't depend on p0 being the first plug mentioned in the expression - as long as p0 is assigned
+		# correctly, the expression should still work
+
+		# Set up an expression with lots of plugs
+		s = Gaffer.ScriptNode()
+
+		exprLines = []
+		for i in range( 10 ):
+			s["source%i"%i] = Gaffer.Node()
+			s["source%i"%i]["p"] = Gaffer.V3fPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+			s["source%i"%i]["p"].setValue( imath.V3f( 0.1, 0.2, 0.3 ) + 0.3 * i )
+			s["dest%i"%i] = Gaffer.Node()
+			s["dest%i"%i]["p"] = Gaffer.V3fPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+			for a in "xyz":
+				exprLines.append(  "parent.dest%i.p.%s = parent.source%i.p.%s + 10 * %i;" % ( i, a, i, a, i ) )
+
+		s["e"] = Gaffer.Expression()
+		s["e"].setExpression( "\n".join( exprLines ), "OSL" )
+
+		for i in range( 10 ):
+			self.assertAlmostEqual( s["dest%i"%i]["p"].getValue().x, 0.1 + 0.3 * i + 10 * i, places = 5 )
+			self.assertAlmostEqual( s["dest%i"%i]["p"].getValue().y, 0.2 + 0.3 * i + 10 * i, places = 5 )
+			self.assertAlmostEqual( s["dest%i"%i]["p"].getValue().z, 0.3 + 0.3 * i + 10 * i, places = 5 )
+
+		# Now serialize it, and reverse the order of all the lines in the expression before deserializing it
+		ss = s.serialise()
+
+		ssLines = ss.split( "\n" )
+		ssLinesEdited = []
+		for l in ssLines:
+			m = re.match( r"^__children\[\"e\"\]\[\"__expression\"\].setValue\( '(.*)' \)$", l )
+			if not m:
+				ssLinesEdited.append( l )
+			else:
+				lines = m.groups()[0].split( "\\n" );
+				ssLinesEdited.append( "__children[\"e\"][\"__expression\"].setValue( '%s' )" % "\\n".join( lines[::-1] ) )
+
+		del s
+		s = Gaffer.ScriptNode()
+		s.execute( "\n".join( ssLinesEdited) )
+
+		for i in range( 10 ):
+			self.assertAlmostEqual( s["dest%i"%i]["p"].getValue().x, 0.1 + 0.3 * i + 10 * i, places = 5 )
+			self.assertAlmostEqual( s["dest%i"%i]["p"].getValue().y, 0.2 + 0.3 * i + 10 * i, places = 5 )
+			self.assertAlmostEqual( s["dest%i"%i]["p"].getValue().z, 0.3 + 0.3 * i + 10 * i, places = 5 )
 
 if __name__ == "__main__":
 	unittest.main()

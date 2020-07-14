@@ -158,7 +158,7 @@ def exportCommandLineReference( directory, appPath = "$GAFFER_ROOT/apps", ignore
 		gaffer appName -arg value -arg value ...
 		```
 
-		If the `appName` is not specified it defaults to `"gui"`, and
+		If the `appName` is not specified it defaults to `gui`, and
 		the familiar main interface is loaded. This shortcut also allows
 		a file to load to be specified :
 
@@ -201,7 +201,8 @@ def markdownToHTML( markdown ) :
 	if cmark is None :
 		return markdown
 
-	return cmark.cmark_markdown_to_html( markdown, len( markdown ), 0 )
+	markdown = markdown.encode( "UTF-8" )
+	return cmark.cmark_markdown_to_html( markdown, len( markdown ), 0 ).decode( "UTF-8" )
 
 def __nodeDocumentation( node ) :
 

@@ -61,7 +61,7 @@ class GAFFER_API ValuePlug : public Plug
 		ValuePlug( const std::string &name=defaultName<ValuePlug>(), Direction direction=In, unsigned flags=Default );
 		~ValuePlug() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( Gaffer::ValuePlug, ValuePlugTypeId, Plug );
+		GAFFER_PLUG_DECLARE_TYPE( Gaffer::ValuePlug, ValuePlugTypeId, Plug );
 
 		bool acceptsChild( const GraphComponent *potentialChild ) const override;
 		/// Accepts the input only if it is derived from ValuePlug.
@@ -92,6 +92,9 @@ class GAFFER_API ValuePlug : public Plug
 		/// as the default value. The default implementation is sufficient
 		/// for all subclasses except those where the number of child plugs
 		/// varies based on the value.
+		/// > Note : If a plug's value is being driven by a ComputeNode,
+		/// > we always consider it to be non-default, because it may vary
+		/// > by context. `isSetToDefault()` does not trigger computes.
 		virtual bool isSetToDefault() const;
 
 		/// Returns a hash to represent the value of this plug
@@ -113,6 +116,19 @@ class GAFFER_API ValuePlug : public Plug
 			/// Suitable for regular processes that don't spawn
 			/// TBB tasks. It is essential that any task-spawning
 			/// processes use one of the dedicated policies below.
+			/// \todo It isn't actually clear that the locking of the
+			/// Standard policy is an improvement over the non-locked
+			/// Legacy policy. Locking on a downstream Standard
+			/// compute might prevent multiple threads from participating
+			/// in an upstream TaskCollaboration. And for small computes
+			/// that are unlikely to be needed by multiple threads,
+			/// we may well prefer to avoid the contention. Note that
+			/// many scene computes may fit this category, as every
+			/// non-filtered location is implemented as a very cheap
+			/// pass-through compute. There's also a decent argument
+			/// that any non-trivial amount of work should be using TBB,
+			/// so it would be a mistake to do anything expensive with
+			/// a Standard policy anyway.
 			Standard,
 			/// Suitable for processes that spawn TBB tasks.
 			/// Threads waiting for the same result will collaborate
@@ -154,6 +170,10 @@ class GAFFER_API ValuePlug : public Plug
 		/// > Note : Limits are applied on a per-thread basis as and
 		/// > when each thread is used to compute a hash.
 		static void setHashCacheSizeLimit( size_t maxEntriesPerThread );
+		/// Clears the hash cache.
+		/// > Note : Clearing occurs on a per-thread basis as and when
+		/// > each thread next accesses the cache.
+		static void clearHashCache();
 		//@}
 
 	protected :
@@ -190,7 +210,8 @@ class GAFFER_API ValuePlug : public Plug
 		/// If a precomputed hash is available it may be passed to avoid computing
 		/// it again unnecessarily. Passing an incorrect hash has dire consequences, so
 		/// use with care.
-		IECore::ConstObjectPtr getObjectValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
+		template<typename T = IECore::Object>
+		boost::intrusive_ptr<const T> getObjectValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
 		/// Should be called by derived classes when they wish to set the plug
 		/// value - the value is referenced directly (not copied) and so must
 		/// not be changed following the call.
@@ -207,6 +228,7 @@ class GAFFER_API ValuePlug : public Plug
 		class ComputeProcess;
 		class SetValueAction;
 
+		IECore::ConstObjectPtr getValueInternal( const IECore::MurmurHash *precomputedHash = nullptr ) const;
 		void setValueInternal( IECore::ConstObjectPtr value, bool propagateDirtiness );
 		void childAddedOrRemoved();
 		// Emits the appropriate Node::plugSetSignal() for this plug and all its
@@ -216,6 +238,10 @@ class GAFFER_API ValuePlug : public Plug
 		IECore::ConstObjectPtr m_defaultValue;
 		// For holding the value of input plugs with no input connections.
 		IECore::ConstObjectPtr m_staticValue;
+		// Number of calls made to `dirty()`. We use this as part of the key
+		// into the hash cache, so that previous entries are invalidated when
+		// the plug is dirtied.
+		uint64_t m_dirtyCount;
 
 };
 
@@ -230,5 +256,7 @@ typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::In, ValuePlug>, PlugP
 typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::Out, ValuePlug>, PlugPredicate<> > RecursiveOutputValuePlugIterator;
 
 } // namespace Gaffer
+
+#include "Gaffer/ValuePlug.inl"
 
 #endif // GAFFER_VALUEPLUG_H

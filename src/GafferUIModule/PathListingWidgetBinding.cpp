@@ -40,13 +40,13 @@
 
 #include "Gaffer/FileSystemPath.h"
 #include "Gaffer/Path.h"
+#include "Gaffer/Private/IECorePreview/LRUCache.h"
 
 #include "IECorePython/RefCountedBinding.h"
 #include "IECorePython/ScopedGILLock.h"
 #include "IECorePython/ScopedGILRelease.h"
 
 #include "IECore/DateTimeData.h"
-#include "IECore/LRUCache.h"
 #include "IECore/MessageHandler.h"
 #include "IECore/PathMatcher.h"
 #include "IECore/SearchPath.h"
@@ -270,7 +270,7 @@ class IconColumn : public Column
 			return QPixmap( QString( path.string().c_str() ) );
 		}
 
-		typedef IECore::LRUCache<std::string, QVariant> IconCache;
+		typedef IECorePreview::LRUCache<std::string, QVariant> IconCache;
 		static IconCache g_iconCache;
 
 };
@@ -927,6 +927,8 @@ void propagateExpandedWalk( QTreeView *treeView, PathModel *model, QModelIndex i
 
 void propagateExpanded( uint64_t treeViewAddress, uint64_t modelIndexAddress, bool expanded, int numLevels )
 {
+	IECorePython::ScopedGILRelease gilRelease;
+
 	QTreeView *treeView = reinterpret_cast<QTreeView *>( treeViewAddress );
 	PathModel *model = dynamic_cast<PathModel *>( treeView->model() );
 	if( !model )

@@ -94,7 +94,7 @@ size_t Render::g_firstPlugIndex = 0;
 
 static IECore::InternedString g_rendererContextName( "scene:renderer" );
 
-IE_CORE_DEFINERUNTIMETYPED( Render );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Render );
 
 Render::Render( const std::string &name )
 	:	Render( /* rendererType = */ InternedString(), name )
@@ -292,7 +292,7 @@ void Render::execute() const
 	Monitor::Scope performanceMonitorScope( performanceMonitor );
 
 	RendererAlgo::outputOptions( globals.get(), renderer.get() );
-	RendererAlgo::outputOutputs( globals.get(), renderer.get() );
+	RendererAlgo::outputOutputs( inPlug(), globals.get(), renderer.get() );
 
 	{
 		// Using nested scope so that we free the memory used by `renderSets`

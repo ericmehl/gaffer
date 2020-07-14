@@ -50,6 +50,7 @@ namespace Gaffer
 {
 
 IE_CORE_FORWARDDECLARE( Context )
+IE_CORE_FORWARDDECLARE( EditScope )
 
 } // namespace Gaffer
 
@@ -82,7 +83,7 @@ class GAFFERUI_API View : public Gaffer::Node
 
 		~View() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::View, ViewTypeId, Gaffer::Node );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::View, ViewTypeId, Gaffer::Node );
 
 		/// The contents for the view are provided by the input to this plug.
 		/// The view can be switched by connecting a new input - this is how
@@ -91,6 +92,15 @@ class GAFFERUI_API View : public Gaffer::Node
 		T *inPlug();
 		template<typename T=Gaffer::Plug>
 		const T *inPlug() const;
+
+		/// The current EditScope for the view is specified by connecting
+		/// an `EditScope::outPlug()` into this plug.
+		Gaffer::Plug *editScopePlug();
+		const Gaffer::Plug *editScopePlug() const;
+		/// The `editScope()` method is a convenience that returns the connected
+		/// EditScope node, or null if nothing is connected.
+		Gaffer::EditScope *editScope();
+		const Gaffer::EditScope *editScope() const;
 
 		/// The Context in which the View should operate.
 		Gaffer::Context *getContext();

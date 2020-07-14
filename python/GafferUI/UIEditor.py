@@ -38,6 +38,7 @@ import weakref
 import functools
 import types
 import re
+import six
 import collections
 import imath
 import inspect
@@ -46,14 +47,14 @@ import IECore
 
 import Gaffer
 import GafferUI
-import MetadataWidget
+from . import MetadataWidget
 
 ## The UIEditor class allows the user to edit the interfaces for nodes.
 class UIEditor( GafferUI.NodeSetEditor ) :
 
 	def __init__( self, scriptNode, **kw ) :
 
-		self.__frame = GafferUI.Frame( borderWidth = 0, borderStyle = GafferUI.Frame.BorderStyle.None )
+		self.__frame = GafferUI.Frame( borderWidth = 0, borderStyle = GafferUI.Frame.BorderStyle.None_ )
 
 		GafferUI.NodeSetEditor.__init__( self, self.__frame, scriptNode, **kw )
 
@@ -99,7 +100,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 					_Label( "Color" )
 
 					self.__nodeMetadataWidgets.append(
-						MetadataWidget.ColorSwatchMetadataWidget( key = "nodeGadget:color" )
+						MetadataWidget.ColorSwatchMetadataWidget( key = "nodeGadget:color", defaultValue = imath.Color3f( 0.4 ) )
 					)
 
 				with _Row() as self.__iconRow :
@@ -109,6 +110,17 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 					self.__nodeMetadataWidgets.append(
 						MetadataWidget.FileSystemPathMetadataWidget( key = "icon" )
 					)
+
+				with _Row() as self.__plugAddButtons :
+
+					_Label( "Plug Creators" )
+
+					for side in ( "Top", "Bottom", "Left", "Right" ) :
+						_Label( side )._qtWidget().setFixedWidth( 40 )
+						self.__nodeMetadataWidgets.append( MetadataWidget.BoolMetadataWidget(
+							key = "noduleLayout:customGadget:addButton%s:visible" % side,
+							defaultValue = True
+						) )
 
 			# Plugs tab
 			with GafferUI.SplitContainer( orientation=GafferUI.SplitContainer.Orientation.Horizontal, borderWidth = 8, parenting = { "label" : "Plugs" } ) as self.__plugTab :
@@ -168,6 +180,24 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 			}
 		)
 
+		nodeGadgetTypes = Gaffer.Metadata.value( node, "uiEditor:nodeGadgetTypes" )
+		if nodeGadgetTypes :
+			nodeGadgetTypes = set( nodeGadgetTypes )
+			if nodeGadgetTypes == { "GafferUI::AuxiliaryNodeGadget", "GafferUI::StandardNodeGadget" } :
+				nodeGadgetType = Gaffer.Metadata.value( node, "nodeGadget:type" ) or "GafferUI::StandardNodeGadget"
+				menuDefinition.append(
+					"/Show Name",
+					{
+						"command" : functools.partial( cls.__setNameVisible, node ),
+						"checkBox" : nodeGadgetType == "GafferUI::StandardNodeGadget",
+						"active" : not Gaffer.MetadataAlgo.readOnly( node ),
+					}
+				)
+			else :
+				# We want to present the options above as a simple "Show Name" checkbox, and haven't yet
+				# decided how to present other combinations of allowable gadgets.
+				IECore.msg( IECore.msg.Warning, "UIEditor", 'Unknown combination of "uiEditor:nodeGadgetTypes"' )
+
 	@classmethod
 	def appendNodeEditorToolMenuDefinitions( cls, nodeEditor, node, menuDefinition ) :
 
@@ -217,7 +247,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 
 			widgetClass = MetadataWidget.BoolMetadataWidget
 
-		elif isinstance( defaultValue, basestring ) :
+		elif isinstance( defaultValue, six.string_types ) :
 
 			widgetClass = MetadataWidget.StringMetadataWidget
 
@@ -251,6 +281,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 		self.__node = node
 		self.__nodeNameWidget.setGraphComponent( self.__node )
 		self.__nodeTab.setEnabled( self.__node is not None )
+		self.__plugAddButtons.setVisible( False )
 
 		if self.__node is None :
 			self.__plugListing.setPlugParent( None )
@@ -264,6 +295,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 				# is available for use by the user on Reference nodes once a Box has
 				# been exported and referenced.
 				plugParent = self.__node
+				self.__plugAddButtons.setVisible( True )
 			self.__plugListing.setPlugParent( plugParent )
 			self.__sectionEditor.setPlugParent( plugParent )
 
@@ -278,7 +310,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 		if selection is None or isinstance( selection, Gaffer.Plug ) :
 			self.__plugEditor.setPlug( selection )
 			self.__plugAndSectionEditorsContainer.setCurrent( self.__plugEditor )
-		elif isinstance( selection, basestring ) :
+		elif isinstance( selection, six.string_types ) :
 			self.__plugEditor.setPlug( None )
 			self.__sectionEditor.setSection( selection )
 			self.__plugAndSectionEditorsContainer.setCurrent( self.__sectionEditor )
@@ -303,6 +335,14 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 			with Gaffer.UndoScope( node.ancestor( Gaffer.ScriptNode ) ) :
 				Gaffer.Metadata.registerValue( node, "nodeGadget:color", color )
 
+	@staticmethod
+	def __setNameVisible( node, nameVisible ) :
+
+		with Gaffer.UndoScope( node.ancestor( Gaffer.ScriptNode ) ) :
+			Gaffer.Metadata.registerValue(
+				node, "nodeGadget:type",
+				"GafferUI::StandardNodeGadget" if nameVisible else "GafferUI::AuxiliaryNodeGadget"
+			)
 
 GafferUI.Editor.registerType( "UIEditor", UIEditor )
 
@@ -538,6 +578,10 @@ class _PlugListing( GafferUI.Widget ) :
 		column = GafferUI.ListContainer( spacing = 4 )
 		GafferUI.Widget.__init__( self, column, **kw )
 
+		# We don't have a way to do this with Widget directly at present, this
+		# stops the preset name/value fields being off-screen.
+		column._qtWidget().setMinimumWidth( 650 )
+
 		with column :
 
 			self.__pathListing = GafferUI.PathListingWidget(
@@ -579,7 +623,7 @@ class _PlugListing( GafferUI.Widget ) :
 
 	def setPlugParent( self, parent ) :
 
-		assert( isinstance( parent, ( Gaffer.Plug, Gaffer.Node, types.NoneType ) ) )
+		assert( isinstance( parent, ( Gaffer.Plug, Gaffer.Node, type( None ) ) ) )
 
 		self.__parent = parent
 
@@ -622,7 +666,7 @@ class _PlugListing( GafferUI.Widget ) :
 				self.__pathListing.setSelectedPaths( [] )
 			else :
 				self.__pathListing.setSelectedPaths( [ path ] )
-		elif isinstance( selection, basestring ) :
+		elif isinstance( selection, six.string_types ) :
 			path = self.__pathListing.getPath().copy()
 			path[:] = selection.split( "." )
 			self.__pathListing.setSelectedPaths( [ path ] )
@@ -1348,12 +1392,12 @@ class _PlugEditor( GafferUI.Widget ) :
 					with _Row() :
 
 						_Label( "Color" )
-						self.__metadataWidgets["nodule:color"] = MetadataWidget.ColorSwatchMetadataWidget( key = "nodule:color" )
+						self.__metadataWidgets["nodule:color"] = MetadataWidget.ColorSwatchMetadataWidget( key = "nodule:color", defaultValue = imath.Color3f( 0.4 ) )
 
 					with _Row() :
 
 						_Label( "Connection Color" )
-						self.__metadataWidgets["connectionGadget:color"] = MetadataWidget.ColorSwatchMetadataWidget( key = "connectionGadget:color" )
+						self.__metadataWidgets["connectionGadget:color"] = MetadataWidget.ColorSwatchMetadataWidget( key = "connectionGadget:color", defaultValue = imath.Color3f( 0.125 ) )
 
 			GafferUI.Spacer( imath.V2i( 0 ), parenting = { "expand" : True } )
 
@@ -1603,7 +1647,7 @@ class _SectionEditor( GafferUI.Widget ) :
 
 	def setSection( self, section ) :
 
-		assert( isinstance( section, basestring ) )
+		assert( isinstance( section, six.string_types ) )
 
 		self.__section = section
 		self.__nameWidget.setText( section.rpartition( "." )[-1] )

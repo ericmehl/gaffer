@@ -43,8 +43,7 @@ import IECore
 import Gaffer
 import GafferUI
 
-# import lazily to improve startup of apps which don't use GL functionality
-IECoreGL = Gaffer.lazyImport( "IECoreGL" )
+import IECoreGL
 
 ##########################################################################
 # Viewer implementation
@@ -181,8 +180,8 @@ class Viewer( GafferUI.NodeSetEditor ) :
 
 		node = self._lastAddedNode()
 		if node :
-			for plug in node.children( Gaffer.Plug ) :
-				if plug.direction() == Gaffer.Plug.Direction.Out and not plug.getName().startswith( "__" ) :
+			for plug in Gaffer.Plug.RecursiveOutputRange( node ) :
+				if not plug.getName().startswith( "__" ) :
 					# try to reuse an existing view
 					for view in self.__views :
 						if view["in"].acceptsInput( plug ) :
@@ -262,7 +261,7 @@ class _Toolbar( GafferUI.Frame ) :
 
 	def __init__( self, edge, context, **kw ) :
 
-		GafferUI.Frame.__init__( self, borderWidth = 0, borderStyle = GafferUI.Frame.BorderStyle.None, **kw )
+		GafferUI.Frame.__init__( self, borderWidth = 0, borderStyle = GafferUI.Frame.BorderStyle.None_, **kw )
 
 		# We store the 5 most recently used toolbars in a cache,
 		# to avoid unnecessary reconstruction when switching back and
@@ -340,7 +339,9 @@ class _ToolChooser( GafferUI.Frame ) :
 			self.primaryToolChangedSignal = Gaffer.Signal0()
 
 			if len( self.tools ) :
-				self.tools[0]["active"].setValue( True )
+				autoActivate = Gaffer.Metadata.value( self.tools[0], "viewer:shouldAutoActivate" )
+				if autoActivate is None or autoActivate :
+					self.tools[0]["active"].setValue( True )
 
 		def __toolPlugSet( self, plug ) :
 
@@ -376,7 +377,7 @@ class _ToolChooser( GafferUI.Frame ) :
 
 	def __init__( self, **kw ) :
 
-		GafferUI.Frame.__init__( self, borderWidth = 0, borderStyle = GafferUI.Frame.BorderStyle.None, **kw )
+		GafferUI.Frame.__init__( self, borderWidth = 0, borderStyle = GafferUI.Frame.BorderStyle.None_, **kw )
 
 		self.__view = None
 		self.__primaryToolChangedSignal = GafferUI.WidgetSignal()

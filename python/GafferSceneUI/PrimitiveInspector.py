@@ -152,7 +152,7 @@ class PrimitiveInspector( GafferUI.NodeSetEditor ) :
 
 		self.__nodeFrame = GafferUI.Frame(
 			borderWidth = 4,
-			borderStyle = GafferUI.Frame.BorderStyle.None,
+			borderStyle = GafferUI.Frame.BorderStyle.None_,
 			child = self.__nodeLabel
 		)
 
@@ -166,7 +166,7 @@ class PrimitiveInspector( GafferUI.NodeSetEditor ) :
 
 		self.__locationFrame = GafferUI.Frame(
 			borderWidth = 4,
-			borderStyle = GafferUI.Frame.BorderStyle.None,
+			borderStyle = GafferUI.Frame.BorderStyle.None_,
 			child = self.__locationLabel
 		)
 
@@ -234,13 +234,10 @@ class PrimitiveInspector( GafferUI.NodeSetEditor ) :
 		node = self._lastAddedNode()
 
 		if node :
-
-			outputScenePlugs = [p for p in node.children( GafferScene.ScenePlug ) if p.direction() == Gaffer.Plug.Direction.Out]
-
-			if len( outputScenePlugs ) :
-				self.__scenePlug = outputScenePlugs[0]
+			self.__scenePlug = next( GafferScene.ScenePlug.RecursiveOutputRange( node ), None )
+			if self.__scenePlug :
 				self.__plugDirtiedConnections.append( node.plugDirtiedSignal().connect( Gaffer.WeakMethod( self.__plugDirtied ) ) )
-				self.__parentChangedConnections.append( outputScenePlugs[0].parentChangedSignal().connect( Gaffer.WeakMethod( self.__plugParentChanged ) ) )
+				self.__parentChangedConnections.append( self.__scenePlug.parentChangedSignal().connect( Gaffer.WeakMethod( self.__plugParentChanged ) ) )
 
 		self.__updateLazily()
 

@@ -72,8 +72,9 @@ namespace
 typedef boost::container::flat_map<IECore::InternedString, ShaderView::RendererCreator> Renderers;
 Renderers &renderers()
 {
-	static Renderers r;
-	return r;
+	// See comment in `sceneCreators()`.
+	static Renderers *r = new Renderers;
+	return *r;
 }
 
 typedef std::pair<std::string, std::string> PrefixAndName;
@@ -81,8 +82,13 @@ typedef boost::container::flat_map<PrefixAndName, ShaderView::SceneCreator> Scen
 
 SceneCreators &sceneCreators()
 {
-	static SceneCreators sc;
-	return sc;
+	// Deliberately leaking here, as the alternative is for `sc` to
+	// be destroyed during shutdown when static destructors are run.
+	// Static destructors are run _after_ Python has shut down, and
+	// attempting to destroy SceneCreators containing PyObjects can
+	// lead to crashes in `subtype_dealloc()`.
+	static SceneCreators *sc = new SceneCreators;
+	return *sc;
 }
 
 typedef boost::signal<void ( const PrefixAndName & )> SceneRegistrationChangedSignal;
@@ -105,7 +111,7 @@ IECoreImage::DisplayDriverServer *displayDriverServer()
 //////////////////////////////////////////////////////////////////////////
 
 
-IE_CORE_DEFINERUNTIMETYPED( ShaderView );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ShaderView );
 
 ShaderView::ViewDescription<ShaderView> ShaderView::g_viewDescription( GafferScene::Shader::staticTypeId(), "out" );
 

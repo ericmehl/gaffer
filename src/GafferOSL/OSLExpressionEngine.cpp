@@ -135,6 +135,17 @@ class RendererServices : public OSL::RendererServices
 			IECoreImage::OpenImageIOAlgo::DataView dataView( data, /* createUStrings = */ true );
 			if( !dataView.data )
 			{
+				if( auto b = runTimeCast<const BoolData>( data ) )
+				{
+					// BoolData isn't supported by `DataView` because `OIIO::TypeDesc` doesn't
+					// have a boolean type. We could work around this in `DataView` by casting to
+					// `TypeDesc::UCHAR` (along with a `static_assert( sizeof( bool ) == 1`). But that
+					// wouldn't be round-trippable via `OpenImageIOAlgo::data()`, so it's not clear
+					// that it would be a good thing in general. Here we don't care about round
+					// tripping, so we simply perform a conversion ourselves.
+					const unsigned char c = b->readable();
+					return ShadingSystem::convert_value( value, type, &c, TypeDesc::UCHAR );
+				}
 				return false;
 			}
 			return ShadingSystem::convert_value( value, type, dataView.data, dataView.type );
@@ -230,6 +241,7 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			m_inParameters.clear();
 			m_outSymbols.clear();
 			m_shaderGroup.reset();
+			m_needsTime = false;
 
 			// Find all references to plugs within the expression.
 			vector<string> inPlugPaths;
@@ -301,6 +313,7 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 					{
 						contextVariables.push_back( "frame" );
 						contextVariables.push_back( "framesPerSecond" );
+						m_needsTime = true;
 						break;
 					}
 				}
@@ -323,7 +336,10 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 		    OSL::ShaderGlobals shaderGlobals;
 			memset( &shaderGlobals, 0, sizeof( ShaderGlobals ) );
 
-			shaderGlobals.time = context->getTime();
+			if( m_needsTime )
+			{
+				shaderGlobals.time = context->getTime();
+			}
 
 			RenderState renderState;
 			renderState.inParameters = &m_inParameters;
@@ -702,7 +718,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 
 			for( int i = 0, e = inPlugPaths.size(); i < e; ++i )
 			{
-				string parameter = "_" + inPlugPaths[i];
+				string parameter = inPlugPaths[i];
+				if( parameter[0] != '_' )
+				{
+					parameter = "_" + parameter;
+				}
 				replace_all( parameter, ".", "_" );
 				replace_all( result, "parent." + inPlugPaths[i], parameter );
 				inParameters.push_back( ustring( parameter ) );
@@ -710,7 +730,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 
 			for( int i = 0, e = outPlugPaths.size(); i < e; ++i )
 			{
-				string parameter = "_" + outPlugPaths[i];
+				string parameter = outPlugPaths[i];
+				if( parameter[0] != '_' )
+				{
+					parameter = "_" + parameter;
+				}
 				replace_all( parameter, ".", "_" );
 				replace_all( result, "parent." + outPlugPaths[i], parameter );
 				outParameters.push_back( ustring( parameter ) );
@@ -803,6 +827,7 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 		}
 
 		// Initialised by parse().
+		bool m_needsTime;
 		vector<ustring> m_inParameters;
 		vector<const OSL::ShaderSymbol *> m_outSymbols;
 		OSL::ShaderGroupRef m_shaderGroup;

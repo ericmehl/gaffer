@@ -100,12 +100,12 @@ enum TypeId
 	BoxTypeId = 110053,
 	InternedStringVectorDataPlugTypeId = 110054,
 	SplinefColor4fPlugTypeId = 110055,
-	ExecutableOpHolderTypeId = 110056, // obsolete - available for reuse
-	DispatcherTypeId = 110057, // obsolete - available for reuse
+	NumericBookmarkSetTypeId = 110056,
+	NameSwitchTypeId = 110057,
 	Transform2DPlugTypeId = 110058,
 	ReferenceTypeId = 110059,
 	ComputeNodeTypeId = 110060,
-	ParameterisedHolderComputeNodeTypeId = 110061, // obsolete - available for reuse
+	SpreadsheetTypeId = 110061,
 	Color3fVectorDataPlugTypeId = 110062,
 	ActionTypeId = 110063,
 	SimpleActionTypeId = 110064,
@@ -115,7 +115,7 @@ enum TypeId
 	ArrayPlugTypeId = 110068,
 	BackdropTypeId = 110069,
 	SwitchTypeId = 110070,
-	SwitchDependencyNodeTypeId = 110071, // obsolete - available for reuse
+	SpreadsheetCellPlugTypeId = 110071,
 	PathMatcherDataPlugTypeId = 110072,
 	SubGraphTypeId = 110073,
 	DotTypeId = 110074,
@@ -133,6 +133,12 @@ enum TypeId
 	BoxInTypeId = 110086,
 	BoxOutTypeId = 110087,
 	DeleteContextVariablesTypeId = 110088,
+	SpreadsheetRowsPlugTypeId = 110089,
+	SpreadsheetRowPlugTypeId = 110090,
+	ShufflePlugTypeId = 110091,
+	ShufflesPlugTypeId = 110092,
+	EditScopeTypeId = 110093,
+	MessagesDataTypeId = 110094,
 
 	LastTypeId = 110159,
 

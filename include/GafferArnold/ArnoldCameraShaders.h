@@ -57,7 +57,7 @@ class GAFFERARNOLD_API ArnoldCameraShaders : public GafferScene::Shader
 		ArnoldCameraShaders( const std::string &name=defaultName<ArnoldCameraShaders>() );
 		~ArnoldCameraShaders() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferArnold::ArnoldCameraShaders, ArnoldCameraShadersTypeId, GafferScene::Shader );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferArnold::ArnoldCameraShaders, ArnoldCameraShadersTypeId, GafferScene::Shader );
 
 		GafferScene::ShaderPlug *filterMapPlug();
 		const GafferScene::ShaderPlug *filterMapPlug() const;
@@ -68,10 +68,9 @@ class GAFFERARNOLD_API ArnoldCameraShaders : public GafferScene::Shader
 		Gaffer::Plug *outPlug();
 		const Gaffer::Plug *outPlug() const;
 
-		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
-
 	protected :
 
+		bool affectsAttributes( const Gaffer::Plug *input ) const override;
 		void attributesHash( const Gaffer::Plug *output, IECore::MurmurHash &h ) const override;
 		IECore::ConstCompoundObjectPtr attributes( const Gaffer::Plug *output ) const override;
 

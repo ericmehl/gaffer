@@ -46,20 +46,15 @@ using namespace IECoreScene;
 using namespace Gaffer;
 using namespace GafferScene;
 
-IE_CORE_DEFINERUNTIMETYPED( CameraTweaks );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( CameraTweaks );
 
 size_t CameraTweaks::g_firstPlugIndex = 0;
 
 CameraTweaks::CameraTweaks( const std::string &name )
-	:	SceneElementProcessor( name, IECore::PathMatcher::NoMatch )
+	:	ObjectProcessor( name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new TweaksPlug( "tweaks" ) );
-
-	// Fast pass-throughs for the things we don't alter.
-	outPlug()->attributesPlug()->setInput( inPlug()->attributesPlug() );
-	outPlug()->transformPlug()->setInput( inPlug()->transformPlug() );
-	outPlug()->boundPlug()->setInput( inPlug()->boundPlug() );
 }
 
 CameraTweaks::~CameraTweaks()
@@ -76,29 +71,28 @@ const GafferScene::TweaksPlug *CameraTweaks::tweaksPlug() const
 	return getChild<GafferScene::TweaksPlug>( g_firstPlugIndex );
 }
 
-void CameraTweaks::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
+bool CameraTweaks::affectsProcessedObject( const Gaffer::Plug *input ) const
 {
-	SceneElementProcessor::affects( input, outputs );
-
-	if( tweaksPlug()->isAncestorOf( input ) )
-	{
-		outputs.push_back( outPlug()->objectPlug() );
-	}
-}
-
-bool CameraTweaks::processesObject() const
-{
-	// Although the base class says that we should return a constant, it should
-	// be OK to return this because it's constant across the hierarchy.
-	return !tweaksPlug()->children().empty();
+	return
+		ObjectProcessor::affectsProcessedObject( input ) ||
+		tweaksPlug()->isAncestorOf( input )
+	;
 }
 
 void CameraTweaks::hashProcessedObject( const ScenePath &path, const Gaffer::Context *context, IECore::MurmurHash &h ) const
 {
-	tweaksPlug()->hash( h );
+	if( tweaksPlug()->children().empty() )
+	{
+		h = inPlug()->objectPlug()->hash();
+	}
+	else
+	{
+		ObjectProcessor::hashProcessedObject( path, context, h );
+		tweaksPlug()->hash( h );
+	}
 }
 
-IECore::ConstObjectPtr CameraTweaks::computeProcessedObject( const ScenePath &path, const Gaffer::Context *context, IECore::ConstObjectPtr inputObject ) const
+IECore::ConstObjectPtr CameraTweaks::computeProcessedObject( const ScenePath &path, const Gaffer::Context *context, const IECore::Object *inputObject ) const
 {
 	IECoreScene::ConstCameraPtr inputCamera = IECore::runTimeCast<const IECoreScene::Camera>( inputObject );
 	if( !inputCamera )
@@ -131,7 +125,7 @@ IECore::ConstObjectPtr CameraTweaks::computeProcessedObject( const ScenePath &pa
 			InternedString internedName(name);
 			CompoundDataPtr dummyParameters = new CompoundData();
 			dummyParameters->writable()[internedName] = new FloatData( result->calculateFieldOfView()[0] );
-			(*tIt)->applyTweak( dummyParameters.get() );
+			(*tIt)->applyTweak( dummyParameters.get(), TweakPlug::MissingMode::IgnoreOrReplace );
 			FloatData *tweakedData = dummyParameters->member<FloatData>( internedName );
 			if( tweakedData )
 			{
@@ -145,7 +139,7 @@ IECore::ConstObjectPtr CameraTweaks::computeProcessedObject( const ScenePath &pa
 			Imath::V2f aperture = result->getAperture();
 			CompoundDataPtr dummyParameters = new CompoundData();
 			dummyParameters->writable()[internedName] = new FloatData( aperture[0] / aperture[1] );
-			(*tIt)->applyTweak( dummyParameters.get() );
+			(*tIt)->applyTweak( dummyParameters.get(), TweakPlug::MissingMode::IgnoreOrReplace );
 			FloatData *tweakedData = dummyParameters->member<FloatData>( internedName );
 			if( tweakedData )
 			{
@@ -155,7 +149,7 @@ IECore::ConstObjectPtr CameraTweaks::computeProcessedObject( const ScenePath &pa
 		}
 		else
 		{
-			(*tIt)->applyTweak( result->parametersData() );
+			(*tIt)->applyTweak( result->parametersData(), TweakPlug::MissingMode::IgnoreOrReplace );
 		}
 	}
 

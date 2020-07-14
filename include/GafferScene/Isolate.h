@@ -57,7 +57,7 @@ class GAFFERSCENE_API Isolate : public FilteredSceneProcessor
 		Isolate( const std::string &name=defaultName<Isolate>() );
 		~Isolate() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Isolate, IsolateTypeId, FilteredSceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Isolate, IsolateTypeId, FilteredSceneProcessor );
 
 		Gaffer::StringPlug *fromPlug();
 		const Gaffer::StringPlug *fromPlug() const;
@@ -74,8 +74,6 @@ class GAFFERSCENE_API Isolate : public FilteredSceneProcessor
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
 	protected :
-
-		bool acceptsInput( const Gaffer::Plug *plug, const Gaffer::Plug *inputPlug ) const override;
 
 		void hashBound( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const override;
 		void hashChildNames( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const override;

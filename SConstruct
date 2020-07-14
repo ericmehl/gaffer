@@ -51,7 +51,7 @@ import subprocess
 ###############################################################################################
 
 gafferMilestoneVersion = 0 # for announcing major milestones - may contain all of the below
-gafferMajorVersion = 54 # backwards-incompatible changes
+gafferMajorVersion = 58 # backwards-incompatible changes
 gafferMinorVersion = 0 # new backwards-compatible features
 gafferPatchVersion = 0 # bug fixes
 
@@ -354,7 +354,6 @@ env = Environment(
 
 	FRAMEWORKPATH = "$BUILD_DIR/lib",
 
-
 )
 
 # include 3rd party headers with -isystem rather than -I.
@@ -363,7 +362,6 @@ env = Environment(
 # in particular that this would be otherwise impossible.
 for path in [
 		"$BUILD_DIR/include",
-		"$BUILD_DIR/include/python$PYTHON_VERSION",
 		"$BUILD_DIR/include/OpenEXR",
 		"$BUILD_DIR/include/GL",
 	] + env["LOCATE_DEPENDENCY_SYSTEMPATH"] :
@@ -400,7 +398,7 @@ elif env["PLATFORM"] == "posix" :
 
 	if "g++" in os.path.basename( env["CXX"] ) :
 
-		gccVersion = subprocess.Popen( [ env["CXX"], "-dumpversion" ], env=env["ENV"], stdout=subprocess.PIPE ).stdout.read().strip()
+		gccVersion = subprocess.check_output( [ env["CXX"], "-dumpversion" ], env=env["ENV"] ).decode().strip()
 		gccVersion = [ int( v ) for v in gccVersion.split( "." ) ]
 
 		# GCC 4.1.2 in conjunction with boost::flat_map produces crashes when
@@ -414,6 +412,11 @@ elif env["PLATFORM"] == "posix" :
 		# Downgrade these back to warning status.
 		if gccVersion >= [ 4, 2 ] :
 			env.Append( CXXFLAGS = [ "-Wno-error=strict-overflow" ] )
+
+		# Old GCC emits spurious "maybe uninitialized" warnings when using
+		# boost::optional
+		if gccVersion < [ 5, 1 ] :
+			env.Append( CXXFLAGS = [ "-Wno-error=maybe-uninitialized" ] )
 
 		if gccVersion >= [ 5, 1 ] :
 			env.Append( CXXFLAGS = [ "-D_GLIBCXX_USE_CXX11_ABI=0" ] )
@@ -447,7 +450,7 @@ def findOnPath( file, path ) :
 	if os.path.isabs( file ) :
 		return file if os.path.exists( file ) else None
 	else :
-		if isinstance( path, basestring ) :
+		if isinstance( path, str ) :
 			path = path.split( os.pathsep )
 		for p in path :
 			f = os.path.join( p, file )
@@ -509,6 +512,8 @@ if not haveInkscape and env["INKSCAPE"] != "disableGraphics" :
 	sys.stderr.write( "ERROR : Inkscape not found. Check INKSCAPE build variable.\n" )
 	Exit( 1 )
 
+haveSphinx = conf.checkSphinx()
+
 if not conf.checkQtVersion() :
 	sys.stderr.write( "Qt not found\n" )
 	Exit( 1 )
@@ -545,20 +550,17 @@ else :
 
 commandEnv["ENV"]["PYTHONPATH"] = commandEnv.subst( ":".join( split( commandEnv["LOCATE_DEPENDENCY_PYTHONPATH"] ) ) )
 
+# SIP on MacOS prevents DYLD_LIBRARY_PATH being passed down so we make sure
+# we also pass through to gaffer the other base vars it uses to populate paths
+# for third-party support.
+for v in ( 'ARNOLD_ROOT', 'DELIGHT_ROOT' ) :
+	commandEnv["ENV"][ v ] = commandEnv[ v ]
+
 def runCommand( command ) :
 
 	command = commandEnv.subst( command )
 	sys.stderr.write( command + "\n" )
 	subprocess.check_call( command, shell=True, env=commandEnv["ENV"] )
-
-###############################################################################################
-# Determine python version
-###############################################################################################
-
-pythonVersion = subprocess.Popen( [ "python", "--version" ], env=commandEnv["ENV"], stderr=subprocess.PIPE ).stderr.read().strip()
-pythonVersion = pythonVersion.split()[1].rpartition( "." )[0]
-
-env["PYTHON_VERSION"] = pythonVersion
 
 ###############################################################################################
 # The basic environment for building libraries
@@ -586,11 +588,52 @@ baseLibEnv.Append(
 
 )
 
+# Determine boost version
+
+boostVersionHeader = baseLibEnv.FindFile(
+	"boost/version.hpp",
+	[ "$BUILD_DIR/include" ] +
+	baseLibEnv["LOCATE_DEPENDENCY_SYSTEMPATH"] +
+	baseLibEnv["LOCATE_DEPENDENCY_CPPPATH"]
+)
+
+if not boostVersionHeader :
+	sys.stderr.write( "ERROR : unable to find \"boost/version.hpp\".\n" )
+	Exit( 1 )
+
+with open( str( boostVersionHeader ) ) as f :
+	for line in f.readlines() :
+		m = re.match( "^#define BOOST_LIB_VERSION \"(.*)\"\s*$", line )
+		if m :
+			boostVersion = m.group( 1 )
+			m = re.match( "^([0-9]+)_([0-9]+)(?:_([0-9]+)|)$", boostVersion )
+			baseLibEnv["BOOST_MAJOR_VERSION"] = m.group( 1 )
+			baseLibEnv["BOOST_MINOR_VERSION"] = m.group( 2 )
+
+if "BOOST_MAJOR_VERSION" not in baseLibEnv :
+	sys.stderr.write( "ERROR : unable to determine boost version from \"{}\".\n".format(  boostVersionHeader ) )
+	Exit( 1 )
+
 ###############################################################################################
 # The basic environment for building python modules
 ###############################################################################################
 
 basePythonEnv = baseLibEnv.Clone()
+
+basePythonEnv["PYTHON_VERSION"] = subprocess.check_output(
+	[ "python", "-c", "import sys; print( '{}.{}'.format( *sys.version_info[:2] ) )" ],
+	env=commandEnv["ENV"]
+).strip()
+
+basePythonEnv["PYTHON_ABI_VERSION"] = basePythonEnv["PYTHON_VERSION"]
+basePythonEnv["PYTHON_ABI_VERSION"] += subprocess.check_output(
+	[ "python", "-c", "import sysconfig; print( sysconfig.get_config_var( 'abiflags' ) or '' )" ],
+	env=commandEnv["ENV"]
+).strip()
+
+basePythonEnv["BOOST_PYTHON_LIB_SUFFIX"] = ""
+if ( int( basePythonEnv["BOOST_MAJOR_VERSION"] ), int( basePythonEnv["BOOST_MINOR_VERSION"] ) ) >= ( 1, 67 ) :
+	basePythonEnv["BOOST_PYTHON_LIB_SUFFIX"] = basePythonEnv["PYTHON_VERSION"].replace( ".", "" )
 
 basePythonEnv.Append(
 
@@ -599,7 +642,7 @@ basePythonEnv.Append(
 	],
 
 	LIBS = [
-		"boost_python$BOOST_LIB_SUFFIX",
+		"boost_python$BOOST_PYTHON_LIB_SUFFIX$BOOST_LIB_SUFFIX",
 		"IECorePython$CORTEX_PYTHON_LIB_SUFFIX",
 		"Gaffer",
 	],
@@ -617,7 +660,7 @@ if basePythonEnv["PLATFORM"]=="darwin" :
 else :
 
 	basePythonEnv.Append(
-		CPPPATH = [ "$BUILD_DIR/include/python$PYTHON_VERSION" ]
+		CPPPATH = [ "$BUILD_DIR/include/python$PYTHON_ABI_VERSION" ]
 	)
 
 ###############################################################################################
@@ -725,7 +768,7 @@ libraries = {
 			"LIBS" : [ "Gaffer", "Iex$OPENEXR_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX", "IECoreImage$CORTEX_LIB_SUFFIX",  "IECoreScene$CORTEX_LIB_SUFFIX", "GafferImage", "GafferDispatch", "Half" ],
 		},
 		"pythonEnvAppends" : {
-			"LIBS" : [ "GafferBindings", "GafferScene", "GafferDispatch", "IECoreScene$CORTEX_LIB_SUFFIX" ],
+			"LIBS" : [ "GafferBindings", "GafferScene", "GafferDispatch", "GafferImage", "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX" ],
 		},
 		"additionalFiles" : glob.glob( "glsl/*.frag" ) + glob.glob( "glsl/*.vert" ) + glob.glob( "include/GafferScene/Private/IECore*Preview/*.h" )
 	},
@@ -804,10 +847,12 @@ libraries = {
 
 	"GafferArnoldUI" : {
 		"envAppends" : {
-			"LIBS" : [ "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX", "Gaffer", "GafferOSL", "GafferSceneUI" ],
+			"CPPPATH" : [ "$ARNOLD_ROOT/include" ],
+			"LIBPATH" : [ "$ARNOLD_ROOT/bin" ],
+			"LIBS" : [ "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX", "OpenImageIO$OIIO_LIB_SUFFIX", "oslquery$OSL_LIB_SUFFIX", "Gaffer", "GafferScene", "GafferOSL", "GafferSceneUI", "ai" ],
 			},
 		"pythonEnvAppends" : {
-			"LIBS" : [ "GafferArnoldUI", "GafferSceneUI" ],
+			"LIBS" : [ "GafferArnoldUI", "GafferSceneUI", "IECoreScene$CORTEX_LIB_SUFFIX" ],
 		},
 		"requiredOptions" : [ "ARNOLD_ROOT" ],
 	},
@@ -921,7 +966,7 @@ libraries = {
 	},
 
 	"scripts" : {
-		"additionalFiles" : [ "bin/gaffer", "bin/gaffer.py" ],
+		"additionalFiles" : [ "bin/gaffer", "bin/__gaffer.py" ],
 	},
 
 	"misc" : {
@@ -980,7 +1025,6 @@ for library in ( "GafferUI", ) :
 	addQtLibrary( library, "OpenGL" )
 	if int( env["QT_VERSION"] ) > 4 :
 		addQtLibrary( library, "Widgets" )
-
 
 ###############################################################################################
 # The stuff that actually builds the libraries and python modules
@@ -1164,45 +1208,142 @@ for libraryName, libraryDef in libraries.items() :
 # Graphics
 #########################################################################################################
 
-def buildGraphics( target, source, env ) :
+def buildImageCommand( source, target, env ) :
 
-	svgFileName = os.path.abspath( str( source[0] ) )
+	# Requires env to have buildImageOptions set, containing, at minimum:
+	#	- id : The svg object id to export.
 
-	dir = os.path.dirname( os.path.abspath( str( target[0] ) ) )
-	if not os.path.isdir( dir ) :
-		os.makedirs( dir )
+	svgFilename = str( source[0] )
+	filename = str( target[0] )
 
-	queryCommand = env["INKSCAPE"] + " --query-all \"" + svgFileName + "\""
-	inkscape = subprocess.Popen( queryCommand, stdout=subprocess.PIPE, shell=True )
-	objects, stderr = inkscape.communicate()
-	if inkscape.returncode :
-		raise subprocess.CalledProcessError( inkscape.returncode, queryCommand )
+	substitutions = inkscapeArgs( env["buildImageOptions"], svgFilename )
 
-	for object in objects.split( "\n" ) :
-		tokens = object.split( "," )
-		if tokens[0].startswith( "forExport:" ) :
-			subprocess.check_call(
-				env["INKSCAPE"] + " --export-png=%s/%s.png --export-id=%s --export-width=%d --export-height=%d %s --export-background-opacity=0" % (
-					dir,
-					tokens[0].split( ":" )[-1],
-					tokens[0],
-					int( round( float( tokens[3] ) ) ), int( round( float( tokens[4] ) ) ),
-					svgFileName,
-				),
-				shell = True,
-			)
+	outputDirectory = os.path.dirname( filename )
+	if not os.path.isdir( outputDirectory ) :
+		os.makedirs( outputDirectory )
+
+	args = " ".join( [
+		"--export-png={filePath}",
+		"--export-id={id}",
+		"--export-width={width:d}",
+		"--export-height={height:d}",
+		"--export-background-opacity=0",
+		"{svgPath}"
+	] ).format(
+		filePath = os.path.abspath( filename ),
+		svgPath = os.path.abspath( svgFilename ),
+		**substitutions
+	)
+	subprocess.check_call( env["INKSCAPE"] + " " + args, shell = True )
+
+def inkscapeArgs( imageOptions, svg ) :
+
+	id_ = imageOptions["id"]
+
+	svgObjectInfo = svgQuery( svg, id_ )
+	if svgObjectInfo is None :
+		raise RuntimeError( "Object with id '%s' not found" % id_ )
+
+	width = int( round( svgObjectInfo["width"] ) )
+	height = int( round( svgObjectInfo["height"] ) )
+
+	return {
+		"id" : id_,
+		"width" : width,
+		"height" : height
+	}
+
+# svgQuery is relatively slow as it requires running inkscape, which can be ~1s on macOS.
+# As we know any given svg is constant during a build and we can retrieve all object info
+# in one go, we cache per file.
+__svgQueryCache = {}
+
+def svgQuery( svgFile, id_ ) :
+
+	filepath = os.path.abspath( svgFile )
+
+	objects = __svgQueryCache.get( svgFile, None )
+	if objects is None :
+
+		objects = {}
+
+		queryCommand = env["INKSCAPE"] + " --query-all \"" + filepath + "\""
+		output = subprocess.check_output( queryCommand, shell=True ).decode()
+		for line in output.split( "\n" ) :
+			tokens = line.split( "," )
+			# <id>,<x>,<y>,<width>,<height>
+			if len(tokens) != 5 :
+				continue
+			objects[ tokens[0] ] = {
+				"width" : float( tokens[3] ),
+				"height" : float( tokens[4] )
+			}
+
+		__svgQueryCache[ svgFile ] = objects
+
+	return objects.get( id_, None )
+
+def imagesToBuild( definitionFile ) :
+
+	with open( definitionFile ) as f :
+		exports = eval( f.read() )
+
+	toBuild = []
+
+	for i in exports["ids"] :
+		imageOptions = {
+			"id" : i,
+			"filename" : i + ".png"
+		}
+		toBuild.append( imageOptions )
+
+	return toBuild
+
+# Bitmaps can be generated from inkscape compatible svg files, using the
+# `graphicsCommands` helper.  In order to build images, you need two things:
+#
+#   - An svg file with one or more well-known object IDs
+#   - A sidecar python definitions file that lists the IDs to build. This must
+#     live next to the svg, with the same name.
+#
+# You can then add in a graphics builds as follows (output directories will be
+# made for you):
+#
+#	cmds = graphicsCommands( env, <svgPath>, <outputDirectory> )
+#	env.Alias( "build", cmds )
+#
+# The definition file must be `eval`able to define a single `exports`
+# dictionary, structured as follows:
+#
+#	{ "ids" : [ <id str>, ... ], }
+#
+def graphicsCommands( env, svg, outputDirectory ) :
+
+	commands = []
+
+	definitionFile = svg.replace( ".svg", ".py" )
+
+	try :
+
+		# Manually construct the Action so we can hash in the build options
+		buildAction = Action( buildImageCommand, "Exporting '$TARGET' from '$SOURCE'", varlist=[ "buildImageOptions" ] )
+
+		for options in imagesToBuild( definitionFile ) :
+			targetPath = os.path.join( outputDirectory, options["filename"] )
+			buildEnv = env.Clone( buildImageOptions = options )
+			commands.append( buildEnv.Command( targetPath, svg, buildAction ) )
+
+	except Exception as e :
+		raise RuntimeError( "%s: %s" % ( svg, e ) )
+
+	return commands
+
+# Gaffer UI Images
 
 if haveInkscape :
 
-	for source, target in (
-		( "resources/graphics.svg", "arrowDown10.png" ),
-		( "resources/GafferLogo.svg", "GafferLogo.png" ),
-		( "resources/GafferLogoMini.svg", "GafferLogoMini.png" ),
-	) :
-
-		graphicsBuild = env.Command( os.path.join( "$BUILD_DIR/graphics/", target ), source, buildGraphics )
-		env.NoCache( graphicsBuild )
-		env.Alias( "build", graphicsBuild )
+	for source in ( "resources/graphics.svg", "resources/GafferLogo.svg", "resources/GafferLogoMini.svg" ) :
+		env.Alias( "build", graphicsCommands( env, source, "$BUILD_DIR/graphics" ) )
 
 else :
 
@@ -1214,7 +1355,14 @@ else :
 
 resources = None
 if commandEnv.subst( "$LOCATE_DEPENDENCY_RESOURCESPATH" ) :
-	resources = commandEnv.Install( "$BUILD_DIR", "$LOCATE_DEPENDENCY_RESOURCESPATH" )
+
+	resources = []
+	resourceRoot = commandEnv.subst( "$LOCATE_DEPENDENCY_RESOURCESPATH" )
+	for root, dirs, files in os.walk( resourceRoot ) :
+		for f in files :
+			fullPath = os.path.join( root, f )
+			resources.append( commandEnv.Command( fullPath.replace( resourceRoot, "$BUILD_DIR/resources/", 1 ), fullPath, Copy( "$TARGET", "$SOURCE" ) ) )
+
 	commandEnv.NoCache( resources )
 	commandEnv.Alias( "build", resources )
 
@@ -1256,7 +1404,7 @@ def locateDocs( docRoot, env ) :
 			sources.append( sourceFile )
 			ext = os.path.splitext( f )[1]
 			if ext in ( ".py", ".sh" ) :
-				with file( sourceFile ) as s :
+				with open( sourceFile ) as s :
 					line = s.readline()
 					# the first line in a shell script is the language
 					# specifier so we need the second line
@@ -1290,7 +1438,7 @@ def buildDocs( target, source, env ) :
 		env = env["ENV"]
 	)
 
-if conf.checkSphinx() :
+if haveSphinx and haveInkscape :
 
 	docEnv = commandEnv.Clone()
 
@@ -1324,12 +1472,21 @@ if conf.checkSphinx() :
 		docEnv["ENV"]["PATH"] += ":" + docEnv.subst( "$APPLESEED_ROOT/bin" )
 		docEnv["ENV"][libraryPathEnvVar] += ":" + docEnv.subst( "$APPLESEED_ROOT/lib" )
 		docEnv["ENV"]["OSLHOME"] = docEnv.subst( "$OSLHOME" )
-		docEnv["ENV"]["OSL_SHADER_PATHS"] = docEnv.subst( "$APPLESEED_ROOT/shaders/gaffer" )
-		docEnv["ENV"]["APPLESEED_SEARCHPATH"] = docEnv.subst( "$APPLESEED_ROOT/shaders/gaffer:$LOCATE_DEPENDENCY_APPLESEED_SEARCHPATH" )
+		docEnv["ENV"]["OSL_SHADER_PATHS"] = docEnv.subst( "$APPLESEED_ROOT/shaders/appleseed" )
+		docEnv["ENV"]["APPLESEED_SEARCHPATH"] = docEnv.subst( "$APPLESEED_ROOT/shaders/appleseed:$LOCATE_DEPENDENCY_APPLESEED_SEARCHPATH" )
 
+	# Since we don't copy the docs reference scripts, the screengrab
+	# scripts must read them from the source, so we use the reference
+	# env var.
+	docEnv["ENV"]["GAFFER_REFERENCE_PATHS"] = os.path.abspath( "doc/references" )
+
+	#  Docs graphics generation
+	docGraphicsCommands = graphicsCommands( docEnv, "resources/docGraphics.svg", "$BUILD_DIR/doc/gaffer/graphics" )
+	docEnv.Alias( "docs", docGraphicsCommands )
 	docSource, docGenerationCommands = locateDocs( "doc/source", docEnv )
 	docs = docEnv.Command( "$BUILD_DIR/doc/gaffer/html/index.html", docSource, buildDocs )
-	docEnv.Depends( docs, docGenerationCommands )
+	docEnv.Depends( docGenerationCommands, docGraphicsCommands )
+	docEnv.Depends( docs, docGraphicsCommands )
 	docEnv.Depends( docs, "build" )
 	if resources is not None :
 		docEnv.Depends( docs, resources )
@@ -1337,7 +1494,11 @@ if conf.checkSphinx() :
 
 else :
 
-	sys.stderr.write( "WARNING : Sphinx not found - not building docs. Check SPHINX build variable.\n" )
+	if not haveSphinx :
+		sys.stderr.write( "WARNING : Sphinx not found - not building docs. Check SPHINX build variable.\n" )
+
+	if not haveInkscape :
+		sys.stderr.write( "WARNING : Inkscape not found - not building docs. Check INKSCAPE build variable.\n" )
 
 #########################################################################################################
 # Example files

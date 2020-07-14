@@ -50,13 +50,11 @@ class GAFFERSCENE_API Encapsulate : public FilteredSceneProcessor
 		Encapsulate( const std::string &name=defaultName<Encapsulate>() );
 		~Encapsulate() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Encapsulate, EncapsulateTypeId, FilteredSceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Encapsulate, EncapsulateTypeId, FilteredSceneProcessor );
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
 	protected :
-
-		bool acceptsInput( const Gaffer::Plug *plug, const Gaffer::Plug *inputPlug ) const override;
 
 		void hashObject( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const override;
 		IECore::ConstObjectPtr computeObject( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const override;

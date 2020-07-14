@@ -50,6 +50,10 @@ namespace IECoreScenePreview
 /// A "Renderer" which just captures the scene passed to it, and
 /// keeps a history of any interactive edits made. Useful for testing
 /// renderer output code.
+///
+/// If the Bool `cr:unrenderable` attribute is set to true at a location, then
+/// calls to object, light, lightFilter, camera, etc... for that location will
+/// return nullptr rather than a valid ObjectInterface.
 class IECORESCENE_API CapturingRenderer : public Renderer
 {
 
@@ -57,7 +61,11 @@ class IECORESCENE_API CapturingRenderer : public Renderer
 
 		IE_CORE_DECLAREMEMBERPTR( CapturingRenderer )
 
-		CapturingRenderer( RenderType type = RenderType::Interactive, const std::string &fileName = "" );
+		CapturingRenderer(
+			RenderType type = RenderType::Interactive,
+			const std::string &fileName = "",
+			const IECore::MessageHandlerPtr &messageHandler = IECore::MessageHandlerPtr()
+		);
 
 		/// Introspection
 		/// =============
@@ -150,6 +158,8 @@ class IECORESCENE_API CapturingRenderer : public Renderer
 	private :
 
 		void checkPaused() const;
+
+		IECore::MessageHandlerPtr m_messageHandler;
 
 		std::atomic_bool m_rendering;
 		using ObjectMap = tbb::concurrent_hash_map<std::string, const CapturedObject *>;

@@ -187,7 +187,7 @@ class SceneNodeTest( GafferSceneTest.SceneTestCase ) :
 
 			try :
 				GafferSceneTest.traverseScene( g["out"] )
-			except Exception, e :
+			except Exception as e :
 				exceptions.append( e )
 
 		threads = []
@@ -291,6 +291,87 @@ class SceneNodeTest( GafferSceneTest.SceneTestCase ) :
 		)
 
 		self.assertEqual( Gaffer.NodeAlgo.presets( n["type"] ), [ "Sphere", "Cube" ] )
+
+	def testExists( self ) :
+
+		cube = GafferScene.Cube()
+
+		for path, exists in [
+			( "/", True ),
+			( "/cube", True ),
+			( "/cube2", False ),
+			( "/cube/child", False ),
+			( "/notHere/notHereEither", False ),
+		] :
+			self.assertEqual( cube["out"].exists( path ), exists )
+
+			with Gaffer.Context() as c :
+				c["scene:path"] = GafferScene.ScenePlug.stringToPath( path )
+				self.assertEqual( cube["out"].exists(), exists )
+
+	def testExistsInternals( self ) :
+
+		cube = GafferScene.Cube()
+		with Gaffer.Context() as c :
+			c["scene:path"] = IECore.InternedStringVectorData()
+			# When there's only one child, the sorted child names refer
+			# to exactly the same object as the regular child names.
+			self.assertTrue(
+				cube["out"]["__sortedChildNames"].getValue( _copy = False ).isSame(
+					cube["out"]["childNames"].getValue( _copy = False )
+				)
+			)
+			# Likewise when there's none
+			c["scene:path"] = IECore.InternedStringVectorData( [ "cube" ] )
+			self.assertTrue(
+				cube["out"]["__sortedChildNames"].getValue( _copy = False ).isSame(
+					cube["out"]["childNames"].getValue( _copy = False )
+				)
+			)
+
+		cs = GafferTest.CapturingSlot( cube.plugDirtiedSignal() )
+		cube["name"].setValue( "box" )
+		self.assertGreaterEqual(
+			{ x[0] for x in cs },
+			{ cube["out"]["childNames"], cube["out"]["__sortedChildNames"], cube["out"]["__exists"] }
+		)
+
+	def testChildBounds( self ) :
+
+		cube = GafferScene.Cube()
+		sphere = GafferScene.Sphere()
+		group = GafferScene.Group()
+		group["in"][0].setInput( cube["out"] )
+		group["in"][1].setInput( sphere["out"] )
+
+		with Gaffer.Context() as c :
+			c["scene:path"] = IECore.InternedStringVectorData( [ "group" ] )
+			h = group["out"].childBoundsHash()
+			b = group["out"].childBounds()
+
+		self.assertEqual( h, group["out"].childBoundsHash( "/group" ) )
+		self.assertEqual( b, group["out"].childBounds( "/group" ) )
+
+		b2 = cube["out"].bound( "/" )
+		b2.extendBy( sphere["out"].bound( "/" ) )
+		self.assertEqual( b, b2 )
+
+		cube["transform"]["translate"]["x"].setValue( 10 )
+
+		self.assertNotEqual( group["out"].childBoundsHash( "/group"), h )
+		b = group["out"].childBounds( "/group" )
+
+		b2 = cube["out"].bound( "/" )
+		b2.extendBy( sphere["out"].bound( "/" ) )
+		self.assertEqual( b, b2 )
+
+	def testChildBoundsWhenNoChildren( self ) :
+
+		plane = GafferScene.Plane()
+		sphere = GafferScene.Sphere()
+
+		self.assertEqual( plane["out"].childBounds( "/plane" ), imath.Box3f() )
+		self.assertEqual( sphere["out"].childBounds( "/sphere" ), imath.Box3f() )
 
 	def setUp( self ) :
 

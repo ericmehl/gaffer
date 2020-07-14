@@ -47,11 +47,11 @@ class BoolWidgetTest( GafferUITest.TestCase ) :
 		w = GafferUI.BoolWidget()
 		r = weakref.ref( w )
 
-		self.failUnless( r() is w )
+		self.assertTrue( r() is w )
 
 		del w
 
-		self.failUnless( r() is None )
+		self.assertTrue( r() is None )
 
 	def testStateChangedSignal( self ) :
 
@@ -86,7 +86,7 @@ class BoolWidgetTest( GafferUITest.TestCase ) :
 		w.setText( "b" )
 		self.assertEqual( w.getText(), "b" )
 
-		self.failUnless( isinstance( w.getText(), basestring ) )
+		self.assertIsInstance( w.getText(), str )
 
 	def testDisplayMode( self ) :
 
@@ -101,6 +101,39 @@ class BoolWidgetTest( GafferUITest.TestCase ) :
 
 		w = GafferUI.BoolWidget( displayMode = GafferUI.BoolWidget.DisplayMode.Switch )
 		self.assertEqual( w.getDisplayMode(), w.DisplayMode.Switch )
+
+	def testIndeterminateState( self ) :
+
+		w = GafferUI.BoolWidget()
+
+		w.setState( w.State.Indeterminate )
+		self.assertEqual( w.getState(), w.State.Indeterminate )
+
+		w.setState( False )
+		self.assertIs( w.getState(), False )
+
+		w.setState( True )
+		self.assertIs( w.getState(), True )
+
+		# We don't want users to be able to set the
+		# indeterminate state. It is a display-only
+		# value.
+
+		w._qtWidget().click()
+		self.assertIs( w.getState(), False )
+
+		w._qtWidget().click()
+		self.assertIs( w.getState(), True )
+
+		w._qtWidget().click()
+		self.assertIs( w.getState(), False )
+
+		# When in the indeterminate state, we expect
+		# a click to take us into the True state.
+
+		w.setState( w.State.Indeterminate )
+		w._qtWidget().click()
+		self.assertIs( w.getState(), True )
 
 if __name__ == "__main__":
 	unittest.main()

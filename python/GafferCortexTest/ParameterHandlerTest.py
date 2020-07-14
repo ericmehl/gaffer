@@ -53,8 +53,8 @@ class ParameterHandlerTest( GafferTest.TestCase ) :
 		h = GafferCortex.ParameterHandler.create( p )
 		h.setupPlug( n )
 
-		self.failUnless( isinstance( h, GafferCortex.ParameterHandler ) )
-		self.failUnless( isinstance( n["i"], Gaffer.IntPlug ) )
+		self.assertIsInstance( h, GafferCortex.ParameterHandler )
+		self.assertIsInstance( n["i"], Gaffer.IntPlug )
 
 	def testCustomHandler( self ) :
 
@@ -106,7 +106,7 @@ class ParameterHandlerTest( GafferTest.TestCase ) :
 
 			def setPlugValue( self ) :
 
-				self.__plug.setValue( self.__parameter.getNumericValue() / 10 )
+				self.__plug.setValue( self.__parameter.getNumericValue() // 10 )
 
 		GafferCortex.ParameterHandler.registerParameterHandler( CustomParameter, CustomHandler )
 
@@ -149,7 +149,7 @@ class ParameterHandlerTest( GafferTest.TestCase ) :
 		h.setupPlug( n )
 
 		self.assertEqual( h.plug().getName(), "i" )
-		self.failUnless( h.plug().parent().isSame( n ) )
+		self.assertTrue( h.plug().parent().isSame( n ) )
 
 	def testCompoundParameterHandler( self ) :
 
@@ -170,8 +170,8 @@ class ParameterHandlerTest( GafferTest.TestCase ) :
 		h = GafferCortex.CompoundParameterHandler( c )
 		h.setupPlug( n )
 
-		self.failUnless( h.childParameterHandler( c["i"] ).parameter().isSame( c["i"] ) )
-		self.failUnless( h.childParameterHandler( c["f"] ).parameter().isSame( c["f"] ) )
+		self.assertTrue( h.childParameterHandler( c["i"] ).parameter().isSame( c["i"] ) )
+		self.assertTrue( h.childParameterHandler( c["f"] ).parameter().isSame( c["f"] ) )
 
 	def testReadOnly( self ) :
 
@@ -237,6 +237,34 @@ class ParameterHandlerTest( GafferTest.TestCase ) :
 		self.assertNotEqual( hash1, hash2 )
 		self.assertNotEqual( hash1, hash3 )
 		self.assertNotEqual( hash2, hash3 )
+
+	def testSubstitutions( self ) :
+
+		p = IECore.StringParameter( "s", "d", "" )
+
+		n = Gaffer.Node()
+		h = GafferCortex.ParameterHandler.create( p )
+		h.setupPlug( n )
+		self.assertEqual( n["s"].substitutions(), IECore.StringAlgo.Substitutions.AllSubstitutions )
+
+		# adding substitutions should affect the plug
+		p.userData()["gaffer"] = IECore.CompoundObject( {
+			"substitutions" : IECore.IntData( IECore.StringAlgo.Substitutions.AllSubstitutions & ~IECore.StringAlgo.Substitutions.FrameSubstitutions ),
+		} )
+		h.setupPlug( n )
+		self.assertEqual( n["s"].substitutions(), IECore.StringAlgo.Substitutions.AllSubstitutions & ~IECore.StringAlgo.Substitutions.FrameSubstitutions )
+
+		# make sure connections are maintained as well
+		nn = Gaffer.Node()
+		nn["driver"] = Gaffer.StringPlug()
+		n["s"].setInput( nn["driver"] )
+		# we're forcing a re-creation of the plug because substitutions have changed
+		p.userData()["gaffer"] = IECore.CompoundObject( {
+			"substitutions" : IECore.IntData( IECore.StringAlgo.Substitutions.AllSubstitutions & ~IECore.StringAlgo.Substitutions.VariableSubstitutions ),
+		} )
+		h.setupPlug( n )
+		self.assertEqual( n["s"].substitutions(), IECore.StringAlgo.Substitutions.AllSubstitutions & ~IECore.StringAlgo.Substitutions.VariableSubstitutions )
+		self.assertEqual( n["s"].getInput(), nn["driver"] )
 
 if __name__ == "__main__":
 	unittest.main()

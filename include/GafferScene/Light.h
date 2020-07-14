@@ -39,6 +39,8 @@
 
 #include "GafferScene/ObjectSource.h"
 
+#include "Gaffer/CompoundDataPlug.h"
+
 #include "IECoreScene/ShaderNetwork.h"
 
 namespace GafferScene
@@ -49,7 +51,7 @@ class GAFFERSCENE_API Light : public ObjectSource
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Light, LightTypeId, ObjectSource );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Light, LightTypeId, ObjectSource );
 
 		Light( const std::string &name=defaultName<Light>() );
 		~Light() override;
@@ -59,6 +61,9 @@ class GAFFERSCENE_API Light : public ObjectSource
 
 		Gaffer::BoolPlug *defaultLightPlug();
 		const Gaffer::BoolPlug *defaultLightPlug() const;
+
+		Gaffer::CompoundDataPlug *visualiserAttributesPlug();
+		const Gaffer::CompoundDataPlug *visualiserAttributesPlug() const;
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
@@ -79,10 +84,7 @@ class GAFFERSCENE_API Light : public ObjectSource
 		/// Must be implemented by derived classes to hash and generate the light to be placed
 		/// in the scene graph.
 		virtual void hashLight( const Gaffer::Context *context, IECore::MurmurHash &h ) const = 0;
-		virtual IECoreScene::ShaderNetworkPtr computeLight( const Gaffer::Context *context ) const = 0;
-
-		Gaffer::FloatPlug *visualiserScalePlug();
-		const Gaffer::FloatPlug *visualiserScalePlug() const;
+		virtual IECoreScene::ConstShaderNetworkPtr computeLight( const Gaffer::Context *context ) const = 0;
 
 	private :
 

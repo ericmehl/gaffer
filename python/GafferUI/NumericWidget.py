@@ -64,6 +64,8 @@ class NumericWidget( GafferUI.TextWidget ) :
 		self.dragEndSignal().connect( Gaffer.WeakMethod( self.__dragEnd ), scoped = False )
 		self.editingFinishedSignal().connect( Gaffer.WeakMethod( self.__editingFinished ), scoped = False )
 
+		self.setPreferredCharacterWidth( 10 )
+
 		self.__numericType = None
 		self.setValue( value )
 
@@ -136,6 +138,9 @@ class NumericWidget( GafferUI.TextWidget ) :
 	def __incrementIndex( self, index, increment ) :
 
 		text = self.getText()
+		if text == "" :
+			return
+
 		if '.' in text :
 			decimalIndex = text.find( "." )
 			if decimalIndex >= index :
@@ -195,8 +200,13 @@ class NumericWidget( GafferUI.TextWidget ) :
 		if event.modifiers != GafferUI.ModifiableEvent.Modifiers.Control and event.modifiers != GafferUI.ModifiableEvent.Modifiers.ShiftControl :
 			return False
 
-		self.__dragValue = self.getValue()
-		return True
+		try :
+			self.__dragValue = self.getValue()
+			return True
+		except :
+			# `getValue()` may fail if the field is empty,
+			# in which case we don't have a value to drag.
+			return False
 
 	def __dragBegin( self, widget, event ) :
 

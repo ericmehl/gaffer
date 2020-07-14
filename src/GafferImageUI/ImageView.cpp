@@ -41,6 +41,7 @@
 
 #include "GafferImage/Clamp.h"
 #include "GafferImage/Format.h"
+#include "GafferImage/DeepState.h"
 #include "GafferImage/Grade.h"
 #include "GafferImage/ImagePlug.h"
 #include "GafferImage/ImageSampler.h"
@@ -203,7 +204,7 @@ class V2fContextVariable : public Gaffer::ComputeNode
 			addChild( new V2fPlug( "out", Plug::Out ) );
 		}
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( V2fContextVariable, V2fContextVariableTypeId, ComputeNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( V2fContextVariable, V2fContextVariableTypeId, ComputeNode );
 
 		StringPlug *namePlug()
 		{
@@ -270,7 +271,7 @@ class V2fContextVariable : public Gaffer::ComputeNode
 };
 
 size_t V2fContextVariable::g_firstPlugIndex = 0;
-IE_CORE_DEFINERUNTIMETYPED( V2fContextVariable )
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( V2fContextVariable )
 
 IE_CORE_DECLAREPTR( V2fContextVariable )
 
@@ -350,7 +351,7 @@ class ImageView::ColorInspector : public boost::signals::trackable
 /// Implementation of ImageView
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( ImageView );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ImageView );
 
 ImageView::ViewDescription<ImageView> ImageView::g_viewDescription( GafferImage::ImagePlug::staticTypeId() );
 
@@ -367,9 +368,14 @@ ImageView::ImageView( const std::string &name )
 	ImagePlugPtr preprocessorInput = new ImagePlug( "in" );
 	preprocessor->addChild( preprocessorInput );
 
+	DeepStatePtr deepStateNode = new DeepState();
+	preprocessor->setChild( "__deepState", deepStateNode );
+	deepStateNode->inPlug()->setInput( preprocessorInput );
+	deepStateNode->deepStatePlug()->setValue( int( DeepState::TargetState::Flat ) );
+
 	ClampPtr clampNode = new Clamp();
 	preprocessor->setChild(  "__clamp", clampNode );
-	clampNode->inPlug()->setInput( preprocessorInput );
+	clampNode->inPlug()->setInput( deepStateNode->outPlug() );
 	clampNode->enabledPlug()->setValue( false );
 	clampNode->channelsPlug()->setValue( "*" );
 	clampNode->minClampToEnabledPlug()->setValue( true );
@@ -501,6 +507,16 @@ const Gaffer::StringPlug *ImageView::displayTransformPlug() const
 	return getChild<StringPlug>( "displayTransform" );
 }
 
+GafferImage::DeepState *ImageView::deepStateNode()
+{
+	return getPreprocessor<Node>()->getChild<DeepState>( "__deepState" );
+}
+
+const GafferImage::DeepState *ImageView::deepStateNode() const
+{
+	return getPreprocessor<Node>()->getChild<DeepState>( "__deepState" );
+}
+
 GafferImage::Clamp *ImageView::clampNode()
 {
 	return getPreprocessor()->getChild<Clamp>( "__clamp" );
@@ -610,12 +626,7 @@ void ImageView::insertDisplayTransform()
 	}
 	else
 	{
-		DisplayTransformCreatorMap &m = displayTransformCreators();
-		DisplayTransformCreatorMap::const_iterator it = m.find( displayTransformPlug()->getValue() );
-		if( it != m.end() )
-		{
-			displayTransform = it->second();
-		}
+		displayTransform = createDisplayTransform( name );
 		if( displayTransform )
 		{
 			m_displayTransforms[name] = displayTransform;
@@ -649,8 +660,19 @@ void ImageView::registeredDisplayTransforms( std::vector<std::string> &names )
 	}
 }
 
+GafferImage::ImageProcessorPtr ImageView::createDisplayTransform( const std::string &name )
+{
+	const auto &m = displayTransformCreators();
+	auto it = m.find( name );
+	if( it != m.end() )
+	{
+		return it->second();
+	}
+	return nullptr;
+}
+
 ImageView::DisplayTransformCreatorMap &ImageView::displayTransformCreators()
 {
-	static DisplayTransformCreatorMap g_creators;
-	return g_creators;
+	static auto g_creators = new DisplayTransformCreatorMap;
+	return *g_creators;
 }

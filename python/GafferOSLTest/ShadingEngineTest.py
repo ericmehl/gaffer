@@ -630,16 +630,18 @@ class ShadingEngineTest( GafferOSLTest.OSLTestCase ) :
 		) )
 
 		p = self.rectanglePoints()
-		p["strattr"] = IECore.StringVectorData( [ "testo" if x % 2 == 0 else "no-testo"  for x in range(len(p["P"])) ] )
+		p["strattr"] = IECore.StringVectorData( [ "testo" if i % 2 == 0 else "no-testo" for i in range(len(p["P"])) ] )
 
 		r = e.shade( p )
 
 		for i, c in enumerate( r["Ci"] ) :
-			f = 1.0 if x % 2 == 0 else 0.0
+
+			f = 1.0 if i % 2 == 0 else 0.0
 
 			self.assertEqual(
 				c,
-				imath.Color3f( f, f, f ) )
+				imath.Color3f( f, f, f )
+			)
 
 	def testUVProvidedAsV2f( self ) :
 
@@ -865,6 +867,46 @@ class ShadingEngineTest( GafferOSLTest.OSLTestCase ) :
 		s = e.shade( self.rectanglePoints() )
 		for c in s["Ci"] :
 			self.assertEqual( c, imath.Color3f( 0, 1, 0 ) )
+
+	def testHasDeformation( self ) :
+
+		inputClosureShader = self.compileShader( os.path.dirname( __file__ ) + "/shaders/inputClosure.osl" )
+
+		e = GafferOSL.ShadingEngine( IECoreScene.ShaderNetwork(
+			shaders = {
+				"outPoint" : IECoreScene.Shader(
+					"ObjectProcessing/OutPoint", "osl:shader",
+					{
+						"name" : "P"
+					}
+				),
+				"output" : IECoreScene.Shader( inputClosureShader, "osl:surface" ),
+			},
+			connections = [
+				( ( "outPoint", "primitiveVariable" ), ( "output", "i" ) ),
+			],
+			output = "output"
+		) )
+
+		self.assertTrue( e.hasDeformation() )
+
+		e = GafferOSL.ShadingEngine( IECoreScene.ShaderNetwork(
+			shaders = {
+				"outPoint" : IECoreScene.Shader(
+					"ObjectProcessing/OutPoint", "osl:shader",
+					{
+						"name" : "notP"
+					}
+				),
+				"output" : IECoreScene.Shader( inputClosureShader, "osl:surface" ),
+			},
+			connections = [
+				( ( "outPoint", "primitiveVariable" ), ( "output", "i" ) ),
+			],
+			output = "output"
+		) )
+
+		self.assertFalse( e.hasDeformation() )
 
 if __name__ == "__main__":
 	unittest.main()

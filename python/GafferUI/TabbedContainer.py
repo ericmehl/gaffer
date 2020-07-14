@@ -46,7 +46,7 @@ from Qt import QtWidgets
 
 class TabbedContainer( GafferUI.ContainerWidget ) :
 
-	__DragState = IECore.Enum.create( "None", "Waiting", "Active" )
+	__DragState = IECore.Enum.create( "None_", "Waiting", "Active" )
 	__palette = None
 
 	def __init__( self, cornerWidget=None, **kw ) :
@@ -59,7 +59,7 @@ class TabbedContainer( GafferUI.ContainerWidget ) :
 		self.__tabBar.dragEnterSignal().connect( Gaffer.WeakMethod( self.__tabBarDragEnter ), scoped = False )
 		self.__tabBar.dragMoveSignal().connect( Gaffer.WeakMethod( self.__tabBarDragMove ), scoped = False )
 		self.__tabBar.dragLeaveSignal().connect( Gaffer.WeakMethod( self.__tabBarDragLeave ), scoped = False )
-		self.__tabBarDragState = self.__DragState.None
+		self.__tabBarDragState = self.__DragState.None_
 
 		# See comments in Button.py
 		if TabbedContainer.__palette is None :
@@ -173,8 +173,11 @@ class TabbedContainer( GafferUI.ContainerWidget ) :
 			self._qtWidget().setCornerWidget( None )
 			self.__cornerWidget = None
 		else :
-			self._qtWidget().removeTab( self.__widgets.index( child ) )
+			# We must remove the child from __widgets before the tab, otherwise
+			# currentChangedSignal will be emit with the old widget.
+			removalIndex = self.__widgets.index( child )
 			self.__widgets.remove( child )
+			self._qtWidget().removeTab( removalIndex )
 
 		child._qtWidget().setParent( None )
 		child._applyVisibility()
@@ -231,7 +234,8 @@ class TabbedContainer( GafferUI.ContainerWidget ) :
 
 	def __currentChanged( self, index ) :
 
-		self.__currentChangedSignal( self, self[index] )
+		current = self[index] if len(self) else None
+		self.__currentChangedSignal( self, current )
 
 	def __tabBarDragEnter( self, widget, event ) :
 
@@ -250,7 +254,7 @@ class TabbedContainer( GafferUI.ContainerWidget ) :
 
 	def __tabBarDragLeave( self, widget, event ) :
 
-		self.__tabBarDragState = self.__DragState.None
+		self.__tabBarDragState = self.__DragState.None_
 		return True
 
 	def __tabBarDragActivate( self ) :

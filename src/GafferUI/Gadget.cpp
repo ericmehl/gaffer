@@ -54,7 +54,7 @@ using namespace GafferUI;
 using namespace Imath;
 using namespace std;
 
-IE_CORE_DEFINERUNTIMETYPED( Gadget );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Gadget );
 
 Gadget::Gadget( const std::string &name )
 	:	GraphComponent( name ), m_style( nullptr ), m_visible( true ), m_enabled( true ), m_highlighted( false ), m_toolTip( "" )
@@ -452,9 +452,14 @@ Gadget::KeySignal &Gadget::keyReleaseSignal()
 
 Gadget::IdleSignal &Gadget::idleSignal()
 {
-	static IdleSignal g_idleSignal;
+	// Deliberately leaking here, as the alternative is for `g_idleSignal`
+	// to be destroyed during shutdown when static destructors are run.
+	// Static destructors are run _after_ Python has shut down, so we are
+	// not in a position to destroy any slots that might still be holding
+	// on to Python objects.
+	static IdleSignal *g_idleSignal = new IdleSignal;
 	idleSignalAccessedSignal()();
-	return g_idleSignal;
+	return *g_idleSignal;
 }
 
 Gadget::IdleSignal &Gadget::idleSignalAccessedSignal()

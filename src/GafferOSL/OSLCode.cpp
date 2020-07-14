@@ -347,7 +347,7 @@ InternedString CompileProcess::g_type( "oslCode:compile" );
 // OSLCode
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( OSLCode );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( OSLCode );
 
 size_t OSLCode::g_firstPlugIndex;
 
@@ -362,7 +362,7 @@ OSLCode::OSLCode( const std::string &name )
 	/// \todo Rejig the NetworkGenerator so there is a hook for us to do our
 	/// code generation on demand at network generation time, and allow inputs
 	/// again.
-	addChild( new StringPlug( "code", Plug::In, "", Plug::Default & ~Plug::AcceptsInputs ) );
+	addChild( new StringPlug( "code", Plug::In, "", Plug::Default & ~Plug::AcceptsInputs, IECore::StringAlgo::NoSubstitutions ) );
 
 	// Must disable serialisation on the name because the GAFFEROSL_CODE_DIRECTORY
 	// might not be the same when we come to be loaded again.

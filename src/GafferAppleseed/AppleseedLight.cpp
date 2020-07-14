@@ -43,10 +43,10 @@
 
 #include "IECore/Exception.h"
 
+#include "foundation/core/version.h"
 #include "renderer/api/edf.h"
 #include "renderer/api/environmentedf.h"
 #include "renderer/api/light.h"
-#include "renderer/api/version.h"
 
 #include "boost/format.hpp"
 
@@ -56,7 +56,7 @@ using namespace GafferAppleseed;
 namespace asf = foundation;
 namespace asr = renderer;
 
-IE_CORE_DEFINERUNTIMETYPED( AppleseedLight );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( AppleseedLight );
 
 size_t AppleseedLight::g_firstPlugIndex = 0;
 
@@ -114,7 +114,7 @@ void AppleseedLight::hashLight( const Gaffer::Context *context, IECore::MurmurHa
 	modelPlug()->hash( h );
 }
 
-IECoreScene::ShaderNetworkPtr AppleseedLight::computeLight( const Gaffer::Context *context ) const
+IECoreScene::ConstShaderNetworkPtr AppleseedLight::computeLight( const Gaffer::Context *context ) const
 {
 	IECoreScene::ShaderPtr shader = new IECoreScene::Shader( modelPlug()->getValue(), "as:light" );
 	for( InputValuePlugIterator it( parametersPlug() ); !it.done(); ++it )

@@ -34,8 +34,9 @@
 #
 ##########################################################################
 
-from LRUCacheTest import LRUCacheTest
-from TaskMutexTest import TaskMutexTest
+from .LRUCacheTest import LRUCacheTest
+from .TaskMutexTest import TaskMutexTest
+from .MessagesTest import MessagesTest
 
 if __name__ == "__main__":
 	import unittest

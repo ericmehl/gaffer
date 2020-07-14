@@ -179,12 +179,12 @@ class Warp::EngineData : public Data
 // Warp
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( Warp );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Warp );
 
 size_t Warp::g_firstPlugIndex = 0;
 
 Warp::Warp( const std::string &name )
-	:	ImageProcessor( name )
+	:	FlatImageProcessor( name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 
@@ -257,7 +257,7 @@ const CompoundObjectPlug *Warp::sampleRegionsPlug() const
 
 void Warp::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
 {
-	ImageProcessor::affects( input, outputs );
+	FlatImageProcessor::affects( input, outputs );
 
 	// TypeId comparison is necessary to avoid calling pure virtual
 	// methods below if we're called before being fully constructed.
@@ -305,6 +305,7 @@ void Warp::hash( const Gaffer::ValuePlug *output, const Gaffer::Context *context
 		ImagePlug::ChannelDataScope tileScope( context );
 
 		V2i tileOrigin = context->get<V2i>( ImagePlug::tileOriginContextName );
+		h.append( tileOrigin );
 		enginePlug()->hash( h );
 
 		bool useDerivatives = useDerivativesPlug()->getValue();
@@ -332,7 +333,7 @@ void Warp::hash( const Gaffer::ValuePlug *output, const Gaffer::Context *context
 		filterPlug()->hash( h );
 	}
 
-	ImageProcessor::hash( output, context, h );
+	FlatImageProcessor::hash( output, context, h );
 }
 
 void Warp::compute( Gaffer::ValuePlug *output, const Gaffer::Context *context ) const
@@ -588,7 +589,7 @@ void Warp::compute( Gaffer::ValuePlug *output, const Gaffer::Context *context ) 
 		return;
 	}
 
-	ImageProcessor::compute( output, context );
+	FlatImageProcessor::compute( output, context );
 }
 
 void Warp::hashChannelData( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const
@@ -609,7 +610,7 @@ void Warp::hashChannelData( const GafferImage::ImagePlug *parent, const Gaffer::
 		return;
 	}
 
-	ImageProcessor::hashChannelData( parent, context, h );
+	FlatImageProcessor::hashChannelData( parent, context, h );
 
 	h.append( sampleRegionsHash );
 
@@ -628,7 +629,6 @@ void Warp::hashChannelData( const GafferImage::ImagePlug *parent, const Gaffer::
 		outPlug()->dataWindowPlug()->hash( h );
 	}
 }
-
 
 IECore::ConstFloatVectorDataPtr Warp::computeChannelData( const std::string &channelName, const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const
 {
@@ -702,6 +702,6 @@ bool  Warp::affectsEngine( const Gaffer::Plug *input ) const
 
 void Warp::hashEngine( const Imath::V2i &tileOrigin, const Gaffer::Context *context, IECore::MurmurHash &h ) const
 {
-	ImageProcessor::hash( enginePlug(), context, h );
+	FlatImageProcessor::hash( enginePlug(), context, h );
 }
 

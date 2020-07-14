@@ -49,7 +49,7 @@ class GAFFERIMAGE_API VectorWarp : public Warp
 		VectorWarp( const std::string &name=defaultName<Warp>() );
 		~VectorWarp() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::VectorWarp, VectorWarpTypeId, Warp );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::VectorWarp, VectorWarpTypeId, Warp );
 
 		ImagePlug *vectorPlug();
 		const ImagePlug *vectorPlug() const;
@@ -72,11 +72,17 @@ class GAFFERIMAGE_API VectorWarp : public Warp
 		Gaffer::IntPlug *vectorUnitsPlug();
 		const Gaffer::IntPlug *vectorUnitsPlug() const;
 
+		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
+
 	protected :
 
 		bool affectsEngine( const Gaffer::Plug *input ) const override;
 		void hashEngine( const Imath::V2i &tileOrigin, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		const Engine *computeEngine( const Imath::V2i &tileOrigin, const Gaffer::Context *context ) const override;
+
+		void hashDeep( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
+		bool computeDeep( const Gaffer::Context *context, const ImagePlug *parent ) const override;
+
 
 	private :
 

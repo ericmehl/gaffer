@@ -51,6 +51,7 @@ _primitiveVariableNamesOptions = {
 	"N" : IECore.V3fData( imath.V3f(0), IECore.GeometricData.Interpretation.Normal ),
 	"velocity" : IECore.V3fData( imath.V3f(0), IECore.GeometricData.Interpretation.Vector ),
 	"uv" : IECore.V3fData( imath.V3f(0), IECore.GeometricData.Interpretation.UV ),
+	"scale" : IECore.V3fData( imath.V3f(1) ),
 	"width" : IECore.FloatData(),
 	"Cs" : IECore.Color3fData(),
 	"customInt" : IECore.IntData(),
@@ -146,12 +147,12 @@ class _PrimitiveVariablesFooter( GafferUI.PlugValueWidget ) :
 		if defaultData == None:
 			plugName = "closure"
 			name = ""
-			valuePlug = GafferOSL.ClosurePlug( "value", Gaffer.Plug.Direction.In, Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+			valuePlug = GafferOSL.ClosurePlug( "value" )
 		else:
 			plugName = "primitiveVariable"
-			valuePlug = Gaffer.PlugAlgo.createPlugFromData( "value", Gaffer.Plug.Direction.In, Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic, defaultData )
+			valuePlug = Gaffer.PlugAlgo.createPlugFromData( "value", Gaffer.Plug.Direction.In, Gaffer.Plug.Flags.Default, defaultData )
 
-		plug = Gaffer.NameValuePlug( name, valuePlug, True, plugName )
+		plug = Gaffer.NameValuePlug( name, valuePlug, True, plugName, Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 
 		with Gaffer.UndoScope( self.getPlug().ancestor( Gaffer.ScriptNode ) ) :
 			self.getPlug().addChild( plug )
@@ -174,6 +175,12 @@ Gaffer.Metadata.registerNode(
 	"plugAdderOptions", IECore.CompoundData( _primitiveVariableNamesOptions ),
 
 	plugs = {
+
+		"adjustBounds" : [
+
+			"layout:index", -2,
+
+		],
 
 		"primitiveVariables" : [
 
@@ -201,9 +208,13 @@ Gaffer.Metadata.registerNode(
 
 			# Add + button for showing and hiding parameters in the GraphEditor
 			"noduleLayout:customGadget:addButton:gadgetType", "GafferOSLUI.OSLObjectUI.PlugAdder",
+
+			"layout:index", -1,
+
 		],
 		"primitiveVariables.*" : [
 
+			"deletable", True,
 			# Although the parameters plug is positioned
 			# as we want above, we must also register
 			# appropriate values for each individual parameter,
@@ -237,7 +248,7 @@ Gaffer.Metadata.registerNode(
 			"description",
 			"""
 			The interpolation type of the primitive variables created by this node.
-			For instance, Uniform interpolation means that the shader is run once per face on a mesh, allowing it to output primitive variables with a value per face. 
+			For instance, Uniform interpolation means that the shader is run once per face on a mesh, allowing it to output primitive variables with a value per face.
 			All non-constant input primitive variables are resampled to match the selected interpolation so that they can be accessed from the shader.
 			""",
 
@@ -270,40 +281,7 @@ Gaffer.Metadata.registerNode(
 			""",
 
 		],
+
 	}
 
 )
-
-#########################################################################
-# primitiveVariable plug menu
-##########################################################################
-
-def __deletePlug( plug ) :
-
-	with Gaffer.UndoScope( plug.ancestor( Gaffer.ScriptNode ) ) :
-		plug.parent().removeChild( plug )
-
-def __plugPopupMenu( menuDefinition, plugValueWidget ) :
-
-	plug = plugValueWidget.getPlug()
-	if not isinstance( plug.node(), GafferOSL.OSLObject ):
-		return
-
-	relativeName = plug.relativeName( plug.node() ).split( "." )
-	if relativeName[0] != "primitiveVariables" or len( relativeName ) < 2:
-		return
-
-	primVarPlug = plug.node()["primitiveVariables"][relativeName[1]]
-
-	menuDefinition.append( "/DeleteDivider", { "divider" : True } )
-	menuDefinition.append(
-		"/Delete",
-		{
-			"command" : functools.partial( __deletePlug, primVarPlug ),
-			"active" : not plugValueWidget.getReadOnly() and not Gaffer.MetadataAlgo.readOnly( primVarPlug ),
-		}
-	)
-
-GafferUI.PlugValueWidget.popupMenuSignal().connect( __plugPopupMenu, scoped = False )
-
-

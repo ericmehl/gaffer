@@ -42,13 +42,16 @@
 #include "GafferBindings/GraphComponentBinding.h"
 #include "GafferBindings/MetadataBinding.h"
 
+#include "Gaffer/ArrayPlug.h"
 #include "Gaffer/Context.h"
 #include "Gaffer/Plug.h"
+#include "Gaffer/Spreadsheet.h"
 
 #include "IECorePython/ScopedGILLock.h"
 
 #include "IECore/MessageHandler.h"
 
+#include "boost/algorithm/string.hpp"
 #include "boost/format.hpp"
 #include "boost/python/suite/indexing/container_utils.hpp"
 #include "boost/tokenizer.hpp"
@@ -57,6 +60,30 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferBindings;
 using namespace boost::python;
+
+//////////////////////////////////////////////////////////////////////////
+// Internal utilities
+//////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+// Where a parent has dynamically changing numbers of children,
+// and no meaning is attached to their names, we want to
+// access the children by index rather than name. This is faster
+// and more readable, and opens the possibility of omitting the
+// overhead of the names entirely one day.
+/// \todo Consider an official way for GraphComponents to opt in
+/// to this behaviour.
+bool keyedByIndex( const GraphComponent *parent )
+{
+	return
+		runTimeCast<const Spreadsheet::RowsPlug>( parent ) ||
+		runTimeCast<const ArrayPlug>( parent )
+	;
+}
+
+} // namespace
 
 //////////////////////////////////////////////////////////////////////////
 // Serialisation
@@ -208,14 +235,21 @@ std::string Serialisation::classPath( boost::python::object &object )
 
 	if( PyObject_HasAttrString( cls.ptr(), "__qualname__" ) )
 	{
-		// In Python 3, __qualname__ will give us a qualified name
-		// for a nested class, which is exactly what we want.
-		// See https://www.python.org/dev/peps/pep-3155.
-		//
-		// In the meantime we still support __qualname__ in Python
-		// 2, so that nested classes can provide it manually where
-		// necessary.
-		result += extract<std::string>( cls.attr( "__qualname__" ) );
+		// In Python 3, __qualname__ is automatically generated to give us
+		// a qualified name for a nested class - see https://www.python.org/dev/peps/pep-3155.
+		// In Python 2, it may be provided manually by bindings as necessary.
+		std::string qualName = extract<std::string>( cls.attr( "__qualname__" ) );
+		// The automatically generated name may contain a prefix made redundant
+		// by our `from .Foo import Foo` convention for building modules. Strip it.
+		const size_t dotPos = qualName.find( '.' );
+		if( dotPos != std::string::npos )
+		{
+			if( boost::ends_with( result, "." + qualName.substr( 0, dotPos ) + "." ) )
+			{
+				qualName.erase( 0, dotPos + 1 );
+			}
+		}
+		result += qualName;
 	}
 	else
 	{
@@ -251,11 +285,11 @@ void Serialisation::walk( const Gaffer::GraphComponent *parent, const std::strin
 		std::string childIdentifier;
 		if( parent == m_parent && childConstructor.size() && m_protectParentNamespace )
 		{
-			childIdentifier = "__children[\"" + child->getName().string() + "\"]";
+			childIdentifier = this->childIdentifier( "__children", it );
 		}
 		else
 		{
-			childIdentifier = parentIdentifier + "[\"" + child->getName().string() + "\"]";
+			childIdentifier = this->childIdentifier( parentIdentifier, it );
 		}
 
 		if( childConstructor.size() )
@@ -288,31 +322,85 @@ void Serialisation::walk( const Gaffer::GraphComponent *parent, const std::strin
 
 std::string Serialisation::identifier( const Gaffer::GraphComponent *graphComponent ) const
 {
-	std::string result;
-	while( graphComponent )
+	if( !graphComponent )
 	{
-		const GraphComponent *parent = graphComponent->parent();
-		if( parent == m_parent )
-		{
-			if( m_filter && !m_filter->contains( graphComponent ) )
-			{
-				return "";
-			}
-			const Serialiser *parentSerialiser = acquireSerialiser( parent );
-			if( m_protectParentNamespace && parentSerialiser->childNeedsConstruction( graphComponent, *this ) )
-			{
-				return "__children[\"" + graphComponent->getName().string() + "\"]" + result;
-			}
-			else
-			{
-				return m_parentName + "[\"" + graphComponent->getName().string() + "\"]" + result;
-			}
-		}
-		result = "[\"" + graphComponent->getName().string() + "\"]" + result;
-		graphComponent = parent;
+		return "";
 	}
 
-	return "";
+	std::string parentIdentifier;
+	const GraphComponent *parent = graphComponent->parent();
+	if( parent == m_parent )
+	{
+		if( m_filter && !m_filter->contains( graphComponent ) )
+		{
+			return "";
+		}
+		const Serialiser *parentSerialiser = acquireSerialiser( parent );
+		if( m_protectParentNamespace && parentSerialiser->childNeedsConstruction( graphComponent, *this ) )
+		{
+			parentIdentifier = "__children";
+		}
+		else
+		{
+			parentIdentifier = m_parentName;
+		}
+	}
+	else
+	{
+		parentIdentifier = identifier( parent );
+	}
+
+	return childIdentifier( parentIdentifier, graphComponent );
+}
+
+std::string Serialisation::childIdentifier( const std::string &parentIdentifier, const Gaffer::GraphComponent *child ) const
+{
+	if( parentIdentifier.empty() )
+	{
+		return "";
+	}
+
+	const GraphComponent *parent = child->parent();
+	std::string result = parentIdentifier;
+	if( keyedByIndex( parent ) )
+	{
+		result += "[";
+		result += boost::lexical_cast<std::string>(
+			std::find( parent->children().begin(), parent->children().end(), child ) - parent->children().begin()
+		);
+		result += "]";
+	}
+	else
+	{
+		result += "[\"";
+		result += child->getName().string();
+		result += "\"]";
+	}
+	return result;
+}
+
+std::string Serialisation::childIdentifier( const std::string &parentIdentifier, Gaffer::GraphComponent::ChildIterator child ) const
+{
+	if( parentIdentifier.empty() )
+	{
+		return "";
+	}
+
+	const GraphComponent *parent = (*child)->parent();
+	std::string result = parentIdentifier;
+	if( keyedByIndex( parent ) )
+	{
+		result += "[";
+		result += boost::lexical_cast<std::string>( child - parent->children().begin() );
+		result += "]";
+	}
+	else
+	{
+		result += "[\"";
+		result += (*child)->getName().string();
+		result += "\"]";
+	}
+	return result;
 }
 
 void Serialisation::registerSerialiser( IECore::TypeId targetType, SerialiserPtr serialiser )

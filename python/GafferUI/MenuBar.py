@@ -44,6 +44,8 @@ from Qt import QtCore
 from Qt import QtGui
 from Qt import QtWidgets
 
+import weakref
+
 class MenuBar( GafferUI.Widget ) :
 
 	def __init__( self, definition, **kw ) :
@@ -60,6 +62,21 @@ class MenuBar( GafferUI.Widget ) :
 		self.visibilityChangedSignal().connect( Gaffer.WeakMethod( self.__visibilityChanged ), scoped = False )
 		self.parentChangedSignal().connect( Gaffer.WeakMethod( self.__parentChanged ), scoped = False )
 		self.__setupShortcutEventFilter()
+
+	## Adds a listener to the supplied gaffer widget to action any menu items
+	# in response to keyboard shortcut events received by that widget.
+	# This can be useful to ensure secondary windows not in the hierarchy of
+	# the MenuBar's parent still cause associated actions to fire.
+	# If the widget already has a shortcut target for another MenuBar, this
+	# will be removed.
+	def addShortcutTarget( self, widget ) :
+
+		if not hasattr( widget, '_MenuBar__shortcutEventFilter' ) :
+			widget.__shortcutEventFilter = _ShortcutEventFilter( widget._qtWidget(), self )
+			widget._qtWidget().installEventFilter( widget.__shortcutEventFilter )
+
+		if widget.__shortcutEventFilter.getMenuBar() != self :
+			widget.__shortcutEventFilter.setMenuBar( self )
 
 	def __setattr__( self, key, value ) :
 
@@ -81,7 +98,11 @@ class MenuBar( GafferUI.Widget ) :
 					else :
 						subMenuDefinition = item.subMenu or IECore.MenuDefinition()
 
+					# Nasty workaround for https://github.com/GafferHQ/gaffer/issues/3651.
+					# Because we're splicing the definition, we need to propagate
+					# hasShortCuts as the definition it was on is lost here.
 					menu = GafferUI.Menu( subMenuDefinition, _qtParent=self._qtWidget() )
+					menu.__hasShortCuts = getattr( item, 'hasShortCuts', True )
 					menu._qtWidget().setTitle( name )
 					self._qtWidget().addMenu( menu._qtWidget() )
 					self.__subMenus.append( menu )
@@ -100,7 +121,7 @@ class MenuBar( GafferUI.Widget ) :
 		if isinstance( shortcutTarget.parent(), GafferUI.Window ) :
 			shortcutTarget = shortcutTarget.parent()
 
-		self.__shortcutEventFilter = _ShortcutEventFilter( self._qtWidget() )
+		self.__shortcutEventFilter = _ShortcutEventFilter( self._qtWidget(), self )
 		shortcutTarget._qtWidget().installEventFilter( self.__shortcutEventFilter )
 
 	def __visibilityChanged( self, widget ) :
@@ -125,10 +146,11 @@ class MenuBar( GafferUI.Widget ) :
 # shortcuts in order to defer to our own code here.
 class _ShortcutEventFilter( QtCore.QObject ) :
 
-	def __init__( self, parent ) :
+	def __init__( self, parent, menuBar ) :
 
 		QtCore.QObject.__init__( self, parent )
 
+		self.__menuBar = weakref.ref( menuBar )
 		self.__shortcutAction = None
 
 	def eventFilter( self, qObject, qEvent ) :
@@ -148,10 +170,13 @@ class _ShortcutEventFilter( QtCore.QObject ) :
 
 			self.__shortcutAction = None
 			keySequence = self.__keySequence( qEvent )
-			menuBar = GafferUI.Widget._owner( self.parent() )
+			menuBar = self.__menuBar()
 			for menu in menuBar._MenuBar__subMenus :
+				# We stashed this earlier when we spliced the single MenuDefinition
+				if not menu._MenuBar__hasShortCuts :
+					continue
 				if menu._qtWidget().isEmpty() :
-					menu._buildFully()
+					menu._buildFully( forShortCuts = True )
 				action = self.__matchingAction( keySequence, menu._qtWidget() )
 				if action is not None :
 					# Store for use in KeyPress
@@ -171,6 +196,14 @@ class _ShortcutEventFilter( QtCore.QObject ) :
 				return True
 
 		return QtCore.QObject.eventFilter( self, qObject, qEvent )
+
+	def setMenuBar( self, menuBar ) :
+
+		self.__menuBar = weakref.ref( menuBar )
+
+	def getMenuBar( self ) :
+
+		return self.__menuBar()
 
 	def __keySequence( self, keyEvent ) :
 

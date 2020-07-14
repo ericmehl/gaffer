@@ -36,6 +36,8 @@
 
 #include "GafferScene/Private/IECoreScenePreview/Renderer.h"
 
+#include "Gaffer/Private/IECorePreview/LRUCache.h"
+
 #include "GafferDelight/IECoreDelightPreview/NodeAlgo.h"
 #include "GafferDelight/IECoreDelightPreview/ParameterList.h"
 
@@ -43,7 +45,6 @@
 #include "IECoreScene/ShaderNetwork.h"
 #include "IECoreScene/ShaderNetworkAlgo.h"
 
-#include "IECore/LRUCache.h"
 #include "IECore/MessageHandler.h"
 #include "IECore/SearchPath.h"
 #include "IECore/SimpleTypedData.h"
@@ -120,7 +121,7 @@ std::string shaderCacheGetter( const std::string &shaderName, size_t &cost )
 	}
 }
 
-typedef IECore::LRUCache<std::string, std::string> ShaderSearchPathCache;
+typedef IECorePreview::LRUCache<std::string, std::string> ShaderSearchPathCache;
 ShaderSearchPathCache g_shaderSearchPathCache( shaderCacheGetter, 10000 );
 
 } // namespace
@@ -481,15 +482,36 @@ class ShaderCache : public IECore::RefCounted
 		}
 
 		// Can be called concurrently with other get() calls.
-		DelightShaderPtr get( const IECoreScene::ShaderNetwork *shader )
+		DelightShaderPtr get( const IECoreScene::ShaderNetwork *shader, const IECore::CompoundObject *attributes )
 		{
+			IECore::MurmurHash h;
+			IECore::MurmurHash hSubst;
+			if( shader )
+			{
+				h = shader->Object::hash();
+				if( attributes )
+				{
+					shader->hashSubstitutions( attributes, hSubst );
+					h.append( hSubst );
+				}
+			}
+
 			Cache::accessor a;
-			m_cache.insert( a, shader ? shader->Object::hash() : MurmurHash() );
+			m_cache.insert( a, h );
 			if( !a->second )
 			{
 				if( shader )
 				{
-					a->second = new DelightShader( m_context, shader, m_ownership );
+					if( hSubst != IECore::MurmurHash() )
+					{
+						IECoreScene::ShaderNetworkPtr substitutedShader = shader->copy();
+						substitutedShader->applySubstitutions( attributes );
+						a->second = new DelightShader( m_context, substitutedShader.get(), m_ownership );
+					}
+					else
+					{
+						a->second = new DelightShader( m_context, shader, m_ownership );
+					}
 				}
 				else
 				{
@@ -510,7 +532,7 @@ class ShaderCache : public IECore::RefCounted
 
 		DelightShaderPtr defaultSurface()
 		{
-			return get( nullptr );
+			return get( nullptr, nullptr );
 		}
 
 		// Must not be called concurrently with anything.
@@ -581,7 +603,7 @@ class DelightAttributes : public IECoreScenePreview::Renderer::AttributesInterfa
 				{
 					if( const ShaderNetwork *shader = reportedCast<const ShaderNetwork>( o, "attribute", name ) )
 					{
-						m_shader = shaderCache->get( shader );
+						m_shader = shaderCache->get( shader, attributes );
 					}
 					break;
 				}
@@ -963,9 +985,11 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 
 	public :
 
-		DelightRenderer( RenderType renderType, const std::string &fileName )
-			:	m_renderType( renderType ), m_frame( 1 ), m_oversampling( 9 )
+		DelightRenderer( RenderType renderType, const std::string &fileName, const IECore::MessageHandlerPtr &messageHandler )
+			:	m_renderType( renderType ), m_frame( 1 ), m_oversampling( 9 ), m_messageHandler( messageHandler )
 		{
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			vector<NSIParam_t> params;
 
 			const char *apistream = "apistream";
@@ -978,6 +1002,14 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 				};
 			}
 
+			if( messageHandler )
+			{
+				void *handler = reinterpret_cast<void *>( &DelightRenderer::nsiErrorHandler );
+				void *data = this;
+				params.push_back( { "errorhandler",	&handler, NSITypePointer, 0, 1 } );
+				params.push_back( { "errorhandlerdata",	&data, NSITypePointer, 0, 1 } );
+			}
+
 			m_context = NSIBegin( params.size(), params.data() );
 			m_instanceCache = new InstanceCache( m_context, ownership() );
 			m_attributesCache = new AttributesCache( m_context, ownership() );
@@ -987,6 +1019,8 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 
 		~DelightRenderer() override
 		{
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			// Delete nodes we own before we destroy context
 			stop();
 			m_attributesCache.reset();
@@ -1003,6 +1037,8 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 
 		void option( const IECore::InternedString &name, const IECore::Object *value ) override
 		{
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			if( name == g_frameOptionName )
 			{
 				m_frame = 1;
@@ -1094,6 +1130,8 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 
 		void output( const IECore::InternedString &name, const Output *output ) override
 		{
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			// 3Delight crashes if we don't stop the render before
 			// modifying the output chain.
 			stop();
@@ -1116,11 +1154,14 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 
 		Renderer::AttributesInterfacePtr attributes( const IECore::CompoundObject *attributes ) override
 		{
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
 			return m_attributesCache->get( attributes );
 		}
 
 		ObjectInterfacePtr camera( const std::string &name, const IECoreScene::Camera *camera, const AttributesInterface *attributes ) override
 		{
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			const string objectHandle = "camera:" + name;
 			if( !NodeAlgo::convert( camera, m_context, objectHandle.c_str() ) )
 			{
@@ -1164,6 +1205,13 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 
 		Renderer::ObjectInterfacePtr object( const std::string &name, const IECore::Object *object, const AttributesInterface *attributes ) override
 		{
+			if( !object )
+			{
+				return nullptr;
+			}
+
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			DelightHandleSharedPtr instance = m_instanceCache->get( object );
 			if( !instance )
 			{
@@ -1177,6 +1225,8 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 
 		ObjectInterfacePtr object( const std::string &name, const std::vector<const IECore::Object *> &samples, const std::vector<float> &times, const AttributesInterface *attributes ) override
 		{
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			DelightHandleSharedPtr instance = m_instanceCache->get( samples, times );
 			if( !instance )
 			{
@@ -1190,6 +1240,8 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 
 		void render() override
 		{
+			const IECore::MessageHandler::Scope s( m_messageHandler.get() );
+
 			m_instanceCache->clearUnused();
 			m_attributesCache->clearUnused();
 
@@ -1432,10 +1484,29 @@ class DelightRenderer final : public IECoreScenePreview::Renderer
 		DelightHandle m_screen;
 		DelightHandle m_defaultCamera;
 
+		IECore::MessageHandlerPtr m_messageHandler;
+		static const std::vector<IECore::MessageHandler::Level> g_ieMsgLevels;
+
+		static void nsiErrorHandler( void *userdata, int level, int code, const char *message )
+		{
+			static_cast<DelightRenderer *>(userdata)->m_messageHandler->handle(
+				g_ieMsgLevels[ min( level, 3 ) ],
+				"3Delight",
+				message
+			);
+		}
+
 		// Registration with factory
 
 		static Renderer::TypeDescription<DelightRenderer> g_typeDescription;
 
+};
+
+const std::vector<IECore::MessageHandler::Level> DelightRenderer::g_ieMsgLevels = {
+	IECore::MessageHandler::Level::Debug,
+	IECore::MessageHandler::Level::Info,
+	IECore::MessageHandler::Level::Warning,
+	IECore::MessageHandler::Level::Error
 };
 
 IECoreScenePreview::Renderer::TypeDescription<DelightRenderer> DelightRenderer::g_typeDescription( "3Delight" );

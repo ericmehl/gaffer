@@ -34,8 +34,9 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferSceneUI/LightFilterVisualiser.h"
 #include "GafferSceneUI/StandardLightVisualiser.h"
+
+#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
 
 #include "Gaffer/Metadata.h"
 
@@ -54,6 +55,7 @@ using namespace Imath;
 using namespace IECore;
 using namespace IECoreScene;
 using namespace IECoreGL;
+using namespace IECoreGLPreview;
 using namespace GafferSceneUI;
 
 namespace
@@ -155,7 +157,7 @@ class BarndoorVisualiser final : public LightFilterVisualiser
 		BarndoorVisualiser();
 		~BarndoorVisualiser() override;
 
-		IECoreGL::ConstRenderablePtr visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
+		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
 
 	protected :
 
@@ -176,7 +178,7 @@ BarndoorVisualiser::~BarndoorVisualiser()
 {
 }
 
-IECoreGL::ConstRenderablePtr BarndoorVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
+Visualisations BarndoorVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
 {
 	IECoreGL::GroupPtr result = new IECoreGL::Group();
 
@@ -216,9 +218,10 @@ IECoreGL::ConstRenderablePtr BarndoorVisualiser::visualise( const IECore::Intern
 
 		float innerAngle;
 		float coneAngle;
+		float radius;
 		float lensRadius;
 
-		StandardLightVisualiser::spotlightParameters( "ai:light", lightShaderNetwork, innerAngle, coneAngle, lensRadius );
+		StandardLightVisualiser::spotlightParameters( "ai:light", lightShaderNetwork, innerAngle, coneAngle, radius, lensRadius );
 
 		const float halfAngle = 0.5 * M_PI * coneAngle / 180.0;
 		const float baseRadius = sin( halfAngle ) + lensRadius;
@@ -230,7 +233,8 @@ IECoreGL::ConstRenderablePtr BarndoorVisualiser::visualise( const IECore::Intern
 		result->setTransform( barndoorTrans );
 	}
 
-	return result;
+	return { Visualisation::createOrnament( result, false ) };
+
 }
 
 } // namespace

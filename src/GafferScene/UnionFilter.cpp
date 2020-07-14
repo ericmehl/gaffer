@@ -42,7 +42,7 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;
 
-IE_CORE_DEFINERUNTIMETYPED( UnionFilter );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( UnionFilter );
 
 UnionFilter::UnionFilter( const std::string &name )
 	:	FilterProcessor( name, 1 )
@@ -55,7 +55,7 @@ UnionFilter::~UnionFilter()
 
 void UnionFilter::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
 {
-	Filter::affects( input, outputs );
+	FilterProcessor::affects( input, outputs );
 
 	if( input->parent<ArrayPlug>() == inPlugs() )
 	{

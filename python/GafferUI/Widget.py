@@ -38,13 +38,14 @@
 import weakref
 import inspect
 import warnings
+import six
 import imath
 
 import IECore
 
 import Gaffer
 import GafferUI
-from _StyleSheet import _styleSheet
+from ._StyleSheet import _styleSheet
 
 from Qt import QtCore
 from Qt import QtGui
@@ -154,24 +155,24 @@ class Widget( Gaffer.Trackable ) :
 
 		self._keyPressSignal = None
 		self._keyReleaseSignal = None
- 		self._buttonPressSignal = None
- 		self._buttonReleaseSignal = None
-  		self._buttonDoubleClickSignal = None
+		self._buttonPressSignal = None
+		self._buttonReleaseSignal = None
+		self._buttonDoubleClickSignal = None
 		self._mouseMoveSignal = None
- 		self._enterSignal = None
- 		self._leaveSignal = None
- 		self._dragBeginSignal = None
- 		self._dragEnterSignal = None
- 		self._dragMoveSignal = None
- 		self._dragLeaveSignal = None
- 		self._dropSignal = None
- 		self._dragEndSignal = None
- 		self._wheelSignal = None
- 		self._visibilityChangedSignal = None
- 		self._contextMenuSignal = None
- 		self._parentChangedSignal = None
+		self._enterSignal = None
+		self._leaveSignal = None
+		self._dragBeginSignal = None
+		self._dragEnterSignal = None
+		self._dragMoveSignal = None
+		self._dragLeaveSignal = None
+		self._dropSignal = None
+		self._dragEndSignal = None
+		self._wheelSignal = None
+		self._visibilityChangedSignal = None
+		self._contextMenuSignal = None
+		self._parentChangedSignal = None
 
- 		self.__visible = not isinstance( self, GafferUI.Window )
+		self.__visible = not isinstance( self, GafferUI.Window )
 
 		# perform automatic parenting if necessary. we don't want to do this
 		# for menus, because they don't have the same parenting semantics. if other
@@ -584,7 +585,7 @@ class Widget( Gaffer.Trackable ) :
 	# is called.
 	def setToolTip( self, toolTip ) :
 
-		assert( isinstance( toolTip, basestring ) )
+		assert( isinstance( toolTip, six.string_types ) )
 
 		self._qtWidget().setToolTip( toolTip )
 
@@ -709,7 +710,7 @@ class Widget( Gaffer.Trackable ) :
 	def __initNesting() :
 
 		widgetsInInit = set()
-		frame = inspect.currentframe( 1 )
+		frame = inspect.currentframe()
 		while frame :
 			if frame.f_code.co_name=="__init__" :
 				frameSelf = frame.f_locals[frame.f_code.co_varnames[0]]
@@ -720,24 +721,6 @@ class Widget( Gaffer.Trackable ) :
 		return len( widgetsInInit )
 
 	__parentStack = []
-
-	## We detect the use of deprecated keyword arguments in Widget.__init__,
-	# but the actual call site using those arguments can be at an arbitrary
-	# distance away on the stack - this function finds the location so we
-	# can provide an accurate error.
-	def __keywordArgumentDeprecationNesting( self ) :
-
-		frame = inspect.currentframe( 1 )
-		result = 1
-		frameIndex = 1
-		while frame :
-			if frame.f_code.co_name=="__init__" :
-				if frame.f_locals[frame.f_code.co_varnames[0]] is self :
-					result = frameIndex
-			frame = frame.f_back
-			frameIndex += 1
-
-		return result + 1
 
 	## Converts a Qt key code into a string
 	@classmethod
@@ -758,7 +741,7 @@ class Widget( Gaffer.Trackable ) :
 	@staticmethod
 	def _buttons( qtButtons ) :
 
-		result = GafferUI.ButtonEvent.Buttons.None
+		result = GafferUI.ButtonEvent.Buttons.None_
 		if qtButtons & QtCore.Qt.LeftButton :
 			result |= GafferUI.ButtonEvent.Buttons.Left
 		if qtButtons & QtCore.Qt.MidButton :
@@ -772,7 +755,7 @@ class Widget( Gaffer.Trackable ) :
 	@staticmethod
 	def _modifiers( qtModifiers ) :
 
-		modifiers = GafferUI.ModifiableEvent.Modifiers.None
+		modifiers = GafferUI.ModifiableEvent.Modifiers.None_
 		if qtModifiers & QtCore.Qt.ShiftModifier :
 			modifiers = modifiers | GafferUI.ModifiableEvent.Modifiers.Shift
 		if qtModifiers & QtCore.Qt.ControlModifier :
@@ -1023,6 +1006,13 @@ class _EventFilter( QtCore.QObject ) :
 
 	def __keyRelease( self, qObject, qEvent ) :
 
+		# When a key is held, the following events are observed:
+		#   MacOS: p p p p r
+		#   Linux: p r p r p r p r
+		# We conform linux to match Mac as it feels more intuitive.
+		if qEvent.isAutoRepeat() :
+			return True
+
 		if self.__updateDragModifiers( qObject, qEvent ) :
 			return True
 
@@ -1144,7 +1134,7 @@ class _EventFilter( QtCore.QObject ) :
 		if widget._wheelSignal is not None :
 
 			event = GafferUI.ButtonEvent(
-				GafferUI.ButtonEvent.Buttons.None,
+				GafferUI.ButtonEvent.Buttons.None_,
 				Widget._buttons( qEvent.buttons() ),
 				self.__positionToLine( qEvent.pos() ),
 				qEvent.delta() / 8.0,

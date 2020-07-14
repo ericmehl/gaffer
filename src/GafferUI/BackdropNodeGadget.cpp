@@ -67,11 +67,20 @@ namespace
 void titleAndDescriptionFromPlugs( const StringPlug *titlePlug, const StringPlug *descriptionPlug,
 	std::string &title, std::string &description )
 {
+	const auto script = titlePlug->ancestor<ScriptNode>();
+	const Context *context = script ? script->context() : nullptr;
+	Context::Scope scope( context );
+
 	title = "ERROR : Getting title";
 	try
 	{
 		title = titlePlug->getValue();
 		description = descriptionPlug->getValue();
+		if( context )
+		{
+			title = context->substitute( title );
+			description = context->substitute( description );
+		}
 	}
 	catch( const std::exception &e )
 	{
@@ -79,13 +88,14 @@ void titleAndDescriptionFromPlugs( const StringPlug *titlePlug, const StringPlug
 	}
 }
 
+const float g_margin = 3.0f;
+IECore::InternedString g_boundPlugName( "__uiBound" );
+IECore::InternedString g_colorKey( "nodeGadget:color" );
+Box2f g_defaultBound( V2f( -10 ), V2f( 10 ) );
+
 } // namespace
 
-IE_CORE_DEFINERUNTIMETYPED( BackdropNodeGadget );
-
-static const float g_margin = 3.0f;
-static IECore::InternedString g_boundPlugName( "__uiBound" );
-static IECore::InternedString g_colorKey( "nodeGadget:color" );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( BackdropNodeGadget );
 
 BackdropNodeGadget::NodeGadgetTypeDescription<BackdropNodeGadget> BackdropNodeGadget::g_nodeGadgetTypeDescription( Gaffer::Backdrop::staticTypeId() );
 
@@ -97,19 +107,13 @@ BackdropNodeGadget::BackdropNodeGadget( Gaffer::NodePtr node )
 		throw Exception( "BackdropNodeGadget requires a Backdrop" );
 	}
 
-	if( !node->getChild<Box2fPlug>( g_boundPlugName ) )
+	node->plugDirtiedSignal().connect( boost::bind( &BackdropNodeGadget::plugDirtied, this, ::_1 ) );
+	if( auto *script = node->scriptNode() )
 	{
-		node->addChild(
-			new Box2fPlug(
-				g_boundPlugName,
-				Plug::In,
-				Box2f( V2f( -10 ), V2f( 10 ) ),
-				Plug::Default | Plug::Dynamic
-			)
+		script->context()->changedSignal().connect(
+			boost::bind( &BackdropNodeGadget::contextChanged, this )
 		);
 	}
-
-	node->plugDirtiedSignal().connect( boost::bind( &BackdropNodeGadget::plugDirtied, this, ::_1 ) );
 
 	mouseMoveSignal().connect( boost::bind( &BackdropNodeGadget::mouseMove, this, ::_1, ::_2 ) );
 	buttonPressSignal().connect( boost::bind( &BackdropNodeGadget::buttonPress, this, ::_1, ::_2 ) );
@@ -161,6 +165,22 @@ std::string BackdropNodeGadget::getToolTip( const IECore::LineSegment3f &line ) 
 	return result;
 }
 
+void BackdropNodeGadget::setBound( const Imath::Box2f &bound )
+{
+	acquireBoundPlug()->setValue( bound );
+}
+
+Imath::Box2f BackdropNodeGadget::getBound() const
+{
+	// Cast is OK because we won't make the plug if it's not there,
+	// and we don't edit the plug at all if it is.
+	if( auto p = const_cast<BackdropNodeGadget *>( this )->acquireBoundPlug( /* createIfMissing = */ false ) )
+	{
+		return p->getValue();
+	}
+	return g_defaultBound;
+}
+
 void BackdropNodeGadget::frame( const std::vector<Gaffer::Node *> &nodes )
 {
 	GraphGadget *graph = ancestor<GraphGadget>();
@@ -188,7 +208,7 @@ void BackdropNodeGadget::frame( const std::vector<Gaffer::Node *> &nodes )
 
 	V2f s( b.size().x / 2.0f, b.size().y / 2.0f );
 
-	boundPlug()->setValue(
+	setBound(
 		Box2f(
 			V2f( -s ) - V2f( g_margin ),
 			V2f( s ) + V2f( g_margin + 2.0f * g_margin )
@@ -228,7 +248,7 @@ void BackdropNodeGadget::framed( std::vector<Gaffer::Node *> &nodes ) const
 
 Imath::Box3f BackdropNodeGadget::bound() const
 {
-	Box2f b = boundPlug()->getValue();
+	const Box2f b = getBound();
 	return Box3f( V3f( b.min.x, b.min.y, 0.0f ), V3f( b.max.x, b.max.y, 0.0f ) );
 }
 
@@ -240,7 +260,7 @@ void BackdropNodeGadget::doRenderLayer( Layer layer, const Style *style ) const
 	}
 
 	// this is our bound in gadget space
-	Box2f bound = boundPlug()->getValue();
+	Box2f bound = getBound();
 
 	// but because we're going to draw our contents at an arbitrary scale,
 	// we need to compute a modified bound which will be in the right place
@@ -316,6 +336,12 @@ void BackdropNodeGadget::doRenderLayer( Layer layer, const Style *style ) const
 	glPopMatrix();
 }
 
+void BackdropNodeGadget::contextChanged()
+{
+	// Title and description may depend on the context
+	requestRender();
+}
+
 void BackdropNodeGadget::plugDirtied( const Gaffer::Plug *plug )
 {
 	const Backdrop *backdrop = static_cast<const Backdrop *>( node() );
@@ -323,7 +349,7 @@ void BackdropNodeGadget::plugDirtied( const Gaffer::Plug *plug )
 		plug == backdrop->titlePlug() ||
 		plug == backdrop->scalePlug() ||
 		plug == backdrop->descriptionPlug() ||
-		plug == boundPlug()
+		plug == acquireBoundPlug( /* createIfMissing = */ false )
 	)
 	{
 		requestRender();
@@ -401,7 +427,7 @@ bool BackdropNodeGadget::dragEnter( Gadget *gadget, const DragDropEvent &event )
 
 bool BackdropNodeGadget::dragMove( Gadget *gadget, const DragDropEvent &event )
 {
-	Box2f b = boundPlug()->getValue();
+	Box2f b = getBound();
 
 	if( m_horizontalDragEdge == -1 )
 	{
@@ -423,7 +449,7 @@ bool BackdropNodeGadget::dragMove( Gadget *gadget, const DragDropEvent &event )
 
 	const std::string mergeGroup = boost::str( boost::format( "BackdropNodeGadget%1%%2%" ) % this % m_mergeGroupId );
 	UndoScope undoScope( node()->scriptNode(), UndoScope::Enabled, mergeGroup );
-	boundPlug()->setValue( b );
+	setBound( b );
 	return true;
 }
 
@@ -456,7 +482,7 @@ void BackdropNodeGadget::hoveredEdges( const ButtonEvent &event, int &horizontal
 	const Backdrop *backdrop = static_cast<const Backdrop *>( node() );
 	const float scale = backdrop->scalePlug()->getValue();
 
-	const Box2f b = boundPlug()->getValue();
+	const Box2f b = getBound();
 
 	const V3f &p = event.line.p0;
 	const float width = hoverWidth() * 2.0f;
@@ -482,14 +508,22 @@ void BackdropNodeGadget::hoveredEdges( const ButtonEvent &event, int &horizontal
 	}
 }
 
-Gaffer::Box2fPlug *BackdropNodeGadget::boundPlug()
+Gaffer::Box2fPlug *BackdropNodeGadget::acquireBoundPlug( bool createIfMissing )
 {
-	return node()->getChild<Box2fPlug>( g_boundPlugName );
-}
+	auto existingPlug = node()->getChild<Box2fPlug>( g_boundPlugName );
+	if( existingPlug || !createIfMissing )
+	{
+		return existingPlug;
+	}
 
-const Gaffer::Box2fPlug *BackdropNodeGadget::boundPlug() const
-{
-	return node()->getChild<Box2fPlug>( g_boundPlugName );
+	Box2fPlugPtr newPlug = new Box2fPlug(
+		g_boundPlugName,
+		Plug::In,
+		g_defaultBound,
+		Plug::Default | Plug::Dynamic
+	);
+	node()->addChild( newPlug );
+	return newPlug.get();
 }
 
 void BackdropNodeGadget::nodeMetadataChanged( IECore::TypeId nodeTypeId, IECore::InternedString key, const Gaffer::Node *node )

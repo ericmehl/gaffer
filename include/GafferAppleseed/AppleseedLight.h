@@ -52,7 +52,7 @@ class GAFFERAPPLESEED_API AppleseedLight : public GafferScene::Light
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferAppleseed::AppleseedLight, AppleseedLightTypeId, GafferScene::Light );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferAppleseed::AppleseedLight, AppleseedLightTypeId, GafferScene::Light );
 
 		AppleseedLight( const std::string &name=defaultName<AppleseedLight>() );
 		~AppleseedLight() override;
@@ -62,7 +62,7 @@ class GAFFERAPPLESEED_API AppleseedLight : public GafferScene::Light
 	protected :
 
 		void hashLight( const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
-		IECoreScene::ShaderNetworkPtr computeLight( const Gaffer::Context *context ) const override;
+		IECoreScene::ConstShaderNetworkPtr computeLight( const Gaffer::Context *context ) const override;
 
 	private :
 

@@ -53,9 +53,12 @@ class GAFFERUI_API BackdropNodeGadget : public NodeGadget
 		BackdropNodeGadget( Gaffer::NodePtr node );
 		~BackdropNodeGadget() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::BackdropNodeGadget, BackdropNodeGadgetTypeId, NodeGadget );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::BackdropNodeGadget, BackdropNodeGadgetTypeId, NodeGadget );
 
 		std::string getToolTip( const IECore::LineSegment3f &line ) const override;
+
+		void setBound( const Imath::Box2f &bound );
+		Imath::Box2f getBound() const;
 
 		/// Resizes the backdrop to frame the specified nodes.
 		/// \undoable
@@ -71,6 +74,7 @@ class GAFFERUI_API BackdropNodeGadget : public NodeGadget
 
 	private :
 
+		void contextChanged();
 		void plugDirtied( const Gaffer::Plug *plug );
 
 		bool mouseMove( Gadget *gadget, const ButtonEvent &event );
@@ -91,8 +95,7 @@ class GAFFERUI_API BackdropNodeGadget : public NodeGadget
 
 		bool updateUserColor();
 
-		Gaffer::Box2fPlug *boundPlug();
-		const Gaffer::Box2fPlug *boundPlug() const;
+		Gaffer::Box2fPlug *acquireBoundPlug( bool createIfMissing = true );
 
 		bool m_hovered;
 		int m_horizontalDragEdge;

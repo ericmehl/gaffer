@@ -68,7 +68,7 @@ static OCIOMutex g_ocioMutex;
 
 } // namespace
 
-IE_CORE_DEFINERUNTIMETYPED( OpenColorIOTransform );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( OpenColorIOTransform );
 
 size_t OpenColorIOTransform::g_firstPlugIndex = 0;
 
@@ -220,8 +220,8 @@ void OpenColorIOTransform::processColorData( const Gaffer::Context *context, IEC
 		g->baseWritable(),
 		b->baseWritable(),
 		nullptr, // alpha
-		ImagePlug::tileSize(), // width
-		ImagePlug::tileSize() // height
+		r->readable().size(), // Treat all pixels as a single line, since geometry doesn't affect OCIO
+		1 // height
 	);
 
 	processor->apply( image );

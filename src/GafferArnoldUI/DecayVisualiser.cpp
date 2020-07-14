@@ -34,7 +34,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferSceneUI/LightFilterVisualiser.h"
+#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
 
 #include "IECoreGL/Group.h"
 #include "IECoreGL/Primitive.h"
@@ -52,7 +52,7 @@ using namespace Imath;
 using namespace IECore;
 using namespace IECoreScene;
 using namespace IECoreGL;
-using namespace GafferSceneUI;
+using namespace IECoreGLPreview;
 
 namespace
 {
@@ -200,7 +200,7 @@ class DecayVisualiser final : public LightFilterVisualiser
 		DecayVisualiser();
 		~DecayVisualiser() override;
 
-		IECoreGL::ConstRenderablePtr visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
+		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
 
 	protected :
 
@@ -221,25 +221,28 @@ DecayVisualiser::~DecayVisualiser()
 {
 }
 
-IECoreGL::ConstRenderablePtr DecayVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
+Visualisations DecayVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
 {
-	IECoreGL::GroupPtr result = new IECoreGL::Group();
 
 	KnotVector knots;
 	getKnotsToVisualize( shaderNetwork, knots );
 
 	if( knots.empty() )
 	{
-		return result;
+		return {};
 	}
 
+	IECoreGL::GroupPtr result = new IECoreGL::Group();
 
 	for( KnotVector::size_type i = 0; i < knots.size(); ++i )
 	{
 		addKnot( result, knots[i] );
 	}
 
-	return result;
+	// On the whole in Gaffer we assume that light scale doesn't affect the
+	// render (this may need to be configurable later). Decay shouldn't scale
+	// with visualisation scale either though.
+	return { Visualisation( result, Visualisation::Scale::None ) };
 }
 
 } // namespace

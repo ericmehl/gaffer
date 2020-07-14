@@ -43,6 +43,7 @@ import threading
 
 import arnold
 import imath
+import six
 
 import IECore
 import IECoreImage
@@ -94,10 +95,10 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 			stderr = subprocess.PIPE,
 		)
 		p.wait()
-		self.failIf( p.returncode )
+		self.assertFalse( p.returncode )
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%d.ass" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%d.ass" % i ) )
 
 	def testWaitForImage( self ) :
 
@@ -121,7 +122,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		s["render"]["in"].setInput( s["outputs"]["out"] )
 		s["render"]["task"].execute()
 
-		self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.tif" ) )
+		self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.tif" ) )
 
 	def testExecuteWithStringSubstitutions( self ) :
 
@@ -142,10 +143,10 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 			stderr = subprocess.PIPE,
 		)
 		p.wait()
-		self.failIf( p.returncode )
+		self.assertFalse( p.returncode )
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%04d.ass" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%04d.ass" % i ) )
 
 	def testImageOutput( self ) :
 
@@ -175,7 +176,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 				s["render"]["task"].execute()
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%04d.tif" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%04d.tif" % i ) )
 
 	def testTypeNamePrefixes( self ) :
 
@@ -272,7 +273,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		s["render"]["fileName"].setValue( self.temporaryDirectory() + "/test.####.ass" )
 		s["render"]["in"].setInput( s["outputs"]["out"] )
 
-		s["wedge"] = Gaffer.Wedge()
+		s["wedge"] = GafferDispatch.Wedge()
 		s["wedge"]["mode"].setValue( int( s["wedge"].Mode.StringList ) )
 		s["wedge"]["strings"].setValue( IECore.StringVectorData( [ "visible", "hidden" ] ) )
 		s["wedge"]["preTasks"][0].setInput( s["render"]["task"] )
@@ -629,14 +630,14 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 		# The requested camera doesn't exist - this should raise an exception.
 
-		self.assertRaisesRegexp( RuntimeError, "/i/dont/exist", s["render"]["task"].execute )
+		six.assertRaisesRegex( self, RuntimeError, "/i/dont/exist", s["render"]["task"].execute )
 
 		# And even the existence of a different camera shouldn't change that.
 
 		s["camera"] = GafferScene.Camera()
 		s["options"]["in"].setInput( s["camera"]["out"] )
 
-		self.assertRaisesRegexp( RuntimeError, "/i/dont/exist", s["render"]["task"].execute )
+		six.assertRaisesRegex( self, RuntimeError, "/i/dont/exist", s["render"]["task"].execute )
 
 	def testManyCameras( self ) :
 
@@ -1085,7 +1086,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		s["render"] = GafferArnold.ArnoldRender()
 		s["render"]["in"].setInput( s["outputs"]["out"] )
 
-		self.assertRaisesRegexp( RuntimeError, "Render aborted", s["render"]["task"].execute )
+		six.assertRaisesRegex( self, RuntimeError, "Render aborted", s["render"]["task"].execute )
 
 	def testOSLShaders( self ) :
 
@@ -1101,6 +1102,8 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		ball = GafferArnold.ArnoldShaderBall()
 		ball["shader"].setInput( pack["out"] )
 
+		catalogue = GafferImage.Catalogue()
+
 		outputs = GafferScene.Outputs()
 		outputs.addOutput(
 			"beauty",
@@ -1109,8 +1112,10 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 				"ieDisplay",
 				"rgba",
 				{
-					"driverType" : "ImageDisplayDriver",
-					"handle" : "myLovelySphere",
+					"driverType" : "ClientDisplayDriver",
+					"displayHost" : "localhost",
+					"displayPort" : str( catalogue.displayDriverServer().portNumber() ),
+					"remoteDisplayType" : "GafferImage::GafferDisplayDriver",
 				}
 			)
 		)
@@ -1118,11 +1123,13 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 		render = GafferArnold.ArnoldRender()
 		render["in"].setInput( outputs["out"] )
-		render["task"].execute()
 
-		image = IECoreImage.ImageDisplayDriver.storedImage( "myLovelySphere" )
-		self.assertTrue( isinstance( image, IECoreImage.ImagePrimitive ) )
-		self.assertEqual( self.__color4fAtUV( image, imath.V2f( 0.5 ) ), imath.Color4f( 1, 0, 0, 1 ) )
+		with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as handler :
+			render["task"].execute()
+
+			handler.waitFor( 0.1 ) #Just need to let the catalogue update
+
+			self.assertEqual( self.__color4fAtUV( catalogue, imath.V2f( 0.5 ) ), imath.Color4f( 1, 0, 0, 1 ) )
 
 	def testDefaultLightsMistakesDontForceLinking( self ) :
 
@@ -1163,18 +1170,10 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 	def __color4fAtUV( self, image, uv ) :
 
-		objectToImage = GafferImage.ObjectToImage()
-		objectToImage["object"].setValue( image )
-
 		sampler = GafferImage.ImageSampler()
-		sampler["image"].setInput( objectToImage["out"] )
-		sampler["pixel"].setValue(
-			uv * imath.V2f(
-				image.displayWindow.size().x,
-				image.displayWindow.size().y
-			)
-		)
-
+		sampler["image"].setInput( image["out"] )
+		dw = image['out']["format"].getValue().getDisplayWindow().size()
+		sampler["pixel"].setValue( uv * imath.V2f( dw.x, dw.y ) )
 		return sampler["color"].getValue()
 
 	def __arrayToSet( self, a ) :
@@ -1201,6 +1200,105 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		render["fileName"].setValue( self.temporaryDirectory() + "/test.ass" )
 
 		render["task"].execute()
+
+	def testShaderSubstitutions( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		s["plane"] = GafferScene.Plane()
+
+		s["planeAttrs"] = GafferScene.CustomAttributes()
+		s["planeAttrs"]["in"].setInput( s["plane"]["out"] )
+		s["planeAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "A", Gaffer.StringPlug( "value", defaultValue = 'bar' ) ) )
+		s["planeAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "B", Gaffer.StringPlug( "value", defaultValue = 'foo' ) ) )
+
+		s["cube"] = GafferScene.Cube()
+
+		s["cubeAttrs"] = GafferScene.CustomAttributes()
+		s["cubeAttrs"]["in"].setInput( s["cube"]["out"] )
+		s["cubeAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "B", Gaffer.StringPlug( "value", defaultValue = 'override' ) ) )
+
+		s["parent"] = GafferScene.Parent()
+		s["parent"]["in"].setInput( s["planeAttrs"]["out"] )
+		s["parent"]["children"][0].setInput( s["cubeAttrs"]["out"] )
+		s["parent"]["parent"].setValue( "/plane" )
+
+		s["shader"] = GafferArnold.ArnoldShader()
+		s["shader"].loadShader( "image" )
+		s["shader"]["parameters"]["filename"].setValue( "<attr:A>/path/<attr:B>.tx" )
+
+		s["filter"] = GafferScene.PathFilter()
+		s["filter"]["paths"].setValue( IECore.StringVectorData( [ "/plane" ] ) )
+
+		s["shaderAssignment"] = GafferScene.ShaderAssignment()
+		s["shaderAssignment"]["in"].setInput( s["parent"]["out"] )
+		s["shaderAssignment"]["filter"].setInput( s["filter"]["out"] )
+		s["shaderAssignment"]["shader"].setInput( s["shader"]["out"] )
+
+		s["light"] = GafferArnold.ArnoldLight()
+		s["light"].loadShader( "photometric_light" )
+		s["light"]["parameters"]["filename"].setValue( "/path/<attr:A>.ies" )
+
+		s["goboTexture"] = GafferArnold.ArnoldShader()
+		s["goboTexture"].loadShader( "image" )
+		s["goboTexture"]["parameters"]["filename"].setValue( "<attr:B>/gobo.tx" )
+
+		s["gobo"] = GafferArnold.ArnoldShader()
+		s["gobo"].loadShader( "gobo" )
+		s["gobo"]["parameters"]["slidemap"].setInput( s["goboTexture"]["out"] )
+
+		s["goboAssign"] = GafferScene.ShaderAssignment()
+		s["goboAssign"]["in"].setInput( s["light"]["out"] )
+		s["goboAssign"]["shader"].setInput( s["gobo"]["out"] )
+
+		s["lightBlocker"] = GafferArnold.ArnoldLightFilter()
+		s["lightBlocker"].loadShader( "light_blocker" )
+		s["lightBlocker"]["parameters"]["geometry_type"].setValue( "<attr:geometryType>" )
+
+		s["lightGroup"] = GafferScene.Group()
+		s["lightGroup"]["name"].setValue( "lightGroup" )
+		s["lightGroup"]["in"][0].setInput( s["goboAssign"]["out"] )
+		s["lightGroup"]["in"][1].setInput( s["lightBlocker"]["out"] )
+
+		s["parent2"] = GafferScene.Parent()
+		s["parent2"]["in"].setInput( s["shaderAssignment"]["out"] )
+		s["parent2"]["children"][0].setInput( s["lightGroup"]["out"] )
+		s["parent2"]["parent"].setValue( "/" )
+
+		s["globalAttrs"] = GafferScene.CustomAttributes()
+		s["globalAttrs"]["in"].setInput( s["parent2"]["out"] )
+		s["globalAttrs"]["global"].setValue( True )
+		s["globalAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "A", Gaffer.StringPlug( "value", defaultValue = 'default1' ) ) )
+		s["globalAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "B", Gaffer.StringPlug( "value", defaultValue = 'default2' ) ) )
+		s["globalAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "geometryType", Gaffer.StringPlug( "value", defaultValue = 'cylinder' ) ) )
+
+		s["render"] = GafferArnold.ArnoldRender()
+		s["render"]["in"].setInput( s["globalAttrs"]["out"] )
+		s["render"]["mode"].setValue( s["render"].Mode.SceneDescriptionMode )
+		s["render"]["fileName"].setValue( self.temporaryDirectory() + "/test.ass" )
+
+		s["render"]["task"].execute()
+
+		with IECoreArnold.UniverseBlock( writable = True ) :
+
+			arnold.AiASSLoad( self.temporaryDirectory() + "/test.ass" )
+			plane = arnold.AiNodeLookUpByName( "/plane" )
+			shader = arnold.AiNodeGetPtr( plane, "shader" )
+			self.assertEqual( arnold.AiNodeGetStr( shader, "filename" ), "bar/path/foo.tx" )
+
+			cube = arnold.AiNodeLookUpByName( "/plane/cube" )
+			shader2 = arnold.AiNodeGetPtr( cube, "shader" )
+			self.assertEqual( arnold.AiNodeGetStr( shader2, "filename" ), "bar/path/override.tx" )
+
+			light = arnold.AiNodeLookUpByName( "light:/lightGroup/light" )
+			self.assertEqual( arnold.AiNodeGetStr( light, "filename" ), "/path/default1.ies" )
+
+			gobo = arnold.AiNodeGetPtr( light, "filters" )
+			goboTex = arnold.AiNodeGetLink( gobo, "slidemap" )
+			self.assertEqual( arnold.AiNodeGetStr( goboTex, "filename" ), "default2/gobo.tx" )
+
+			lightFilter = arnold.AiNodeLookUpByName( "lightFilter:/lightGroup/lightFilter" )
+			self.assertEqual( arnold.AiNodeGetStr( lightFilter, "geometry_type" ), "cylinder" )
 
 if __name__ == "__main__":
 	unittest.main()

@@ -36,13 +36,17 @@
 
 import functools
 import imath
+import inspect
+import os
 
 import IECore
+import IECoreScene
 
 import Gaffer
 import GafferUI
 import GafferScene
 import GafferSceneUI
+import GafferImageUI
 
 # add plugs to the preferences node
 
@@ -95,6 +99,43 @@ def __registerShadingModes( modes ) :
 			)
 		)
 
+def __createXRayShader() :
+
+	# ideally this could be any type of node (eg Box), but
+	# SceneView seems to require a SceneProcessor.
+	xray = GafferScene.SceneProcessor( "XRay" )
+	xray["attributes"] = GafferScene.CustomAttributes()
+	xray["attributes"]["attributes"].addChild( Gaffer.NameValuePlug( "gl:depthTest", Gaffer.BoolPlug( "value", defaultValue = False ), True, "depthTest" ) )
+	xray["attributes"]["in"].setInput( xray["in"] )
+	xray["assignment"] = GafferScene.ShaderAssignment()
+	xray["assignment"]["in"].setInput( xray["attributes"]["out"] )
+	xray["shader"] = GafferScene.OpenGLShader( "XRay" )
+	xray["shader"]["name"].setValue( "xray" )
+	xray["shader"]["type"].setValue( "gl:surface" )
+	xray["shader"]["parameters"].addChild( Gaffer.StringPlug( "glFragmentSource", defaultValue = inspect.cleandoc(
+		'''
+		\\#if __VERSION__ <= 120
+		\\#define in varying
+		\\#endif
+
+		in vec3 fragmentN;
+		in vec3 fragmentI;
+
+		void main()
+		{
+			float f = abs( dot( normalize( fragmentI ), normalize( fragmentN ) ) );
+			gl_FragColor = vec4( mix( vec3( 0.7 ), vec3( 0.5 ), f ), 0.5 );
+		}
+		'''
+	) ) )
+	xray["shader"]["out"] = Gaffer.Plug()
+	xray["assignment"]["shader"].setInput( xray["shader"]["out"] )
+	xray["out"].setInput( xray["assignment"]["out"] )
+
+	return xray
+
+GafferSceneUI.SceneView.registerShadingMode( "X-Ray", functools.partial( __createXRayShader ) )
+
 with IECore.IgnoredExceptions( ImportError ) :
 
 	import GafferArnold
@@ -132,18 +173,25 @@ with IECore.IgnoredExceptions( ImportError ) :
 
 	] )
 
-with IECore.IgnoredExceptions( ImportError ) :
+if os.environ.get( "GAFFERAPPLESEED_HIDE_UI", "" ) != "1" :
 
-	import GafferAppleseed
+	with IECore.IgnoredExceptions( ImportError ) :
 
-	__registerShadingModes( [
+		import GafferAppleseed
 
-		( "Diagnostic/Appleseed/Shader Assignment", GafferScene.AttributeVisualiser, { "attributeName" : "osl:surface", "mode" : GafferScene.AttributeVisualiser.Mode.ShaderNodeColor } ),
-		( "Diagnostic/Appleseed/Camera Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:camera" } ),
-		( "Diagnostic/Appleseed/Shadow Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:shadow" } ),
-		( "Diagnostic/Appleseed/Diffuse Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:diffuse" } ),
-		( "Diagnostic/Appleseed/Specular Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:specular" } ),
-		( "Diagnostic/Appleseed/Glossy Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:glossy" } ),
-		( "Diagnostic/Appleseed/Photon Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:light" } ),
+		__registerShadingModes( [
 
-	] )
+			( "Diagnostic/Appleseed/Shader Assignment", GafferScene.AttributeVisualiser, { "attributeName" : "osl:surface", "mode" : GafferScene.AttributeVisualiser.Mode.ShaderNodeColor } ),
+			( "Diagnostic/Appleseed/Camera Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:camera" } ),
+			( "Diagnostic/Appleseed/Shadow Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:shadow" } ),
+			( "Diagnostic/Appleseed/Diffuse Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:diffuse" } ),
+			( "Diagnostic/Appleseed/Specular Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:specular" } ),
+			( "Diagnostic/Appleseed/Glossy Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:glossy" } ),
+			( "Diagnostic/Appleseed/Photon Visibility", GafferScene.AttributeVisualiser, { "attributeName" : "as:visibility:light" } ),
+
+		] )
+
+
+# Add catalogue hotkeys to viewers, eg: up/down navigation
+GafferUI.Editor.instanceCreatedSignal().connect( GafferImageUI.CatalogueUI.addCatalogueHotkeys, scoped = False )
+GafferUI.Editor.instanceCreatedSignal().connect( GafferSceneUI.EditScopeUI.addPruningActions, scoped = False )

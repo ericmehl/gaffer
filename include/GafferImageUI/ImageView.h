@@ -63,6 +63,7 @@ IE_CORE_FORWARDDECLARE( ImageProcessor )
 IE_CORE_FORWARDDECLARE( Clamp )
 IE_CORE_FORWARDDECLARE( Grade )
 IE_CORE_FORWARDDECLARE( ImageStats )
+IE_CORE_FORWARDDECLARE( DeepState )
 IE_CORE_FORWARDDECLARE( ImagePlug )
 IE_CORE_FORWARDDECLARE( ImageSampler )
 
@@ -84,7 +85,7 @@ class GAFFERIMAGEUI_API ImageView : public GafferUI::View
 		ImageView( const std::string &name = defaultName<ImageView>() );
 		~ImageView() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImageUI::ImageView, ImageViewTypeId, GafferUI::View );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImageUI::ImageView, ImageViewTypeId, GafferUI::View );
 
 		Gaffer::BoolPlug *clippingPlug();
 		const Gaffer::BoolPlug *clippingPlug() const;
@@ -105,6 +106,7 @@ class GAFFERIMAGEUI_API ImageView : public GafferUI::View
 
 		static void registerDisplayTransform( const std::string &name, DisplayTransformCreator creator );
 		static void registeredDisplayTransforms( std::vector<std::string> &names );
+		static GafferImage::ImageProcessorPtr createDisplayTransform( const std::string &name );
 
 	protected :
 
@@ -119,6 +121,9 @@ class GAFFERIMAGEUI_API ImageView : public GafferUI::View
 		void insertConverter( Gaffer::NodePtr converter );
 
 	private :
+
+		GafferImage::DeepState *deepStateNode();
+		const GafferImage::DeepState *deepStateNode() const;
 
 		GafferImage::Clamp *clampNode();
 		const GafferImage::Clamp *clampNode() const;

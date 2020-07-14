@@ -34,10 +34,13 @@
 #
 ##########################################################################
 
+import re
+
 import IECore
 
 import Gaffer
 import GafferUI
+import GafferUI.SpreadsheetUI
 
 ## Supported plug metadata :
 #
@@ -105,7 +108,7 @@ class NameValuePlugValueWidget( GafferUI.PlugValueWidget ) :
 
 		return True
 
-	def childPlugValueWidget( self, childPlug, lazy=True ) :
+	def childPlugValueWidget( self, childPlug ) :
 
 		for w in self.__row :
 			if w.getPlug().isSame( childPlug ) :
@@ -123,6 +126,14 @@ class NameValuePlugValueWidget( GafferUI.PlugValueWidget ) :
 		for w in self.__row :
 			w.setReadOnly( readOnly )
 
+	def setNameVisible( self, visible ) :
+
+		self.__row[0].setVisible( visible )
+
+	def getNameVisible( self ) :
+
+		return self.__row[0].getVisible()
+
 	def _updateFromPlug( self ) :
 
 		if "enabled" in self.getPlug() :
@@ -135,3 +146,62 @@ class NameValuePlugValueWidget( GafferUI.PlugValueWidget ) :
 			self.__row[-1].setEnabled( enabled )
 
 GafferUI.PlugValueWidget.registerType( Gaffer.NameValuePlug, NameValuePlugValueWidget )
+
+# Spreadsheet integration
+# =======================
+
+Gaffer.Metadata.registerValue( Gaffer.NameValuePlug, "spreadsheet:plugMenu:includeAsAncestor", True )
+Gaffer.Metadata.registerValue( Gaffer.NameValuePlug, "spreadsheet:plugMenu:ancestorLabel", "Value and Switch" )
+
+def __spreadsheetColumnName( plug ) :
+
+	if isinstance( plug, Gaffer.NameValuePlug ) :
+		nameValuePlug = plug
+	else :
+		nameValuePlug = plug.parent()
+
+	# Use some heuristics to come up with a more helpful
+	# column name.
+
+	name = nameValuePlug.getName()
+	if name.startswith( "member" ) and nameValuePlug["name"].source().direction() != Gaffer.Plug.Direction.Out :
+		name = nameValuePlug["name"].getValue()
+		name = re.sub( "[^0-9a-zA-Z_]+", "_", name )
+
+	if not name :
+		return plug.getName()
+
+	if plug == nameValuePlug :
+		return name
+	else :
+		return name + plug.getName().title()
+
+Gaffer.Metadata.registerValue( Gaffer.NameValuePlug, "spreadsheet:columnName", __spreadsheetColumnName )
+Gaffer.Metadata.registerValue( Gaffer.NameValuePlug, "enabled", "spreadsheet:columnName", __spreadsheetColumnName )
+Gaffer.Metadata.registerValue( Gaffer.NameValuePlug, "value", "spreadsheet:columnName", __spreadsheetColumnName )
+
+def __spreadsheetFormatter( plug, forToolTip ) :
+
+	value = GafferUI.SpreadsheetUI.formatValue( plug["value"], forToolTip )
+	if "enabled" not in plug.parent() :
+		return value
+
+	enabled = "On" if plug["enabled"].getValue() else "Off"
+	separator = " : \n" if forToolTip and "\n" in value else " : "
+	return enabled + separator + value
+
+GafferUI.SpreadsheetUI.registerValueFormatter( Gaffer.NameValuePlug, __spreadsheetFormatter )
+
+def __spreadsheetDecorator( plug ) :
+
+	return GafferUI.SpreadsheetUI.decoration( plug["value"] )
+
+GafferUI.SpreadsheetUI.registerDecoration( Gaffer.NameValuePlug, __spreadsheetDecorator )
+
+def __spreadsheetValueWidget( plug ) :
+
+	w = GafferUI.NameValuePlugValueWidget( plug )
+	w.setNameVisible( False )
+	return w
+
+GafferUI.SpreadsheetUI.registerValueWidget( Gaffer.NameValuePlug, __spreadsheetValueWidget )

@@ -57,7 +57,7 @@ using namespace GafferScene;
 
 typedef boost::tokenizer<boost::char_separator<char> > Tokenizer;
 
-IE_CORE_DEFINERUNTIMETYPED( SceneReader );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( SceneReader );
 
 //////////////////////////////////////////////////////////////////////////
 // SceneReader implementation
@@ -203,7 +203,7 @@ Imath::Box3f SceneReader::computeBound( const ScenePath &path, const Gaffer::Con
 	}
 	else
 	{
-		result = unionOfTransformedChildBounds( path, parent );
+		result = parent->childBounds();
 	}
 
 	if( path.size() == 0 && !result.isEmpty() )

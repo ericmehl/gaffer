@@ -64,7 +64,7 @@ class GAFFERIMAGE_API ImageReader : public ImageNode
 		ImageReader( const std::string &name=defaultName<ImageReader>() );
 		~ImageReader() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::ImageReader, ImageReaderTypeId, ImageNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::ImageReader, ImageReaderTypeId, ImageNode );
 
 		/// The MissingFrameMode controls how to handle missing images.
 		/// It is distinct from OpenImageIOReader::MissingFrameMode so
@@ -136,6 +136,12 @@ class GAFFERIMAGE_API ImageReader : public ImageNode
 
 		void hashMetadata( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstCompoundDataPtr computeMetadata( const Gaffer::Context *context, const ImagePlug *parent ) const override;
+
+		void hashDeep( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
+		bool computeDeep( const Gaffer::Context *context, const ImagePlug *parent ) const override;
+
+		void hashSampleOffsets( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
+		IECore::ConstIntVectorDataPtr computeSampleOffsets( const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const override;
 
 		void hashChannelNames( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstStringVectorDataPtr computeChannelNames( const Gaffer::Context *context, const ImagePlug *parent ) const override;

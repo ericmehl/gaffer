@@ -61,7 +61,7 @@ class GAFFERSCENE_API Set : public FilteredSceneProcessor
 		Set( const std::string &name=defaultName<Set>() );
 		~Set() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Set, SetTypeId, FilteredSceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Set, SetTypeId, FilteredSceneProcessor );
 
 		enum Mode
 		{
@@ -76,6 +76,7 @@ class GAFFERSCENE_API Set : public FilteredSceneProcessor
 		Gaffer::StringPlug *namePlug();
 		const Gaffer::StringPlug *namePlug() const;
 
+		/// \deprecated
 		Gaffer::StringVectorDataPlug *pathsPlug();
 		const Gaffer::StringVectorDataPlug *pathsPlug() const;
 

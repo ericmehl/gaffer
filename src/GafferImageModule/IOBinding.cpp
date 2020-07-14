@@ -41,7 +41,6 @@
 #include "GafferImage/Checkerboard.h"
 #include "GafferImage/ImageReader.h"
 #include "GafferImage/ImageWriter.h"
-#include "GafferImage/ObjectToImage.h"
 #include "GafferImage/OpenImageIOReader.h"
 #include "GafferImage/Ramp.h"
 
@@ -70,9 +69,14 @@ struct DefaultColorSpaceFunction
 	{
 
 		IECorePython::ScopedGILLock gilock;
-		string result = extract<string>( m_fn( fileName, fileFormat, dataType, IECore::CompoundDataPtr( const_cast<IECore::CompoundData *>( metadata ) ) ) );
-		return result;
-
+		try
+		{
+			return extract<string>( m_fn( fileName, fileFormat, dataType, IECore::CompoundDataPtr( const_cast<IECore::CompoundData *>( metadata ) ) ) );
+		}
+		catch( const error_already_set &e )
+		{
+			IECorePython::ExceptionAlgo::translatePythonException();
+		}
 	}
 
 	private:
@@ -116,9 +120,6 @@ boost::python::list supportedExtensions()
 void GafferImageModule::bindIO()
 {
 
-	DependencyNodeClass<ImagePrimitiveNode>();
-	DependencyNodeClass<ImagePrimitiveProcessor>();
-	DependencyNodeClass<ObjectToImage>();
 	DependencyNodeClass<Constant>();
 	DependencyNodeClass<Checkerboard>();
 	DependencyNodeClass<Ramp>();
@@ -154,6 +155,7 @@ void GafferImageModule::bindIO()
 
 		enum_<ImageReader::FrameMaskMode>( "FrameMaskMode" )
 			.value( "None", ImageReader::None )
+			.value( "None_", ImageReader::None )
 			.value( "BlackOutside", ImageReader::BlackOutside )
 			.value( "ClampToFrame", ImageReader::ClampToFrame )
 		;

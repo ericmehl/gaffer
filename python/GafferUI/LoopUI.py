@@ -112,7 +112,7 @@ Gaffer.Metadata.registerNode(
 
 			"description",
 			"""
-			The name of a context variable used to specify the index
+			The name of a Context Variable used to specify the index
 			of the current iteration. This can be referenced from
 			expressions within the loop network to modify the operations
 			performed during each iteration of the loop.
@@ -136,7 +136,7 @@ def __createLoop( node ) :
 	def rotate( edge ) :
 		return edges[ ( edges.index( edge ) + 1 ) % 4 ]
 
-	with Gaffer.UndoContext( node.scriptNode() ) :
+	with Gaffer.UndoScope( node.scriptNode() ) :
 
 		plug = node["previous"]
 		edge = Gaffer.Metadata.value( plug, "noduleLayout:section" ) or "bottom"

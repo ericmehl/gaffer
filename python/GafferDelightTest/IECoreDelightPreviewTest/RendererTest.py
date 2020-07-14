@@ -35,7 +35,10 @@
 ##########################################################################
 
 import os
+import re
+import time
 import unittest
+
 import imath
 
 import IECore
@@ -485,6 +488,69 @@ class RendererTest( GafferTest.TestCase ) :
 		self.__assertInNSI( 'SetAttribute "transformed" "transformationmatrix" "doublematrix" 1 [ 1 0 0 0 0 1 0 0 0 0 1 0 1 0 0 1 ]', nsi )
 		self.__assertInNSI( 'SetAttributeAtTime "animated" 0 "transformationmatrix" "doublematrix" 1 [ 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 ]', nsi )
 		self.__assertInNSI( 'SetAttributeAtTime "animated" 1 "transformationmatrix" "doublematrix" 1 [ 1 0 0 0 0 1 0 0 0 0 1 0 1 0 0 1 ]', nsi )
+
+	def testShaderSubstitutions( self ) :
+
+		def runSubstitutions( text, attributes ):
+			r = GafferScene.Private.IECoreScenePreview.Renderer.create(
+				"3Delight",
+				GafferScene.Private.IECoreScenePreview.Renderer.RenderType.SceneDescription,
+				self.temporaryDirectory() + "/test.nsi",
+			)
+
+			s = IECoreScene.ShaderNetwork( { "output" : IECoreScene.Shader( "testShader", "surface", { "testStringSubstituted" : text } ) }, output = "output" )
+
+			m = IECoreScene.MeshPrimitive.createPlane( imath.Box2f( imath.V2f( -1 ), imath.V2f( 1 ) ) )
+			attrs = attributes.copy()
+			attrs["osl:surface"] = s
+			a = r.attributes( IECore.CompoundObject( attrs ) )
+
+			r.object( "object", m, a )
+
+			r.render()
+			del r
+
+			nsi = open( self.temporaryDirectory() + "/test.nsi" ).read()
+			return re.findall( '\n *"testStringSubstituted" "string" 1 "(.*)" \n', nsi )[0]
+
+		self.assertEqual( runSubstitutions( "<attr:test:foo> TEST <attr:test:bar>", {} ), " TEST " )
+		self.assertEqual( runSubstitutions( "<attr:test:foo> TEST <attr:test:bar>", { "test:bar" : IECore.StringData( "AAA" ) } ), " TEST AAA" )
+		self.assertEqual( runSubstitutions( "<attr:test:foo> TEST <attr:test:bar>", { "test:foo" : IECore.StringData( "AAA" ), "test:bar" : IECore.StringData( "BBB" ) } ), "AAA TEST BBB" )
+
+	def testMessageHandler( self ) :
+
+		RenderType = GafferScene.Private.IECoreScenePreview.Renderer.RenderType
+
+		for renderType, fileName, expected in (
+			( RenderType.Batch, "", 2 ),
+			( RenderType.Interactive, "", 2 ),
+			( RenderType.SceneDescription, self.temporaryDirectory() + "/test.nsi" , 1 )
+		) :
+
+			with IECore.CapturingMessageHandler() as fallbackHandler :
+
+				handler = IECore.CapturingMessageHandler()
+
+				r = GafferScene.Private.IECoreScenePreview.Renderer.create(
+					"3Delight",
+					renderType,
+					fileName = fileName,
+					messageHandler = handler
+				)
+
+				r.option( "invalid", IECore.BoolData( True ) )
+
+				r.render()
+
+				if renderType == RenderType.Interactive :
+					time.sleep( 1 )
+
+				# We should have at least 1 message from our invalid option,
+				# and additional output from actual renders.
+				# Stats/progress seem hard coded to stdout.
+				self.assertGreaterEqual( len(handler.messages), expected, msg=str(renderType) )
+
+				self.assertEqual( [ m.message for m in fallbackHandler.messages ], [], msg=str(renderType) )
 
 	# Helper methods used to check that NSI files we write contain what we
 	# expect. This is a very poor substitute to being able to directly query

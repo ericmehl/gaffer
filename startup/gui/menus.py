@@ -45,6 +45,7 @@ import IECore
 import Gaffer
 import GafferScene
 import GafferUI
+import GafferDispatchUI
 import GafferSceneUI
 
 # ScriptWindow menu
@@ -56,8 +57,8 @@ GafferUI.ApplicationMenu.appendDefinitions( scriptWindowMenu, prefix="/Gaffer" )
 GafferUI.FileMenu.appendDefinitions( scriptWindowMenu, prefix="/File" )
 GafferUI.EditMenu.appendDefinitions( scriptWindowMenu, prefix="/Edit" )
 GafferUI.LayoutMenu.appendDefinitions( scriptWindowMenu, name="/Layout" )
-GafferUI.DispatcherUI.appendMenuDefinitions( scriptWindowMenu, prefix="/Execute" )
-GafferUI.LocalDispatcherUI.appendMenuDefinitions( scriptWindowMenu, prefix="/Execute" )
+GafferDispatchUI.DispatcherUI.appendMenuDefinitions( scriptWindowMenu, prefix="/Execute" )
+GafferDispatchUI.LocalDispatcherUI.appendMenuDefinitions( scriptWindowMenu, prefix="/Execute" )
 
 # Turn on backups by default, so they are supported by the open functions
 # in the file menu. They can be turned off again in the preferences menu.
@@ -132,7 +133,7 @@ if moduleSearchPath.find( "arnold" ) :
 
 		GafferArnoldUI.CacheMenu.appendDefinitions( scriptWindowMenu, "/Tools/Arnold" )
 
-	except Exception, m :
+	except Exception as m :
 
 		stacktrace = traceback.format_exc()
 		IECore.msg( IECore.Msg.Level.Error, "startup/gui/menus.py", "Error loading Arnold module - \"%s\".\n %s" % ( m, stacktrace ) )
@@ -219,7 +220,7 @@ if moduleSearchPath.find( "nsi.py" ) and moduleSearchPath.find( "GafferDelight" 
 		nodeMenu.append( "/3Delight/Render", GafferDelight.DelightRender, searchText = "DelightRender"  )
 		nodeMenu.append( "/3Delight/Interactive Render", GafferDelight.InteractiveDelightRender, searchText = "InteractiveDelightRender"  )
 
-	except Exception, m :
+	except Exception as m :
 
 		stacktrace = traceback.format_exc()
 		IECore.msg( IECore.Msg.Level.Error, "startup/gui/menus.py", "Error loading Delight module - \"%s\".\n %s" % ( m, stacktrace ) )
@@ -235,39 +236,26 @@ if "APPLESEED" in os.environ :
 		import GafferOSL
 		import GafferOSLUI
 
-		def __shaderNodeCreator( nodeName, shaderName ) :
+		if os.environ.get( "GAFFERAPPLESEED_HIDE_UI", "" ) != "1" :
 
-			node = GafferOSL.OSLShader( nodeName )
-			node.loadShader( shaderName )
+			GafferAppleseedUI.ShaderMenu.appendShaders( nodeMenu.definition() )
 
-			return node
+			GafferAppleseedUI.LightMenu.appendLights( nodeMenu.definition() )
 
-		GafferSceneUI.ShaderUI.appendShaders(
-			nodeMenu.definition(), "/Appleseed/Shader",
-			os.environ["APPLESEED_SEARCHPATH"].split( ":" ),
-			[ "oso" ],
-			__shaderNodeCreator,
-			# Show only the OSL shaders from the Appleseed shader
-			# library.
-			matchExpression = re.compile( "(^|.*/)as_[^/]*$")
-		)
+			nodeMenu.append( "/Appleseed/Attributes", GafferAppleseed.AppleseedAttributes, searchText = "AppleseedAttributes" )
+			nodeMenu.append( "/Appleseed/Options", GafferAppleseed.AppleseedOptions, searchText = "AppleseedOptions" )
+			nodeMenu.append( "/Appleseed/Render", GafferAppleseed.AppleseedRender, searchText = "AppleseedRender" )
+			nodeMenu.append( "/Appleseed/Interactive Render", GafferAppleseed.InteractiveAppleseedRender, searchText = "InteractiveAppleseedRender" )
+			nodeMenu.append( "/Appleseed/Shader Ball", GafferAppleseed.AppleseedShaderBall, searchText = "AppleseedShaderBall" )
 
-		GafferAppleseedUI.LightMenu.appendLights( nodeMenu.definition() )
+			scriptWindowMenu.append(
+				"/Help/Appleseed/User Docs",
+				{
+					"command" : functools.partial( GafferUI.showURL, "https://github.com/appleseedhq/appleseed/wiki" ),
+				}
+			)
 
-		nodeMenu.append( "/Appleseed/Attributes", GafferAppleseed.AppleseedAttributes, searchText = "AppleseedAttributes" )
-		nodeMenu.append( "/Appleseed/Options", GafferAppleseed.AppleseedOptions, searchText = "AppleseedOptions" )
-		nodeMenu.append( "/Appleseed/Render", GafferAppleseed.AppleseedRender, searchText = "AppleseedRender" )
-		nodeMenu.append( "/Appleseed/Interactive Render", GafferAppleseed.InteractiveAppleseedRender, searchText = "InteractiveAppleseedRender" )
-		nodeMenu.append( "/Appleseed/Shader Ball", GafferAppleseed.AppleseedShaderBall, searchText = "AppleseedShaderBall" )
-
-		scriptWindowMenu.append(
-			"/Help/Appleseed/User Docs",
-			{
-				"command" : functools.partial( GafferUI.showURL, "https://github.com/appleseedhq/appleseed/wiki" ),
-			}
-		)
-
-	except Exception, m :
+	except Exception as m :
 
 		stacktrace = traceback.format_exc()
 		IECore.msg( IECore.Msg.Level.Error, "startup/gui/menus.py", "Error loading Appleseed module - \"%s\".\n %s" % ( m, stacktrace ) )
@@ -289,9 +277,12 @@ nodeMenu.append( "/Scene/Source/Primitive/Text", GafferScene.Text )
 nodeMenu.append( "/Scene/Source/Seeds", GafferScene.Seeds )
 nodeMenu.append( "/Scene/Source/Instancer", GafferScene.Instancer )
 nodeMenu.append( "/Scene/Object/Primitive Variables", GafferScene.PrimitiveVariables, searchText = "PrimitiveVariables" )
+nodeMenu.append( "/Scene/Object/Copy Primitive Variables", GafferScene.CopyPrimitiveVariables, searchText = "CopyPrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Delete Primitive Variables", GafferScene.DeletePrimitiveVariables, searchText = "DeletePrimitiveVariables" )
+nodeMenu.append( "/Scene/Object/Shuffle Primitive Variables", GafferScene.ShufflePrimitiveVariables, searchText = "ShufflePrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Resample Primitive Variables", GafferScene.ResamplePrimitiveVariables, searchText = "ResamplePrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Collect Primitive Variables", GafferScene.CollectPrimitiveVariables, searchText = "CollectPrimitiveVariables" )
+nodeMenu.append( "/Scene/Object/Orientation", GafferScene.Orientation )
 nodeMenu.append( "/Scene/Object/Mesh Type", GafferScene.MeshType, searchText = "MeshType" )
 nodeMenu.append( "/Scene/Object/Points Type", GafferScene.PointsType, searchText = "PointsType" )
 nodeMenu.append( "/Scene/Object/Mesh To Points", GafferScene.MeshToPoints, searchText = "MeshToPoints" )
@@ -308,11 +299,15 @@ nodeMenu.append( "/Scene/Object/Delete Object", GafferScene.DeleteObject, search
 nodeMenu.append( "/Scene/Object/Reverse Winding", GafferScene.ReverseWinding, searchText = "ReverseWinding" )
 nodeMenu.append( "/Scene/Object/Mesh Distortion", GafferScene.MeshDistortion, searchText = "MeshDistortion" )
 nodeMenu.append( "/Scene/Object/Camera Tweaks", GafferScene.CameraTweaks, searchText = "CameraTweaks" )
+nodeMenu.append( "/Scene/Object/Curve Sampler", GafferScene.CurveSampler, searchText = "CurveSampler" )
+nodeMenu.append( "/Scene/Object/Closest Point Sampler", GafferScene.ClosestPointSampler, searchText = "ClosestPointSampler" )
 nodeMenu.append( "/Scene/Attributes/Shader Assignment", GafferScene.ShaderAssignment, searchText = "ShaderAssignment" )
 nodeMenu.append( "/Scene/Attributes/Shader Tweaks", GafferScene.ShaderTweaks, searchText = "ShaderTweaks" )
 nodeMenu.append( "/Scene/Attributes/Standard Attributes", GafferScene.StandardAttributes, searchText = "StandardAttributes" )
 nodeMenu.append( "/Scene/Attributes/Custom Attributes", GafferScene.CustomAttributes, searchText = "CustomAttributes" )
 nodeMenu.append( "/Scene/Attributes/Delete Attributes", GafferScene.DeleteAttributes, searchText = "DeleteAttributes" )
+nodeMenu.append( "/Scene/Attributes/Shuffle Attributes", GafferScene.ShuffleAttributes, searchText = "ShuffleAttributes" )
+nodeMenu.append( "/Scene/Attributes/Localise Attributes", GafferScene.LocaliseAttributes, searchText = "LocaliseAttributes" )
 nodeMenu.append( "/Scene/Attributes/Attribute Visualiser", GafferScene.AttributeVisualiser, searchText = "AttributeVisualiser" )
 nodeMenu.append( "/Scene/Attributes/Copy Attributes", GafferScene.CopyAttributes, searchText = "CopyAttributes" )
 nodeMenu.append( "/Scene/Attributes/Collect Transforms", GafferScene.CollectTransforms, searchText = "CollectTransforms" )
@@ -321,6 +316,7 @@ nodeMenu.append( "/Scene/Filters/Path Filter", GafferScene.PathFilter, searchTex
 nodeMenu.append( "/Scene/Filters/Union Filter", GafferScene.UnionFilter, searchText = "UnionFilter" )
 nodeMenu.append( "/Scene/Hierarchy/Group", GafferScene.Group )
 nodeMenu.append( "/Scene/Hierarchy/Parent", GafferScene.Parent )
+nodeMenu.append( "/Scene/Hierarchy/Merge", GafferScene.MergeScenes, searchText = "MergeScenes" )
 nodeMenu.append( "/Scene/Hierarchy/Duplicate", GafferScene.Duplicate )
 nodeMenu.append( "/Scene/Hierarchy/SubTree", GafferScene.SubTree ) #\todo - rename to 'Subtree' (node needs to change too)
 nodeMenu.append( "/Scene/Hierarchy/Prune", GafferScene.Prune )
@@ -390,6 +386,14 @@ nodeMenu.append( "/Image/Utility/Stats", GafferImage.ImageStats, searchText = "I
 nodeMenu.append( "/Image/Utility/Sampler", GafferImage.ImageSampler, searchText = "ImageSampler" )
 nodeMenu.append( "/Image/Utility/Catalogue", GafferImage.Catalogue )
 nodeMenu.append( "/Image/Utility/Catalogue Select", GafferImage.CatalogueSelect )
+nodeMenu.append( "/Image/Deep/FlatToDeep", GafferImage.FlatToDeep, searchText = "FlatToDeep" )
+nodeMenu.append( "/Image/Deep/Merge", GafferImage.DeepMerge, searchText = "DeepMerge" )
+nodeMenu.append( "/Image/Deep/Tidy", GafferImage.DeepTidy, searchText = "DeepTidy" )
+nodeMenu.append( "/Image/Deep/DeepToFlat", GafferImage.DeepToFlat )
+nodeMenu.append( "/Image/Deep/Sample Counts", GafferImage.DeepSampleCounts, searchText = "DeepSampleCounts" )
+nodeMenu.append( "/Image/Deep/Deep Sampler", GafferImage.DeepSampler, searchText = "DeepSampler" )
+nodeMenu.append( "/Image/Deep/Deep Holdout", GafferImage.DeepHoldout, searchText = "DeepHoldout" )
+nodeMenu.append( "/Image/Deep/Deep Recolor", GafferImage.DeepRecolor, searchText = "DeepRecolor" )
 
 # OSL nodes
 
@@ -429,6 +433,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 		# This match expression filters these categories of shader out
 		# as follows :
 		#
+		# - (?!__) asserts that the shader does not begin with double underscore.
 		# - (^|.*/) matches any number (including zero) of directory
 		#   names preceding the shader name.
 		# - (?<!maya/osl/) is a negative lookbehind, asserting that the
@@ -442,7 +447,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 		#   shaders.
 		# - [^/]*$ matches the rest of the shader name, ensuring it
 		#   doesn't include any directory separators.
-		matchExpression = re.compile( "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$"),
+		matchExpression = re.compile( "(?!__)(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$"),
 		searchTextPrefix = "osl",
 	)
 
@@ -468,6 +473,7 @@ nodeMenu.append( "/VDB/Level Set To Mesh", GafferVDB.LevelSetToMesh, searchText 
 nodeMenu.append( "/VDB/Mesh To Level Set", GafferVDB.MeshToLevelSet, searchText = "MeshToLevelSet" )
 nodeMenu.append( "/VDB/Level Set Offset", GafferVDB.LevelSetOffset, searchText = "LevelSetOffset" )
 nodeMenu.append( "/VDB/Points Grid To Points", GafferVDB.PointsGridToPoints, searchText = "PointsGridToPoints" )
+nodeMenu.append( "/VDB/Sphere Level Set", GafferVDB.SphereLevelSet, searchText="SphereLevelSet")
 
 # Dispatch nodes
 
@@ -488,14 +494,17 @@ nodeMenu.append( "/Utility/Random", Gaffer.Random )
 nodeMenu.append( "/Utility/Box", GafferUI.BoxUI.nodeMenuCreateCommand )
 nodeMenu.append( "/Utility/BoxIn", Gaffer.BoxIn )
 nodeMenu.append( "/Utility/BoxOut", Gaffer.BoxOut )
+nodeMenu.append( "/Utility/Edit Scope", Gaffer.EditScope, searchText = "EditScope" )
 nodeMenu.append( "/Utility/Reference", GafferUI.ReferenceUI.nodeMenuCreateCommand )
 nodeMenu.definition().append( "/Utility/Backdrop", { "command" : GafferUI.BackdropUI.nodeMenuCreateCommand } )
 nodeMenu.append( "/Utility/Dot", Gaffer.Dot )
 nodeMenu.append( "/Utility/Switch", Gaffer.Switch )
+nodeMenu.append( "/Utility/Name Switch", Gaffer.NameSwitch, searchText = "NameSwitch" )
 nodeMenu.append( "/Utility/Context Variables", Gaffer.ContextVariables, searchText = "ContextVariables" )
 nodeMenu.append( "/Utility/Delete Context Variables", Gaffer.DeleteContextVariables, searchText = "DeleteContextVariables" )
 nodeMenu.append( "/Utility/Time Warp", Gaffer.TimeWarp, searchText = "TimeWarp" )
 nodeMenu.append( "/Utility/Loop", Gaffer.Loop )
+nodeMenu.append( "/Utility/Spreadsheet", Gaffer.Spreadsheet )
 
 ## Miscellaneous UI
 ###########################################################################

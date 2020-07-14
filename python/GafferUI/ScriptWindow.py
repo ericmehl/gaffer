@@ -72,6 +72,10 @@ class ScriptWindow( GafferUI.Window ) :
 
 		ScriptWindow.__instances.append( weakref.ref( self ) )
 
+	def menuBar( self ) :
+
+		return self.__listContainer[0]
+
 	def scriptNode( self ) :
 
 		return self.__script
@@ -166,7 +170,7 @@ class ScriptWindow( GafferUI.Window ) :
 	@classmethod
 	def connect( cls, applicationRoot ) :
 
-		applicationRoot["scripts"].childAddedSignal().connect( ScriptWindow.__scriptAdded, scoped = False )
+		applicationRoot["scripts"].childAddedSignal().connect( 0, ScriptWindow.__scriptAdded, scoped = False )
 		applicationRoot["scripts"].childRemovedSignal().connect( ScriptWindow.__staticScriptRemoved, scoped = False )
 
 	__automaticallyCreatedInstances = [] # strong references to instances made by __scriptAdded()
@@ -218,7 +222,7 @@ class _WindowTitleBehaviour :
 		u = " *" if self.__script()["unsavedChanges"].getValue() else ""
 		ro = " (read only) " if Gaffer.MetadataAlgo.readOnly( self.__script() ) else ""
 
-		w._setTitle( "Gaffer : %s%s%s%s" % ( f, ro, u, d ) )
+		w._setTitle( "Gaffer %s : %s%s%s%s" % ( Gaffer.About.versionString(), f, ro, u, d ) )
 
 	def __scriptPlugChanged( self, plug ) :
 

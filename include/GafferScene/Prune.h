@@ -50,7 +50,7 @@ class GAFFERSCENE_API Prune : public FilteredSceneProcessor
 		Prune( const std::string &name=defaultName<Prune>() );
 		~Prune() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Prune, PruneTypeId, FilteredSceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Prune, PruneTypeId, FilteredSceneProcessor );
 
 		Gaffer::BoolPlug *adjustBoundsPlug();
 		const Gaffer::BoolPlug *adjustBoundsPlug() const;
@@ -58,8 +58,6 @@ class GAFFERSCENE_API Prune : public FilteredSceneProcessor
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
 	protected :
-
-		bool acceptsInput( const Gaffer::Plug *plug, const Gaffer::Plug *inputPlug ) const override;
 
 		void hashBound( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const override;
 		void hashChildNames( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const override;

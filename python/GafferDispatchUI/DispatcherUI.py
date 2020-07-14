@@ -130,7 +130,7 @@ Gaffer.Metadata.registerNode(
 
 	GafferDispatch.TaskNode,
 
-	"layout:customWidget:dispatchButton:widgetType", "GafferUI.DispatcherUI._DispatchButton",
+	"layout:customWidget:dispatchButton:widgetType", "GafferDispatchUI.DispatcherUI._DispatchButton",
 
 	plugs = {
 
@@ -218,11 +218,11 @@ class DispatcherWindow( GafferUI.Window ) :
 				with GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, spacing = 4 ) :
 					GafferUI.Label( "Dispatcher" )
 					self.__dispatchersMenu = GafferUI.MultiSelectionMenu( allowMultipleSelection = False, allowEmptySelection = False )
-					self.__dispatchersMenu.append( self.__dispatchers.keys() )
+					self.__dispatchersMenu.append( list( self.__dispatchers.keys() ) )
 					self.__dispatchersMenu.setSelection( [ defaultType ] )
 					self.__dispatchersMenu.selectionChangedSignal().connect( Gaffer.WeakMethod( self.__dispatcherChanged ), scoped = False )
 
-				self.__frame = GafferUI.Frame( borderStyle=GafferUI.Frame.BorderStyle.None, borderWidth=0 )
+				self.__frame = GafferUI.Frame( borderStyle=GafferUI.Frame.BorderStyle.None_, borderWidth=0 )
 				self.__dispatchButton = GafferUI.Button( "Dispatch" )
 				self.__dispatchButton.clickedSignal().connect( Gaffer.WeakMethod( self.__dispatchClicked ), scoped = False )
 
@@ -248,7 +248,7 @@ class DispatcherWindow( GafferUI.Window ) :
 			toRemove = self.__dispatchers.get( label, None )
 			if toRemove and self.__currentDispatcher.isSame( toRemove ) :
 				if len(self.__dispatchers.items()) < 2 :
-					raise RuntimeError, "DispatcherWindow: " + label + " is the only dispatcher, so it cannot be removed."
+					raise RuntimeError( "DispatcherWindow: " + label + " is the only dispatcher, so it cannot be removed." )
 				self.setCurrentDispatcher( self.__dispatchers.values()[0] )
 
 			del self.__dispatchers[label]
@@ -271,7 +271,7 @@ class DispatcherWindow( GafferUI.Window ) :
 				break
 
 		if not dispatcherLabel :
-			raise RuntimeError, "DispatcherWindow: The current dispatcher must be added first. Use DispatcherWindow.addDispatcher( label, dispatcher )"
+			raise RuntimeError( "DispatcherWindow: The current dispatcher must be added first. Use DispatcherWindow.addDispatcher( label, dispatcher )" )
 
 		self.__currentDispatcher = dispatcher
 		self.__dispatchersMenu.setSelection( [ dispatcherLabel ] )
@@ -309,8 +309,6 @@ class DispatcherWindow( GafferUI.Window ) :
 		self.__updateTitle()
 
 		if resizeToFit :
-			# Force the node UI to build so we fit to the right contents
-			nodeUI.plugValueWidget( self.__currentDispatcher["framesMode"], lazy = False )
 			self.resizeToFitChild()
 
 	def __updateTitle( self ) :
@@ -387,9 +385,10 @@ def selectedNodes( script ) :
 		if isinstance( n, GafferDispatch.TaskNode ) :
 			result.append( n )
 		elif isinstance( n, Gaffer.SubGraph ) :
-			for p in n.children( GafferDispatch.TaskNode.TaskPlug ) :
-				if p.direction() == Gaffer.Plug.Direction.Out and p.source() :
+			for p in GafferDispatch.TaskNode.TaskPlug.RecursiveOutputRange( n ) :
+				if isinstance( p.source().node(), GafferDispatch.TaskNode ) :
 					result.append( n )
+					break
 
 	return result
 

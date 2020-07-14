@@ -51,7 +51,7 @@ class GAFFERUI_API TranslateHandle : public Handle
 		TranslateHandle( Style::Axes axes );
 		~TranslateHandle() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::TranslateHandle, TranslateHandleTypeId, Handle );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::TranslateHandle, TranslateHandleTypeId, Handle );
 
 		void setAxes( Style::Axes axes );
 		Style::Axes getAxes() const;
@@ -67,7 +67,7 @@ class GAFFERUI_API TranslateHandle : public Handle
 		// > The use of a non-zero raster scale may make it appear
 		// > that a handle has no scaling applied, but that scaling
 		// > will still affect the results of `translation()`.
-		Imath::V3f translation( const DragDropEvent &event ) const;
+		Imath::V3f translation( const DragDropEvent &event );
 
 	protected :
 

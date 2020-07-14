@@ -38,6 +38,7 @@
 #include "GafferUI/View.h"
 
 #include "Gaffer/Context.h"
+#include "Gaffer/EditScope.h"
 #include "Gaffer/Plug.h"
 
 #include "boost/bind.hpp"
@@ -46,7 +47,7 @@
 using namespace Gaffer;
 using namespace GafferUI;
 
-IE_CORE_DEFINERUNTIMETYPED( View );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( View );
 
 size_t View::g_firstPlugIndex = 0;
 
@@ -56,12 +57,35 @@ View::View( const std::string &name, Gaffer::PlugPtr inPlug )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	setChild( "in", inPlug );
+	addChild( new Plug( "editScope" ) );
 
 	setContext( new Context() );
 }
 
 View::~View()
 {
+}
+
+Gaffer::Plug *View::editScopePlug()
+{
+	return getChild<Plug>( g_firstPlugIndex + 1 );
+}
+
+const Gaffer::Plug *View::editScopePlug() const
+{
+	return getChild<Plug>( g_firstPlugIndex + 1 );
+}
+
+Gaffer::EditScope *View::editScope()
+{
+	Plug *p = editScopePlug()->getInput();
+	return p ? p->parent<EditScope>() : nullptr;
+}
+
+const Gaffer::EditScope *View::editScope() const
+{
+	const Plug *p = editScopePlug()->getInput();
+	return p ? p->parent<EditScope>() : nullptr;
 }
 
 Gaffer::Context *View::getContext()

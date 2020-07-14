@@ -58,7 +58,7 @@ using namespace Gaffer;
 
 size_t Expression::g_firstPlugIndex;
 
-IE_CORE_DEFINERUNTIMETYPED( Expression );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Expression );
 
 Expression::Expression( const std::string &name )
 	:	ComputeNode( name ), m_engine( nullptr )
@@ -71,7 +71,7 @@ Expression::Expression( const std::string &name )
 			Plug::In,
 			"",
 			Plug::Default & ~( Plug::AcceptsInputs | Plug::Serialisable ),
-			Context::NoSubstitutions
+			IECore::StringAlgo::NoSubstitutions
 		)
 	);
 	addChild(
@@ -80,7 +80,7 @@ Expression::Expression( const std::string &name )
 			Plug::In,
 			"",
 			Plug::Default & ~( Plug::AcceptsInputs | Plug::Serialisable ),
-			Context::NoSubstitutions
+			IECore::StringAlgo::NoSubstitutions
 		)
 	);
 
@@ -178,7 +178,16 @@ void Expression::setExpression( const std::string &expression, const std::string
 	// node/plug names in getExpression(), where we convert back
 	// to the external form.
 
-	expressionPlug()->setValue( transcribe( expression, /* toInternalForm = */ true ) );
+	const std::string internalExpression = transcribe( expression, /* toInternalForm = */ true );
+	if( internalExpression == expressionPlug()->getValue() )
+	{
+		// It is possible for two different expressions to map to the same
+		// internal form. If neither expression has any input plugs, then
+		// there would be no graph change to trigger dirty propagation for
+		// `executePlug()`, so we must force one.
+		expressionPlug()->setValue( "" );
+	}
+	expressionPlug()->setValue( internalExpression );
 
 	Action::enact(
 		this,
@@ -515,6 +524,17 @@ void Expression::plugSet( const Plug *plug )
 	expression = transcribe( expression, /* toInternalForm = */ false );
 	std::vector<ValuePlug *> inPlugs, outPlugs;
 	m_engine->parse( this, expression, inPlugs, outPlugs, m_contextNames );
+
+	// Alas, it's not quite that simple. Nodes might have been renamed
+	// during deserialisation (to avoid name clashes between duplicates).
+	// And PythonExpressionEngine returns plugs in an order that depends
+	// on name, so our internal plugs may not correspond to what it is
+	// expecting. Call `updatePlugs()` to fix any mismatches. Transcribe
+	// to internal form to match the state that `setExpression()` leaves
+	// us in.
+	updatePlugs( inPlugs, outPlugs );
+	expressionPlug()->setValue( transcribe( expression, /* toInternalForm = */ true ) );
+
 }
 
 //////////////////////////////////////////////////////////////////////////

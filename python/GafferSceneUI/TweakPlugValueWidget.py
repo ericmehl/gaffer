@@ -35,12 +35,15 @@
 ##########################################################################
 
 import functools
+import re
 
 import IECore
 
 import Gaffer
 import GafferUI
 import GafferScene
+
+from Qt import QtWidgets
 
 # Widget for TweakPlug, which is used to build tweak nodes such as ShaderTweaks
 # and CameraTweaks.  Shows a value plug that you can use to specify a tweak value, along with
@@ -49,13 +52,13 @@ import GafferScene
 # or "Remove" if the metadata "tweakPlugValueWidget:allowRemove" is set
 class TweakPlugValueWidget( GafferUI.PlugValueWidget ) :
 
-	def __init__( self, plug ) :
+	def __init__( self, plugs ) :
 
 		self.__row = GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, spacing = 4 )
 
-		GafferUI.PlugValueWidget.__init__( self, self.__row, plug )
+		GafferUI.PlugValueWidget.__init__( self, self.__row, plugs )
 
-		nameWidget = GafferUI.StringPlugValueWidget( plug["name"] )
+		nameWidget = GafferUI.StringPlugValueWidget( self.__childPlugs( plugs, "name" ) )
 		nameWidget.textWidget()._qtWidget().setFixedWidth( GafferUI.PlugWidget.labelWidth() )
 
 		self.__row.append( nameWidget,
@@ -64,34 +67,38 @@ class TweakPlugValueWidget( GafferUI.PlugValueWidget ) :
 
 		self.__row.append(
 			GafferUI.BoolPlugValueWidget(
-				plug["enabled"],
+				self.__childPlugs( plugs, "enabled" ),
 				displayMode = GafferUI.BoolWidget.DisplayMode.Switch
 			),
 			verticalAlignment = GafferUI.Label.VerticalAlignment.Top,
 		)
 
-		self.__row.append( GafferUI.PlugValueWidget.create( plug["mode"] ) )
-		self.__row.append( GafferUI.PlugValueWidget.create( plug["value"] ), expand = True )
+		modeWidget = GafferUI.PlugValueWidget.create( self.__childPlugs( plugs, "mode" ) )
+		modeWidget._qtWidget().setFixedWidth( 80 )
+		modeWidget._qtWidget().layout().setSizeConstraint( QtWidgets.QLayout.SetDefaultConstraint )
+		self.__row.append( modeWidget )
 
-		self._updateFromPlug()
+		self.__row.append( GafferUI.PlugValueWidget.create( self.__childPlugs( plugs, "value" ) ), expand = True )
 
-	def setPlug( self, plug ) :
+		self._updateFromPlugs()
 
-		GafferUI.PlugValueWidget.setPlug( self, plug )
+	def setPlugs( self, plugs ) :
 
-		self.__row[0].setPlug( plug["name"] )
-		self.__row[1].setPlug( plug["enabled"] )
-		self.__row[2].setPlug( plug["mode"] )
-		self.__row[3].setPlug( plug["value"] )
+		GafferUI.PlugValueWidget.setPlugs( self, plugs )
+
+		self.__row[0].setPlugs( { p["name"] for p in plugs } )
+		self.__row[1].setPlugs( { p["enabled"] for p in plugs } )
+		self.__row[2].setPlugs( { p["mode"] for p in plugs } )
+		self.__row[3].setPlugs( { p["value"] for p in plugs } )
 
 	def hasLabel( self ) :
 
 		return True
 
-	def childPlugValueWidget( self, childPlug, lazy=True ) :
+	def childPlugValueWidget( self, childPlug ) :
 
 		for w in self.__row :
-			if w.getPlug().isSame( childPlug ) :
+			if childPlug in w.getPlugs() :
 				return w
 
 		return None
@@ -106,42 +113,45 @@ class TweakPlugValueWidget( GafferUI.PlugValueWidget ) :
 		for w in self.__row :
 			w.setReadOnly( readOnly )
 
-	def _updateFromPlug( self ) :
+	def setNameVisible( self, visible ) :
+
+		self.__row[0].setVisible( visible )
+
+	def getNameVisible( self ) :
+
+		return self.__row[0].getVisible()
+
+	def _updateFromPlugs( self ) :
 
 		with self.getContext() :
-			enabled = self.getPlug()["enabled"].getValue()
+			enabled = all( p["enabled"].getValue() for p in self.getPlugs() )
 
 		for i in ( 0, 2, 3 ) :
 			self.__row[i].setEnabled( enabled )
 
-def __deletePlug( plug ) :
+	@staticmethod
+	def __childPlugs( plugs, childName ) :
 
-	with Gaffer.UndoScope( plug.ancestor( Gaffer.ScriptNode ) ) :
-		plug.parent().removeChild( plug )
-
-def __plugPopupMenu( menuDefinition, plugValueWidget ):
-
-	plug = plugValueWidget.getPlug()
-	if not isinstance( plug, GafferScene.TweakPlug ) :
-		plug = plug.ancestor( GafferScene.TweakPlug )
-
-	if not isinstance( plug, GafferScene.TweakPlug ):
-		return
-
-	menuDefinition.append( "/DeleteDivider", { "divider" : True } )
-	menuDefinition.append(
-		"/Delete",
-		{
-			"command" : functools.partial( __deletePlug, plug ),
-			"active" : not plugValueWidget.getReadOnly() and not Gaffer.MetadataAlgo.readOnly( plug.parent() )
-		}
-	)
-
-__plugPopupMenuConnection = GafferUI.PlugValueWidget.popupMenuSignal().connect( __plugPopupMenu )
+		# Special cases to provide plugs in a form compatible
+		# with old PlugValueWidgets constructors which don't
+		# yet support multiple plugs.
+		if isinstance( plugs, Gaffer.Plug ) :
+			return plugs[childName]
+		elif plugs is None or not len( plugs ) :
+			return None
+		elif len( plugs ) == 1 :
+			return next( iter( plugs ) )[childName]
+		else :
+			# Standard case. Once all PlugValueWidgets have
+			# been updated to support multiple plugs, we can
+			# use this all the time.
+			return { p[childName] for p in plugs }
 
 GafferUI.PlugValueWidget.registerType( GafferScene.TweakPlug, TweakPlugValueWidget )
 
-# Metadata for child plugs
+# Metadata
+
+Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "deletable", lambda plug : plug.getFlags( Gaffer.Plug.Flags.Dynamic ) )
 
 Gaffer.Metadata.registerValue(
 	GafferScene.TweakPlug, "name",
@@ -194,3 +204,67 @@ Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "*", "nodule:type", "" )
 Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "value", "nodule:type", "GafferUI::StandardNodule" )
 Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "noduleLayout:label", __noduleLabel )
 Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "value", "noduleLayout:label", __noduleLabel )
+
+# Spreadsheet Interoperability
+# ============================
+
+Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "spreadsheet:plugMenu:includeAsAncestor", True )
+Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "spreadsheet:plugMenu:ancestorLabel", "Tweak" )
+
+def __spreadsheetColumnName( plug ) :
+
+	if isinstance( plug, GafferScene.TweakPlug ) :
+		tweakPlug = plug
+	else :
+		tweakPlug = plug.parent()
+
+	# Use some heuristics to come up with a more helpful
+	# column name.
+
+	name = tweakPlug.getName()
+	if name.startswith( "tweak" ) and tweakPlug["name"].source().direction() != Gaffer.Plug.Direction.Out :
+		name = tweakPlug["name"].getValue()
+		name = re.sub( "[^0-9a-zA-Z_]+", "_", name )
+
+	if not name :
+		return plug.getName()
+
+	if plug == tweakPlug :
+		return name
+	else :
+		return name + plug.getName().title()
+
+Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "spreadsheet:columnName", __spreadsheetColumnName )
+Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "enabled", "spreadsheet:columnName", __spreadsheetColumnName )
+Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "mode", "spreadsheet:columnName", __spreadsheetColumnName )
+Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "value", "spreadsheet:columnName", __spreadsheetColumnName )
+
+def __spreadsheetFormatter( plug, forToolTip ) :
+
+	result = ""
+	if "enabled" in plug.parent() :
+		result = "On, " if plug["enabled"].getValue() else "Off, "
+
+	result += str( GafferScene.TweakPlug.Mode.values[plug["mode"].getValue()] )
+
+	value = GafferUI.SpreadsheetUI.formatValue( plug["value"], forToolTip )
+	separator = " : \n" if forToolTip and "\n" in value else " : "
+	result += separator + value
+
+	return result
+
+GafferUI.SpreadsheetUI.registerValueFormatter( GafferScene.TweakPlug, __spreadsheetFormatter )
+
+def __spreadsheetDecorator( plug ) :
+
+	return GafferUI.SpreadsheetUI.decoration( plug["value"] )
+
+GafferUI.SpreadsheetUI.registerDecoration( GafferScene.TweakPlug, __spreadsheetDecorator )
+
+def __spreadsheetValueWidget( plug ) :
+
+	w = TweakPlugValueWidget( plug )
+	w.setNameVisible( False )
+	return w
+
+GafferUI.SpreadsheetUI.registerValueWidget( GafferScene.TweakPlug, __spreadsheetValueWidget )

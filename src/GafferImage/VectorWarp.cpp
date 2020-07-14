@@ -126,7 +126,7 @@ struct VectorWarp::Engine : public Warp::Engine
 // VectorWarp implementation
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( VectorWarp );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( VectorWarp );
 
 size_t VectorWarp::g_firstPlugIndex = 0;
 
@@ -174,6 +174,16 @@ IntPlug *VectorWarp::vectorUnitsPlug()
 const IntPlug *VectorWarp::vectorUnitsPlug() const
 {
 	return getChild<IntPlug>( g_firstPlugIndex + 2 );
+}
+
+void VectorWarp::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
+{
+	Warp::affects( input, outputs );
+
+	if( input == vectorPlug()->deepPlug() )
+	{
+		outputs.push_back( outPlug()->deepPlug() );
+	}
 }
 
 bool VectorWarp::affectsEngine( const Gaffer::Plug *input ) const
@@ -266,6 +276,13 @@ const Warp::Engine *VectorWarp::computeEngine( const Imath::V2i &tileOrigin, con
 		aData = vectorPlug()->channelDataPlug()->getValue();
 	}
 
+	if( xData->readable().size() != (unsigned int)ImagePlug::tilePixels() ||
+		yData->readable().size() != (unsigned int)ImagePlug::tilePixels() ||
+		aData->readable().size() != (unsigned int)ImagePlug::tilePixels() )
+	{
+		throw IECore::Exception( "VectorWarp::computeEngine : Bad channel data size on vector plug.  Maybe it's deep?" );
+	}
+
 	return new Engine(
 		displayWindow,
 		tileBound,
@@ -277,3 +294,19 @@ const Warp::Engine *VectorWarp::computeEngine( const Imath::V2i &tileOrigin, con
 		(VectorUnits)vectorUnitsPlug()->getValue()
 	);
 }
+
+void VectorWarp::hashDeep( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const
+{
+	FlatImageProcessor::hashDeep( parent, context, h );
+	h.append( vectorPlug()->deepPlug()->hash() );
+}
+
+bool VectorWarp::computeDeep( const Gaffer::Context *context, const ImagePlug *parent ) const
+{
+	if( vectorPlug()->deepPlug()->getValue() )
+	{
+		throw IECore::Exception( "Deep data not supported in input \"vector\"" );
+	}
+	return false;
+}
+

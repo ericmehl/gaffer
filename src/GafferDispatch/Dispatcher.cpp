@@ -55,6 +55,54 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferDispatch;
 
+//////////////////////////////////////////////////////////////////////////
+// Internal utilities
+//////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+/// \todo Consider moving this to PlugAlgo and using it in
+/// `Shader::NetworkBuilder::effectiveParameter()`.
+tuple<const Plug *, ConstContextPtr> computedSource( const Plug *plug )
+{
+	plug = plug->source();
+
+	if( auto sw = runTimeCast<const Switch>( plug->node() ) )
+	{
+		if(
+			sw->outPlug() &&
+			( plug == sw->outPlug() || sw->outPlug()->isAncestorOf( plug ) )
+		)
+		{
+			if( auto activeInPlug = sw->activeInPlug( plug ) )
+			{
+				return computedSource( activeInPlug );
+			}
+		}
+	}
+	else if( auto contextProcessor = runTimeCast<const ContextProcessor>( plug->node() ) )
+	{
+		if(
+			contextProcessor->outPlug() &&
+			( plug == contextProcessor->outPlug() || contextProcessor->outPlug()->isAncestorOf( plug ) )
+		)
+		{
+			ConstContextPtr context = contextProcessor->inPlugContext();
+			Context::Scope scopedContext( context.get() );
+			return computedSource( contextProcessor->inPlug() );
+		}
+	}
+
+	return make_tuple( plug, Context::current() );
+}
+
+} // namespace
+
+//////////////////////////////////////////////////////////////////////////
+// Dispatcher
+//////////////////////////////////////////////////////////////////////////
+
 static InternedString g_frame( "frame" );
 static InternedString g_batchSize( "batchSize" );
 static InternedString g_immediatePlugName( "immediate" );
@@ -73,7 +121,7 @@ Dispatcher::DispatchSignal Dispatcher::g_dispatchSignal;
 Dispatcher::PostDispatchSignal Dispatcher::g_postDispatchSignal;
 std::string Dispatcher::g_defaultDispatcherType = "";
 
-IE_CORE_DEFINERUNTIMETYPED( Dispatcher )
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Dispatcher )
 
 Dispatcher::Dispatcher( const std::string &name )
 	: Node( name )
@@ -399,23 +447,19 @@ class Dispatcher::Batcher
 
 		TaskBatchPtr batchTasksWalk( TaskNode::Task task, const std::set<const TaskBatch *> &ancestors = std::set<const TaskBatch *>() )
 		{
-			task = TaskNode::Task( task.plug()->source<TaskNode::TaskPlug>(), task.context() );
-			// Deal with Switch and ContextProcessor nodes. We need to do this manually
-			// because they only know how to deal with ValuePlugs, and we use TaskPlugs.
-			if( auto sw = runTimeCast<const Switch>( task.plug()->node() ) )
+			// Find source task, taking into account
+			// Switches and ContextProcessors.
 			{
-				if( task.plug() == sw->outPlug() )
+				Context::Scope scopedTaskContext( task.context() );
+				const Plug *sourcePlug; ConstContextPtr sourceContext;
+				tie( sourcePlug, sourceContext ) = computedSource( task.plug() );
+				if( auto sourceTaskPlug = runTimeCast<const TaskNode::TaskPlug>( sourcePlug ) )
 				{
-					Context::Scope scopedTaskContext( task.context() );
-					task = TaskNode::Task( sw->activeInPlug()->source<TaskNode::TaskPlug>(), task.context() );
+					task = TaskNode::Task( sourceTaskPlug, sourceContext ? sourceContext.get() : task.context() );
 				}
-			}
-			else if( auto contextProcessor = runTimeCast<const ContextProcessor>( task.plug()->node() ) )
-			{
-				if( task.plug() == contextProcessor->outPlug() )
+				else
 				{
-					Context::Scope scopedTaskContext( task.context() );
-					task = TaskNode::Task( contextProcessor->inPlug()->source<TaskNode::TaskPlug>(), contextProcessor->inPlugContext().get() );
+					return nullptr;
 				}
 			}
 
@@ -737,9 +781,9 @@ void Dispatcher::dispatch( const std::vector<NodePtr> &nodes ) const
 		}
 		else if ( const SubGraph *subGraph = runTimeCast<const SubGraph>( nIt->get() ) )
 		{
-			for ( RecursiveOutputPlugIterator plugIt( subGraph ); !plugIt.done(); ++plugIt )
+			for( auto &plug : TaskNode::TaskPlug::RecursiveOutputRange( *subGraph ) )
 			{
-				Node *sourceNode = plugIt->get()->source()->node();
+				Node *sourceNode = plug->source()->node();
 				if ( TaskNode *taskNode = runTimeCast<TaskNode>( sourceNode ) )
 				{
 					taskNodes.push_back( taskNode );

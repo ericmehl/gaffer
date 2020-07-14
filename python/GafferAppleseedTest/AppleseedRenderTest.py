@@ -35,8 +35,10 @@
 ##########################################################################
 
 import os
-import unittest
+import re
 import subprocess32 as subprocess
+import time
+import unittest
 
 import IECore
 import IECoreScene
@@ -46,6 +48,7 @@ import GafferTest
 import GafferScene
 import GafferAppleseed
 import GafferAppleseedTest
+import GafferOSL
 
 class AppleseedRenderTest( GafferTest.TestCase ) :
 
@@ -75,7 +78,7 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 		)
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%d.appleseed" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%d.appleseed" % i ) )
 
 	def testWaitForImage( self ) :
 
@@ -85,8 +88,8 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 
 		s["options"] = GafferAppleseed.AppleseedOptions()
 		s["options"]["in"].setInput( s["plane"]["out"] )
-		s["options"]["options"]["aaSamples"]["value"].setValue( 1 )
-		s["options"]["options"]["aaSamples"]["enabled"].setValue( True )
+		s["options"]["options"]["maxAASamples"]["value"].setValue( 1 )
+		s["options"]["options"]["maxAASamples"]["enabled"].setValue( True )
 
 		s["outputs"] = GafferScene.Outputs()
 		s["outputs"].addOutput(
@@ -110,7 +113,7 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 
 		s["render"]["task"].execute()
 
-		self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.exr" ) )
+		self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.exr" ) )
 
 	def testExecuteWithStringSubstitutions( self ) :
 
@@ -130,7 +133,7 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 		)
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%04d.appleseed" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%04d.appleseed" % i ) )
 
 	def testImageOutput( self ) :
 
@@ -140,8 +143,8 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 
 		s["options"] = GafferAppleseed.AppleseedOptions()
 		s["options"]["in"].setInput( s["plane"]["out"] )
-		s["options"]["options"]["aaSamples"]["value"].setValue( 1 )
-		s["options"]["options"]["aaSamples"]["enabled"].setValue( True )
+		s["options"]["options"]["maxAASamples"]["value"].setValue( 1 )
+		s["options"]["options"]["maxAASamples"]["enabled"].setValue( True )
 
 		s["outputs"] = GafferScene.Outputs()
 		s["outputs"].addOutput(
@@ -170,7 +173,7 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 				s["render"]["task"].execute()
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%04d.exr" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%04d.exr" % i ) )
 
 	def testTypeNamePrefixes( self ) :
 
@@ -269,6 +272,90 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 		self.assertNotEqual( render["task"].hash(), IECore.MurmurHash() )
 		render["task"].execute()
 		self.assertTrue( os.path.exists( render["fileName"].getValue() ) )
+
+	def testShaderSubstitutions( self ) :
+
+		plane = GafferScene.Plane()
+
+		planeAttrs = GafferScene.CustomAttributes()
+		planeAttrs["in"].setInput( plane["out"] )
+		planeAttrs["attributes"].addChild( Gaffer.NameValuePlug( "A", Gaffer.StringPlug( "value", defaultValue = 'bar' ) ) )
+		planeAttrs["attributes"].addChild( Gaffer.NameValuePlug( "B", Gaffer.StringPlug( "value", defaultValue = 'foo' ) ) )
+
+		cube = GafferScene.Cube()
+
+		cubeAttrs = GafferScene.CustomAttributes()
+		cubeAttrs["in"].setInput( cube["out"] )
+		cubeAttrs["attributes"].addChild( Gaffer.NameValuePlug( "B", Gaffer.StringPlug( "value", defaultValue = 'override' ) ) )
+
+		parent = GafferScene.Parent()
+		parent["in"].setInput( planeAttrs["out"] )
+		parent["children"][0].setInput( cubeAttrs["out"] )
+		parent["parent"].setValue( "/plane" )
+
+		shader = GafferOSL.OSLShader()
+		shader.loadShader( "as_texture" )
+		shader["parameters"]["in_filename"].setValue( "<attr:A>/path/<attr:B>.tx" )
+
+		f = GafferScene.PathFilter()
+		f["paths"].setValue( IECore.StringVectorData( [ "/plane" ] ) )
+
+		shaderAssignment = GafferScene.ShaderAssignment()
+		shaderAssignment["in"].setInput( parent["out"] )
+		shaderAssignment["filter"].setInput( f["out"] )
+		shaderAssignment["shader"].setInput( shader["out"] )
+
+		render = GafferAppleseed.AppleseedRender()
+		render["in"].setInput( shaderAssignment["out"] )
+		render["mode"].setValue( render.Mode.SceneDescriptionMode )
+		render["fileName"].setValue( os.path.join( self.temporaryDirectory(), "test.appleseed" ) )
+
+		self.assertNotEqual( render["task"].hash(), IECore.MurmurHash() )
+		render["task"].execute()
+		self.assertTrue( os.path.exists( render["fileName"].getValue() ) )
+		f = open( render["fileName"].getValue(), "r" )
+		texturePaths = set( re.findall( '<parameter name="in_filename" value="string (.*)"', f.read()) )
+		self.assertEqual( texturePaths, set( ['bar/path/foo.tx', 'bar/path/override.tx' ] ) )
+
+	def testMessageHandler( self ) :
+
+		RenderType = GafferScene.Private.IECoreScenePreview.Renderer.RenderType
+
+		for renderType, fileName, output, expected in (
+			( RenderType.Batch, "", IECoreScene.Output( self.temporaryDirectory() + "/beauty.exr", "exr", "rgba" ), 2 ),
+			( RenderType.Interactive, "", IECoreScene.Output( self.temporaryDirectory() + "/beauty.exr", "exr", "rgba" ), 2 ),
+			( RenderType.SceneDescription, self.temporaryDirectory() + "/test.appleseed" , None, 1 )
+		) :
+
+			with IECore.CapturingMessageHandler() as fallbackHandler :
+
+				handler = IECore.CapturingMessageHandler()
+
+				r = GafferScene.Private.IECoreScenePreview.Renderer.create(
+					"Appleseed",
+					renderType,
+					fileName = fileName,
+					messageHandler = handler
+				)
+
+				r.option( "as:log:level", IECore.StringData( "debug" ) )
+				r.option( "as:invalid", IECore.BoolData( True ) )
+
+				if output :
+					r.output( "testOutput", output )
+
+				r.object( "/sphere", IECoreScene.SpherePrimitive(), r.attributes( IECore.CompoundObject() ) )
+
+				r.render()
+
+				if renderType == RenderType.Interactive :
+					time.sleep( 1 )
+
+				# We should have at least 1 message from our invalid option plus
+				# _something_ from the renderers own output stream for a render.
+				self.assertGreaterEqual( len(handler.messages), expected, msg=str(renderType) )
+
+				self.assertEqual( [ m.message for m in fallbackHandler.messages ], [], msg=str(renderType) )
 
 if __name__ == "__main__":
 	unittest.main()

@@ -35,13 +35,20 @@
 #
 ##########################################################################
 
-import cgi
 import math
 import difflib
 import itertools
 import collections
 import functools
+import six
 import imath
+
+# These modules are not interchangeable in general, but we only
+# use the `escape()` function which is present in both.
+if six.PY3 :
+	import html
+else :
+	import cgi as html
 
 import IECore
 import IECoreScene
@@ -226,11 +233,11 @@ class SceneInspector( GafferUI.NodeSetEditor ) :
 		self.__plugDirtiedConnections = []
 		self.__parentChangedConnections = []
 		for node in self.getNodeSet()[-2:] :
-			outputScenePlugs = [ p for p in node.children( GafferScene.ScenePlug ) if p.direction() == Gaffer.Plug.Direction.Out ]
-			if len( outputScenePlugs ) :
-				self.__scenePlugs.append( outputScenePlugs[0] )
+			outputScenePlug = next( GafferScene.ScenePlug.RecursiveOutputRange( node ), None )
+			if outputScenePlug :
+				self.__scenePlugs.append( outputScenePlug )
 				self.__plugDirtiedConnections.append( node.plugDirtiedSignal().connect( Gaffer.WeakMethod( self.__plugDirtied ) ) )
-				self.__parentChangedConnections.append( outputScenePlugs[0].parentChangedSignal().connect( Gaffer.WeakMethod( self.__plugParentChanged ) ) )
+				self.__parentChangedConnections.append( outputScenePlug.parentChangedSignal().connect( Gaffer.WeakMethod( self.__plugParentChanged ) ) )
 
 		self.__updateLazily()
 
@@ -287,7 +294,7 @@ class SceneInspector( GafferUI.NodeSetEditor ) :
 			targets = []
 			for scene in self.__scenePlugs :
 				for path in paths :
-					if path is not None and not GafferScene.SceneAlgo.exists( scene, path ) :
+					if path is not None and not scene.exists( path ) :
 						# selection may not be valid for both scenes,
 						# and we can't inspect invalid paths.
 						path = None
@@ -342,7 +349,7 @@ class SideBySideDiff( Diff ) :
 			for i in range( 0, 2 ) :
 				frame = GafferUI.Frame(
 					borderWidth = 4,
-					borderStyle = GafferUI.Frame.BorderStyle.None,
+					borderStyle = GafferUI.Frame.BorderStyle.None_,
 					parenting = { "index" : ( 0, i ) }
 				)
 
@@ -477,10 +484,10 @@ class TextDiff( SideBySideDiff ) :
 			return self.__formatShaders( values )
 		elif isinstance( values[0], ( float, int ) ) :
 			return self.__formatNumbers( values )
-		elif isinstance( values[0], basestring ) :
+		elif isinstance( values[0], six.string_types ) :
 			return self.__formatStrings( [ str( v ) for v in values ] )
 		else :
-			return [ cgi.escape( str( v ) ) for v in values ]
+			return [ html.escape( str( v ) ) for v in values ]
 
 	def __formatVectors( self, vectors ) :
 
@@ -530,7 +537,7 @@ class TextDiff( SideBySideDiff ) :
 		# transform back into a list of 2d arrays of
 		# formatted strings.
 		formattedRows = zip( *formattedColumns )
-		values = zip( *( [ iter( formattedRows ) ] * len( values[0] ) ) )
+		values = list( zip( *( [ iter( formattedRows ) ] * len( values[0] ) ) ) )
 
 		# build the tables. it'd be nice to control cellspacing
 		# in the stylesheet, but qt doesn't seem to support that.
@@ -566,10 +573,10 @@ class TextDiff( SideBySideDiff ) :
 					nodeColor = GafferUI.Widget._qtColor( nodeColor.value ).name()
 				else :
 					nodeColor = "#000000"
-				formattedValue += "<td bgcolor=%s>%s</td>" % ( nodeColor, cgi.escape( nodeName.value ) )
-				formattedValue += "<td>(" + cgi.escape( shaderName ) + ")</td>"
+				formattedValue += "<td bgcolor=%s>%s</td>" % ( nodeColor, html.escape( nodeName.value ) )
+				formattedValue += "<td>(" + html.escape( shaderName ) + ")</td>"
 			else :
-				formattedValue += "<td>" + cgi.escape( shaderName ) + "</td>"
+				formattedValue += "<td>" + html.escape( shaderName ) + "</td>"
 
 			formattedValue += "</tr></table>"
 
@@ -580,7 +587,7 @@ class TextDiff( SideBySideDiff ) :
 	def __formatStrings( self, strings ) :
 
 		if len( strings ) == 1 or strings[0] == strings[1] or not self.__highlightDiffs :
-			return [ cgi.escape( s ) for s in strings ]
+			return [ html.escape( s ) for s in strings ]
 
 		a = strings[0]
 		b = strings[1]
@@ -590,15 +597,15 @@ class TextDiff( SideBySideDiff ) :
 		for op, a1, a2, b1, b2 in difflib.SequenceMatcher( None, a, b ).get_opcodes() :
 
 			if op == "equal" :
-				aFormatted += cgi.escape( a[a1:a2] )
-				bFormatted += cgi.escape( b[b1:b2] )
+				aFormatted += html.escape( a[a1:a2] )
+				bFormatted += html.escape( b[b1:b2] )
 			elif op == "replace" :
-				aFormatted += '<span class="diffA">' + cgi.escape( a[a1:a2] ) + "</span>"
-				bFormatted += '<span class="diffB">' + cgi.escape( b[b1:b2] ) + "</span>"
+				aFormatted += '<span class="diffA">' + html.escape( a[a1:a2] ) + "</span>"
+				bFormatted += '<span class="diffB">' + html.escape( b[b1:b2] ) + "</span>"
 			elif op == "delete" :
-				aFormatted += '<span class="diffA">' + cgi.escape( a[a1:a2] ) + "</span>"
+				aFormatted += '<span class="diffA">' + html.escape( a[a1:a2] ) + "</span>"
 			elif op == "insert" :
-				bFormatted += '<span class="diffB">' + cgi.escape( b[b1:b2] ) + "</span>"
+				bFormatted += '<span class="diffB">' + html.escape( b[b1:b2] ) + "</span>"
 
 		return [ aFormatted, bFormatted ]
 
@@ -622,7 +629,7 @@ class TextDiff( SideBySideDiff ) :
 			return values
 
 		# d is the index of the first differing digit, or -1 if there is no difference
-		d = next( ( i for i in xrange( 0, len( values[0] ) ) if values[0][i] != values[1][i] ), -1 )
+		d = next( ( i for i in range( 0, len( values[0] ) ) if values[0][i] != values[1][i] ), -1 )
 		if d < 0 :
 			return values
 
@@ -667,7 +674,7 @@ class Row( GafferUI.Widget ) :
 
 	def __init__( self, borderWidth = 4, alternate = False, **kw ) :
 
-		self.__frame = GafferUI.Frame( borderWidth = borderWidth, borderStyle = GafferUI.Frame.BorderStyle.None )
+		self.__frame = GafferUI.Frame( borderWidth = borderWidth, borderStyle = GafferUI.Frame.BorderStyle.None_ )
 
 		GafferUI.Widget.__init__( self, self.__frame, **kw )
 
@@ -1026,7 +1033,7 @@ class DiffColumn( GafferUI.Widget ) :
 		self.__diffCreator = diffCreator
 
 		with outerColumn :
-			with GafferUI.Frame( borderWidth = 4, borderStyle = GafferUI.Frame.BorderStyle.None ) as self.__header :
+			with GafferUI.Frame( borderWidth = 4, borderStyle = GafferUI.Frame.BorderStyle.None_ ) as self.__header :
 				with GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, spacing = 4 ) :
 					if label is not None :
 						l = GafferUI.Label(
@@ -1534,7 +1541,7 @@ class _HistorySection( Section ) :
 			if sourceScene.node() == target.scene.node() :
 				return None
 
-			if not GafferScene.SceneAlgo.exists( sourceScene, target.path ) :
+			if not sourceScene.exists( target.path ) :
 				return None
 
 			return SceneInspector.Target( sourceScene, target.path )
@@ -1871,14 +1878,21 @@ class _PrimitiveVariableTextDiff( TextDiff ) :
 
 		result = []
 		for value in values :
-			s = str( value["interpolation"] )
-			s += " " + value["data"].typeName()
-			if hasattr( value["data"], "getInterpretation" ) :
-				s += " (" + str( value["data"].getInterpretation() ) + ")"
 
-			if value["indices"] :
-				numElements = len( value["data"] )
-				s += " ( Indexed : {0} element{1} )".format( numElements, '' if numElements == 1 else 's' )
+			if value is not None :
+
+				s = str( value["interpolation"] )
+				s += " " + value["data"].typeName()
+				if hasattr( value["data"], "getInterpretation" ) :
+					s += " (" + str( value["data"].getInterpretation() ) + ")"
+
+				if value["indices"] :
+					numElements = len( value["data"] )
+					s += " ( Indexed : {0} element{1} )".format( numElements, '' if numElements == 1 else 's' )
+
+			else :
+
+				s = ""
 
 			result.append( s )
 
@@ -2426,7 +2440,7 @@ class _SetDiff( Diff ) :
 
 		with self.__row :
 			for i, diffName in enumerate( [ "A", "AB", "B" ] ) :
-				with GafferUI.Frame( borderWidth = 5, borderStyle = GafferUI.Frame.BorderStyle.None ) as frame :
+				with GafferUI.Frame( borderWidth = 5, borderStyle = GafferUI.Frame.BorderStyle.None_ ) as frame :
 
 					frame._qtWidget().setProperty( "gafferDiff", diffName )
 
@@ -2487,7 +2501,7 @@ class _SetDiff( Diff ) :
 
 	def __buttonRelease( self, widget, event ) :
 
-		if event.buttons != event.Buttons.None or event.button != event.Buttons.Left :
+		if event.buttons != event.Buttons.None_ or event.button != event.Buttons.Left :
 			return False
 
 		editor = self.ancestor( SceneInspector )

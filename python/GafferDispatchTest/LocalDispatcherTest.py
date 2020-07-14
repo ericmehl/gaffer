@@ -38,6 +38,7 @@ import os
 import stat
 import shutil
 import unittest
+import six
 import time
 import inspect
 import functools
@@ -61,8 +62,8 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 
 	def testDispatcherRegistration( self ) :
 
-		self.failUnless( "Local" in GafferDispatch.Dispatcher.registeredDispatchers() )
-		self.failUnless( GafferDispatch.Dispatcher.create( "Local" ).isInstanceOf( GafferDispatch.LocalDispatcher.staticTypeId() ) )
+		self.assertIn( "Local", GafferDispatch.Dispatcher.registeredDispatchers() )
+		self.assertIsInstance( GafferDispatch.Dispatcher.create( "Local" ), GafferDispatch.LocalDispatcher )
 
 	def testDispatch( self ) :
 
@@ -96,7 +97,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		# Executing n1 should trigger execution of all of them
 		dispatcher.dispatch( [ s["n1"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = s.context().substitute( "n2a on ${frame};n2b on ${frame};n2 on ${frame};n1 on ${frame};" )
 		self.assertEqual( text, expectedText )
@@ -105,7 +106,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		os.remove( fileName )
 		dispatcher.dispatch( [ s["n2b"], s["n1"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = s.context().substitute( "n2b on ${frame};n2a on ${frame};n2 on ${frame};n1 on ${frame};" )
 		self.assertEqual( text, expectedText )
@@ -114,7 +115,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		os.remove( fileName )
 		dispatcher.dispatch( [ s["n2"], s["n2b"], s["n1"], s["n2a"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = s.context().substitute( "n2a on ${frame};n2b on ${frame};n2 on ${frame};n1 on ${frame};" )
 		self.assertEqual( text, expectedText )
@@ -123,7 +124,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		os.remove( fileName )
 		dispatcher.dispatch( [ s["n2"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = s.context().substitute( "n2a on ${frame};n2b on ${frame};n2 on ${frame};" )
 		self.assertEqual( text, expectedText )
@@ -132,7 +133,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		os.remove( fileName )
 		dispatcher.dispatch( [ s["n2b"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = s.context().substitute( "n2b on ${frame};" )
 		self.assertEqual( text, expectedText )
@@ -152,7 +153,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 
 		fileName = context.substitute( s["n1"]["fileName"].getValue() )
 		self.assertTrue( os.path.isfile( fileName ) )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		self.assertEqual( text, "%s on %d" % ( s["n1"].getName(), context.getFrame() ) )
 
@@ -192,7 +193,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		# Executing n1 should trigger execution of all of them
 		dispatcher.dispatch( [ s["n1"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = ""
 		for frame in frameList.asList() :
@@ -205,7 +206,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		os.remove( fileName )
 		dispatcher.dispatch( [ s["n2b"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = ""
 		for frame in frameList.asList() :
@@ -249,7 +250,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		# Executing n1 should trigger execution of all of them
 		dispatcher.dispatch( [ s["n1"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = ""
 		for frame in frameList.asList() :
@@ -262,7 +263,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		os.remove( fileName )
 		dispatcher.dispatch( [ s["n2b"] ] )
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = ""
 		for frame in frameList.asList() :
@@ -304,7 +305,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 
 		self.assertTrue( os.path.isfile( fileName ) )
 		self.assertTrue( os.path.basename( fileName ).startswith( context["script:name"] ) )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expected = "%s on %d" % ( context["script:name"], context.getFrame() )
 		expected = expected.replace( context["textWriter:replace"][0], context["textWriter:replace"][1] )
@@ -328,15 +329,15 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		dispatcher.dispatch( [ s["n1"] ] )
 
 		self.assertEqual( len( preCs ), 1 )
-		self.failUnless( preCs[0][0].isSame( dispatcher ) )
+		self.assertTrue( preCs[0][0].isSame( dispatcher ) )
 		self.assertEqual( preCs[0][1], [ s["n1"] ] )
 
 		self.assertEqual( len( dispatchCs ), 1 )
-		self.failUnless( dispatchCs[0][0].isSame( dispatcher ) )
+		self.assertTrue( dispatchCs[0][0].isSame( dispatcher ) )
 		self.assertEqual( dispatchCs[0][1], [ s["n1"] ] )
 
 		self.assertEqual( len( postCs ), 1 )
-		self.failUnless( postCs[0][0].isSame( dispatcher ) )
+		self.assertTrue( postCs[0][0].isSame( dispatcher ) )
 		self.assertEqual( postCs[0][1], [ s["n1"] ] )
 
 	def testExecuteInBackground( self ) :
@@ -425,7 +426,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 
 		# all the foreground execution has finished
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		expectedText = ""
 		for frame in frameList.asList() :
@@ -440,7 +441,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		self.assertEqual( len(dispatcher.jobPool().jobs()), 0 )
 
 		self.assertEqual( os.path.isfile( fileName ), True )
-		with file( fileName, "r" ) as f :
+		with open( fileName, "r" ) as f :
 			text = f.read()
 		# don't reset the expectedText since we're still appending
 		for frame in frameList.asList() :
@@ -492,14 +493,14 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		dispatcher = self.__createLocalDispatcher()
 
 		# fails because n2 doesn't have a valid fileName
-		self.assertRaisesRegexp( RuntimeError, "No such file or directory", functools.partial( dispatcher.dispatch, [ s["n1"] ] ) )
+		six.assertRaisesRegex( self, RuntimeError, "No such file or directory", functools.partial( dispatcher.dispatch, [ s["n1"] ] ) )
 
 		# it still cleans up the JobPool
 		self.assertEqual( len(dispatcher.jobPool().jobs()), 0 )
 
 		# n3 executed correctly
 		self.assertTrue( os.path.isfile( s.context().substitute( s["n3"]["fileName"].getValue() ) ) )
-		with file( s.context().substitute( s["n3"]["fileName"].getValue() ), "r" ) as f :
+		with open( s.context().substitute( s["n3"]["fileName"].getValue() ), "r" ) as f :
 			text = f.read()
 		self.assertEqual( text, "n3 on %d" % s.context().getFrame() )
 
@@ -519,7 +520,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 
 		# n3 executed correctly
 		self.assertTrue( os.path.isfile( s.context().substitute( s["n3"]["fileName"].getValue() ) ) )
-		with file( s.context().substitute( s["n3"]["fileName"].getValue() ), "r" ) as f :
+		with open( s.context().substitute( s["n3"]["fileName"].getValue() ), "r" ) as f :
 			text = f.read()
 		self.assertEqual( text, "n3 on %d" % s.context().getFrame() )
 
@@ -702,7 +703,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		testFile = os.path.join( self.temporaryDirectory(), "test" )
 
 		s["c"] = GafferDispatch.SystemCommand()
-		s["c"]["command"].setValue( "echo HELLO \$GAFFERDISPATCHTEST_ENVVAR > " + testFile )
+		s["c"]["command"].setValue( r"echo HELLO \$GAFFERDISPATCHTEST_ENVVAR > " + testFile )
 
 		dispatcher = self.__createLocalDispatcher()
 		dispatcher["executeInBackground"].setValue( True )
@@ -727,7 +728,7 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		testFile = os.path.join( self.temporaryDirectory(), "test" )
 
 		s["c"] = GafferDispatch.SystemCommand()
-		s["c"]["command"].setValue( "echo HELLO \$GAFFERDISPATCHTEST_ENVVAR > " + testFile )
+		s["c"]["command"].setValue( r"echo HELLO \$GAFFERDISPATCHTEST_ENVVAR > " + testFile )
 
 		dispatcher = self.__createLocalDispatcher()
 		dispatcher["executeInBackground"].setValue( True )
@@ -772,20 +773,22 @@ class LocalDispatcherTest( GafferTest.TestCase ) :
 		d["framesMode"].setValue( d.FramesMode.CustomRange )
 		d["frameRange"].setValue( "1-1000" )
 
-		t = time.clock()
+		clock = time.process_time if six.PY3 else time.clock
+
+		t = clock()
 		d.dispatch( [ lastTask ] )
 		timeLimit = 6
 		if Gaffer.isDebug():
 			timeLimit *= 2
-		self.assertLess( time.clock() - t, timeLimit )
+		self.assertLess( clock() - t, timeLimit )
 
 		d["executeInBackground"].setValue( True )
 
 		d.dispatch( [ lastTask ] )
 
-		t = time.clock()
+		t = clock()
 		d.jobPool().jobs()[0].kill()
-		self.assertLess( time.clock() - t, 1 )
+		self.assertLess( clock() - t, 1 )
 
 		d.jobPool().waitForAll()
 

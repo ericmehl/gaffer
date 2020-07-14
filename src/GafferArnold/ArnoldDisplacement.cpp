@@ -43,7 +43,7 @@ using namespace Gaffer;
 using namespace GafferScene;
 using namespace GafferArnold;
 
-IE_CORE_DEFINERUNTIMETYPED( ArnoldDisplacement );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ArnoldDisplacement );
 
 size_t ArnoldDisplacement::g_firstPlugIndex = 0;
 static IECore::InternedString g_mapAttributeName = "ai:disp_map";
@@ -129,20 +129,16 @@ const Gaffer::Plug *ArnoldDisplacement::outPlug() const
 	return getChild<Plug>( g_firstPlugIndex + 5 );
 }
 
-void ArnoldDisplacement::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
+bool ArnoldDisplacement::affectsAttributes( const Gaffer::Plug *input ) const
 {
-	Shader::affects( input, outputs );
-
-	if(
+	return
+		Shader::affectsAttributes( input ) ||
 		input == mapPlug() ||
 		input == heightPlug() ||
 		input == paddingPlug() ||
 		input == zeroValuePlug() ||
 		input == autoBumpPlug()
-	)
-	{
-		outputs.push_back( outPlug() );
-	}
+	;
 }
 
 void ArnoldDisplacement::attributesHash( const Gaffer::Plug *output, IECore::MurmurHash &h ) const

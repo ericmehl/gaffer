@@ -47,7 +47,7 @@ using namespace Gaffer;
 using namespace IECore;
 using namespace std;
 
-IE_CORE_DEFINERUNTIMETYPED( SetFilter );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( SetFilter );
 
 size_t SetFilter::g_firstPlugIndex = 0;
 
@@ -88,7 +88,10 @@ void SetFilter::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outp
 {
 	Filter::affects( input, outputs );
 
-	if( input == setExpressionPlug() )
+	if(
+		input == setExpressionPlug() ||
+		( input->parent<ScenePlug>() && SetAlgo::affectsSetExpression( input ) )
+	)
 	{
 		outputs.push_back( expressionResultPlug() );
 	}
@@ -98,16 +101,6 @@ void SetFilter::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outp
 		outputs.push_back( outPlug() );
 	}
 
-}
-
-bool SetFilter::sceneAffectsMatch( const ScenePlug *scene, const Gaffer::ValuePlug *child ) const
-{
-	if( Filter::sceneAffectsMatch( scene, child ) )
-	{
-		return true;
-	}
-
-	return child == scene->setPlug();
 }
 
 void SetFilter::hash( const Gaffer::ValuePlug *output, const Gaffer::Context *context, IECore::MurmurHash &h ) const

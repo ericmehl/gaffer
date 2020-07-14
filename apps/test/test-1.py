@@ -38,6 +38,7 @@
 import glob
 import os
 import sys
+import warnings
 
 import IECore
 import Gaffer
@@ -113,6 +114,12 @@ class test( Gaffer.Application ) :
 					defaultValue = "",
 					allowEmptyString = True,
 					extensions = "json",
+				),
+
+				IECore.BoolParameter(
+					name = "stopOnFailure",
+					description = "Stops on the first failure, instead of running the remaining tests.",
+					defaultValue = False,
 				)
 			]
 
@@ -128,18 +135,23 @@ class test( Gaffer.Application ) :
 
 		import unittest
 
-		testSuite = unittest.TestSuite()
-		for name in args["testCases"] :
-			testCase = unittest.defaultTestLoader.loadTestsFromName( name )
-			testSuite.addTest( testCase )
-
-		if args["performanceOnly"].value :
-			GafferTest.TestRunner.filterPerformanceTests( testSuite )
-
 		for i in range( 0, args["repeat"].value ) :
 
+			testSuite = unittest.TestSuite()
+			for name in args["testCases"] :
+				testCase = unittest.defaultTestLoader.loadTestsFromName( name )
+				testSuite.addTest( testCase )
+
+			if args["performanceOnly"].value :
+				GafferTest.TestRunner.filterPerformanceTests( testSuite )
+
 			testRunner = GafferTest.TestRunner( previousResultsFile = args["previousOutputFile"].value )
-			testResult = testRunner.run( testSuite )
+			if args["stopOnFailure"].value :
+				testRunner.failfast = True
+
+			with warnings.catch_warnings() :
+				warnings.simplefilter( "error", DeprecationWarning )
+				testResult = testRunner.run( testSuite )
 
 			if args["outputFile"].value :
 				testResult.save( args["outputFile"].value )

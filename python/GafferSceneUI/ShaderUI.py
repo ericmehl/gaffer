@@ -40,6 +40,7 @@ import string
 import fnmatch
 import functools
 import imath
+import six
 
 import IECore
 
@@ -246,7 +247,11 @@ def hideShaders( pathMatcher ) :
 def __nodeName( shaderName ) :
 
 	nodeName = os.path.split( shaderName )[-1]
-	nodeName = nodeName.translate( string.maketrans( ".-", "__" ) )
+	if six.PY3 :
+		nodeName = nodeName.translate( str.maketrans( ".-", "__" ) )
+	else :
+		nodeName = nodeName.translate( string.maketrans( ".-", "__" ) )
+
 	return nodeName
 
 def __loadFromFile( menu, extensions, nodeCreator ) :
@@ -353,7 +358,7 @@ def __graphEditorPlugContextMenu( graphEditor, plug, menuDefinition ) :
 		"/Hide",
 		{
 			"command" : functools.partial( __setPlugMetadata, plug, "noduleLayout:visible", False ),
-			"active" : numConnections == 0 and not Gaffer.readOnly( plug ),
+			"active" : numConnections == 0 and not Gaffer.MetadataAlgo.readOnly( plug ),
 		}
 
 	)

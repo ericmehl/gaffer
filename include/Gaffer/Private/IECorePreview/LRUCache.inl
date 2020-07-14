@@ -38,6 +38,7 @@
 
 #include "Gaffer/Private/IECorePreview/TaskMutex.h"
 
+#include "IECore/Canceller.h"
 #include "IECore/Exception.h"
 
 #include "boost/multi_index/hashed_index.hpp"
@@ -815,12 +816,7 @@ class TaskParallel
 						const bool acquired = m_itemLock.acquireOr(
 							it->mutex, lockType,
 							// Work accepter
-							[&binLock, &spawnsTasks] ( bool workAvailable ) {
-								if( workAvailable )
-								{
-									assert( spawnsTasks );
-									(void)spawnsTasks;
-								}
+							[&binLock] ( bool workAvailable ) {
 								// Release the bin lock prior to accepting work, because
 								// the work might involve recursion back into the cache,
 								// thus requiring the bin lock.
@@ -1091,6 +1087,10 @@ Value LRUCache<Key, Value, Policy, GetterKey>::get( const GetterKey &key )
 		try
 		{
 			handle.execute( [this, &value, &key, &cost] { value = m_getter( key, cost ); } );
+		}
+		catch( IECore::Cancelled const &c )
+		{
+			throw;
 		}
 		catch( ... )
 		{

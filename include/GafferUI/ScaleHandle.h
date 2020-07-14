@@ -51,7 +51,7 @@ class GAFFERUI_API ScaleHandle : public Handle
 		ScaleHandle( Style::Axes axes );
 		~ScaleHandle() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::ScaleHandle, ScaleHandleTypeId, Handle );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::ScaleHandle, ScaleHandleTypeId, Handle );
 
 		void setAxes( Style::Axes axes );
 		Style::Axes getAxes() const;
@@ -61,7 +61,7 @@ class GAFFERUI_API ScaleHandle : public Handle
 		// scaling in that axis.
 		Imath::V3i axisMask() const;
 
-		Imath::V3f scaling( const DragDropEvent &event ) const;
+		Imath::V3f scaling( const DragDropEvent &event );
 
 	protected :
 
@@ -72,7 +72,6 @@ class GAFFERUI_API ScaleHandle : public Handle
 
 		Style::Axes m_axes;
 		LinearDrag m_drag;
-		Imath::V2f m_uniformDragStartPosition;
 
 };
 

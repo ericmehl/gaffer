@@ -35,6 +35,7 @@
 ##########################################################################
 
 import unittest
+import six
 
 import imath
 
@@ -83,8 +84,8 @@ class TweakPlugTest( GafferSceneTest.SceneTestCase ) :
 		tweaks.addChild( GafferScene.TweakPlug( "a", 1.0, GafferScene.TweakPlug.Mode.Replace ) )
 		tweaks.addChild( GafferScene.TweakPlug( "b", 10.0, GafferScene.TweakPlug.Mode.Multiply ) )
 
-		parameters = IECore.CompoundData( { "b" : 2.0 } )
-		tweaks.applyTweaks( parameters )
+		parameters = IECore.CompoundData( { "a" : 0.0, "b" : 2.0 } )
+		self.assertTrue( tweaks.applyTweaks( parameters ) )
 		self.assertEqual( parameters, IECore.CompoundData( { "a" : 1.0, "b" : 20.0 } ) )
 
 	def testTweakNetwork( self ) :
@@ -103,7 +104,7 @@ class TweakPlugTest( GafferSceneTest.SceneTestCase ) :
 		tweaks.addChild( GafferScene.TweakPlug( "surface.Kd", 0.5, GafferScene.TweakPlug.Mode.Multiply ) )
 		tweaks.addChild( GafferScene.TweakPlug( "Kd", 0.25, GafferScene.TweakPlug.Mode.Add ) )
 
-		tweaks.applyTweaks( network )
+		self.assertTrue( tweaks.applyTweaks( network ) )
 
 		self.assertEqual( network.getShader( "texture" ).parameters["sscale"].value, 11.0 )
 		self.assertEqual( network.getShader( "surface" ).parameters["Kd"].value, 0.75 )
@@ -117,7 +118,7 @@ class TweakPlugTest( GafferSceneTest.SceneTestCase ) :
 		tweaks = Gaffer.Plug()
 		tweaks.addChild( GafferScene.TweakPlug( "missingShader", 0.5 ) )
 
-		with self.assertRaisesRegexp( RuntimeError, "" ) :
+		with six.assertRaisesRegex( self, RuntimeError, "" ) :
 			GafferScene.TweakPlug.applyTweaks( tweaks, network )
 
 	def testWrongDataType( self ) :
@@ -128,8 +129,39 @@ class TweakPlugTest( GafferSceneTest.SceneTestCase ) :
 
 		d = IECore.CompoundData( { "test" : 1 } )
 
-		with self.assertRaisesRegexp( RuntimeError, "Cannot apply tweak to \"test\" : Value of type \"IntData\" does not match parameter of type \"Color3fData\"" ) :
+		with six.assertRaisesRegex( self, RuntimeError, "Cannot apply tweak to \"test\" : Value of type \"IntData\" does not match parameter of type \"Color3fData\"" ) :
 			p.applyTweak( d )
+
+	def testMissingMode( self ) :
+
+		p = GafferScene.TweaksPlug()
+		p["t"] = GafferScene.TweakPlug( "test", 0.5, GafferScene.TweakPlug.Mode.Replace )
+
+		d = IECore.CompoundData()
+		with six.assertRaisesRegex( self, RuntimeError, "Cannot apply tweak with mode Replace to \"test\" : This parameter does not exist" ) :
+			p.applyTweaks( d, missingMode = GafferScene.TweakPlug.MissingMode.Error )
+		self.assertEqual( d, IECore.CompoundData() )
+
+		d = IECore.CompoundData()
+		self.assertFalse( p.applyTweaks( d, missingMode = GafferScene.TweakPlug.MissingMode.Ignore ) )
+		self.assertEqual( d, IECore.CompoundData() )
+
+		d = IECore.CompoundData()
+		self.assertTrue( p.applyTweaks( d, missingMode = GafferScene.TweakPlug.MissingMode.IgnoreOrReplace ) )
+		self.assertEqual( d, IECore.CompoundData( { "test" : 0.5 } ) )
+
+		d = IECore.CompoundData()
+		p["t"]["mode"].setValue( GafferScene.TweakPlug.Mode.Add )
+		with six.assertRaisesRegex( self, RuntimeError, "Cannot apply tweak with mode Add to \"test\" : This parameter does not exist" ) :
+			p.applyTweaks( d, missingMode = GafferScene.TweakPlug.MissingMode.Error )
+		self.assertEqual( d, IECore.CompoundData() )
+
+		with six.assertRaisesRegex( self, RuntimeError, "Cannot apply tweak with mode Add to \"test\" : This parameter does not exist" ) :
+			p.applyTweaks( d, missingMode = GafferScene.TweakPlug.MissingMode.IgnoreOrReplace )
+		self.assertEqual( d, IECore.CompoundData() )
+
+		self.assertFalse( p.applyTweaks( d, missingMode = GafferScene.TweakPlug.MissingMode.Ignore ) )
+		self.assertEqual( d, IECore.CompoundData() )
 
 	def testTweaksPlug( self ) :
 
@@ -149,6 +181,124 @@ class TweakPlugTest( GafferSceneTest.SceneTestCase ) :
 
 		# Old scripts call a constructor with an outdated signature as below.
 		plug = GafferScene.TweakPlug( "exposure", flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+
+	def testMissingModeForShaderNetwork( self ) :
+
+		network = IECoreScene.ShaderNetwork(
+			shaders = { "surface" : IECoreScene.Shader( "lambert", "ai:surface", { "Kd" : 0.25 } ) },
+			output = "surface"
+		)
+
+		p = GafferScene.TweaksPlug()
+		p["t"] = GafferScene.TweakPlug( "Ks", 0.5, GafferScene.TweakPlug.Mode.Replace )
+
+		networkCopy = network.copy()
+		with six.assertRaisesRegex( self, RuntimeError, "Cannot apply tweak with mode Replace to \"Ks\" : This parameter does not exist" ) :
+			p.applyTweaks( networkCopy )
+
+		with six.assertRaisesRegex( self, RuntimeError, "Cannot apply tweak with mode Replace to \"Ks\" : This parameter does not exist" ) :
+			p.applyTweaks( networkCopy, missingMode = GafferScene.TweakPlug.MissingMode.Error )
+
+		self.assertEqual( networkCopy, network )
+		self.assertFalse( p.applyTweaks( networkCopy, missingMode = GafferScene.TweakPlug.MissingMode.Ignore ) )
+		self.assertEqual( networkCopy, network )
+
+		p["t"]["name"].setValue( "missingShader.parameterName" )
+
+		with six.assertRaisesRegex( self, RuntimeError, "Cannot apply tweak \"missingShader.parameterName\" because shader \"missingShader\" does not exist" ) :
+			p.applyTweaks( networkCopy )
+
+		with six.assertRaisesRegex( self, RuntimeError, "Cannot apply tweak \"missingShader.parameterName\" because shader \"missingShader\" does not exist" ) :
+			p.applyTweaks( networkCopy, missingMode = GafferScene.TweakPlug.MissingMode.Error )
+
+		self.assertEqual( networkCopy, network )
+		self.assertFalse( p.applyTweaks( networkCopy, missingMode = GafferScene.TweakPlug.MissingMode.Ignore ) )
+		self.assertEqual( networkCopy, network )
+
+	def testApplyReturnValues( self ) :
+
+		parameters = IECore.CompoundData( { "a" : 0.0, "b" : 2.0 } )
+
+		tweaks = GafferScene.TweaksPlug()
+
+		# Test none to apply
+
+		self.assertFalse( tweaks.applyTweaks( parameters ) )
+
+		# Test none enabled
+
+		tweaks.addChild( GafferScene.TweakPlug( "a", 1.0, GafferScene.TweakPlug.Mode.Replace, False ) )
+		tweaks.addChild( GafferScene.TweakPlug( "b", 10.0, GafferScene.TweakPlug.Mode.Multiply, False ) )
+
+		tweakedParameters = parameters.copy()
+		self.assertFalse( tweaks.applyTweaks( parameters ) )
+		self.assertEqual( tweakedParameters, parameters )
+
+		# Test enabled
+
+		tweaks[0]["enabled"].setValue( True )
+		tweaks[1]["enabled"].setValue( True )
+
+		self.assertTrue( tweaks.applyTweaks( parameters ) )
+
+		# Test non-matching
+
+		altParameters = IECore.CompoundData( { "c" : 0.0, "d" : 2.0 } )
+		tweakedAltParameters = altParameters.copy()
+		self.assertFalse( tweaks.applyTweaks( tweakedAltParameters, missingMode = GafferScene.TweakPlug.MissingMode.Ignore ) )
+		self.assertEqual( tweakedAltParameters, altParameters )
+
+		# Test empty names
+
+		tweaks[0]["name"].setValue( "" )
+		tweaks[1]["name"].setValue( "" )
+
+		tweakedParameters = parameters.copy()
+		self.assertFalse( tweaks.applyTweaks( parameters ) )
+		self.assertEqual( tweakedParameters, parameters )
+
+	def testApplyReturnValuesNetworkEdits( self ) :
+
+		network = IECoreScene.ShaderNetwork(
+			shaders = {
+				"surface" : IECoreScene.Shader( "lambert", "surface", { "c" : imath.Color3f( 1.0 ) } )
+			},
+			output = "surface"
+		)
+
+		textureShader = GafferSceneTest.TestShader( "texture" )
+
+		tweaks = GafferScene.TweaksPlug()
+
+		tweaks.addChild( GafferScene.TweakPlug( "c", Gaffer.Color3fPlug(), GafferScene.TweakPlug.Mode.Replace, False ) )
+		tweaks[0]["value"].setInput( textureShader["out"] )
+
+		# Test none to apply
+
+		tweakedNetwork = network.copy()
+		self.assertFalse( tweaks.applyTweaks( tweakedNetwork ) )
+		self.assertEqual( tweakedNetwork, network )
+
+		# Test enabled
+
+		tweaks[0]["enabled"].setValue( True )
+
+		tweakedNetwork = network.copy()
+		self.assertTrue( tweaks.applyTweaks( tweakedNetwork ) )
+		self.assertEqual( tweakedNetwork.inputConnections( "surface" ), [ ( ( "texture", "" ), ( "surface", "c" ) ) ] )
+
+	def testCreateOutputCounterpart( self ) :
+
+		p = GafferScene.TweakPlug( "test", 10.0, GafferScene.TweakPlug.Mode.Multiply )
+		p2 = p.createCounterpart( "p2", Gaffer.Plug.Direction.Out )
+
+		self.assertIsInstance( p2, GafferScene.TweakPlug )
+		self.assertEqual( p2.getName(), "p2" )
+		self.assertEqual( p2.direction(), Gaffer.Plug.Direction.Out )
+		self.assertEqual( p2.keys(), p.keys() )
+		for n in p2.keys() :
+			self.assertEqual( p2.direction(), Gaffer.Plug.Direction.Out )
+			self.assertIsInstance( p2[n], p[n].__class__ )
 
 if __name__ == "__main__":
 	unittest.main()

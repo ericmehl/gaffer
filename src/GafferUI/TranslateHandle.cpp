@@ -43,7 +43,7 @@ using namespace Imath;
 using namespace IECore;
 using namespace GafferUI;
 
-IE_CORE_DEFINERUNTIMETYPED( TranslateHandle );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( TranslateHandle );
 
 TranslateHandle::TranslateHandle( Style::Axes axes )
 	:	Handle( defaultName<TranslateHandle>() ), m_axes( Style::X )
@@ -94,26 +94,49 @@ Imath::V3i TranslateHandle::axisMask() const
 	}
 }
 
-Imath::V3f TranslateHandle::translation( const DragDropEvent &event ) const
+Imath::V3f TranslateHandle::translation( const DragDropEvent &event )
 {
-	switch( m_axes )
+	const float snapIncrement = event.modifiers & ButtonEvent::Shift ? 0.1f : 1.0f;
+	const float snapOffset = snapIncrement * 0.5f;
+
+	if( m_axes == Style::X || m_axes == Style::Y || m_axes == Style::Z )
 	{
-		case Style::X :
-			return V3f( m_linearDrag.position( event ) - m_linearDrag.startPosition(), 0, 0 );
-		case Style::Y :
-			return V3f( 0, m_linearDrag.position( event ) - m_linearDrag.startPosition(), 0 );
-		case Style::Z :
-			return V3f( 0, 0, m_linearDrag.position( event ) - m_linearDrag.startPosition() );
-		case Style::XY :
-		case Style::XZ :
-		case Style::YZ :
-		case Style::XYZ : {
-			const V2f t = m_planarDrag.position( event ) - m_planarDrag.startPosition();
-			return m_planarDrag.axis0() * t[0] + m_planarDrag.axis1() * t[1];
+		float offset = m_linearDrag.updatedPosition( event ) - m_linearDrag.startPosition();
+
+		// snap
+		if( event.modifiers & ButtonEvent::Control )
+		{
+			// Offset such that it behaves like round not floor.
+			offset = offset - fmodf( offset - snapOffset, snapIncrement ) + snapOffset;
 		}
-		default :
-			return V3f( 0 );
+
+		switch( m_axes )
+		{
+			case Style::X :
+				return V3f( offset, 0, 0 );
+			case Style::Y :
+				return V3f( 0, offset, 0 );
+			case Style::Z :
+				return V3f( 0, 0, offset );
+			default:
+				break;
+		}
 	}
+	else
+	{
+		V2f offset = m_planarDrag.updatedPosition( event ) - m_planarDrag.startPosition();
+
+		// snap
+		if( event.modifiers & ButtonEvent::Control )
+		{
+			offset[0] = offset[0] - fmodf( offset[0] - snapOffset, snapIncrement ) + snapOffset;
+			offset[1] = offset[1] - fmodf( offset[1] - snapOffset, snapIncrement ) + snapOffset;
+		}
+
+		return m_planarDrag.axis0() * offset[0] + m_planarDrag.axis1() * offset[1];
+	}
+
+	return V3f( 0 );
 }
 
 void TranslateHandle::renderHandle( const Style *style, Style::State state ) const

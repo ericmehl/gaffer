@@ -54,7 +54,7 @@ class GAFFERUI_API RotateHandle : public Handle
 		RotateHandle( Style::Axes axes );
 		~RotateHandle() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::RotateHandle, RotateHandleTypeId, Handle );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::RotateHandle, RotateHandleTypeId, Handle );
 
 		void setAxes( Style::Axes axes );
 		Style::Axes getAxes() const;
@@ -65,7 +65,7 @@ class GAFFERUI_API RotateHandle : public Handle
 		Imath::V3i axisMask() const;
 
 		// Measured in radians
-		Imath::Eulerf rotation( const DragDropEvent &event ) const;
+		Imath::Eulerf rotation( const DragDropEvent &event );
 
 	protected :
 
@@ -78,14 +78,20 @@ class GAFFERUI_API RotateHandle : public Handle
 		bool mouseMove( const ButtonEvent &event );
 		Imath::V3f pointOnSphere( const IECore::LineSegment3f &line ) const;
 
+		void updatePreciseMotionState( const DragDropEvent &event );
+		IECore::LineSegment3f updatedLineFromEvent( const DragDropEvent &event ) const;
+
 		Style::Axes m_axes;
 		// For X, Y and Z handles.
-		PlanarDrag m_drag;
+		AngularDrag m_drag;
 		float m_rotation;
-		// For XYZ handle.
+		// For free rotation handle.
 		Imath::M44f m_dragBeginWorldTransform;
 		Imath::V3f m_dragBeginPointOnSphere;
 		Imath::V3f m_highlightVector;
+
+		bool m_preciseMotionEnabled;
+		IECore::LineSegment3f m_preciseMotionOriginLine;
 
 };
 
