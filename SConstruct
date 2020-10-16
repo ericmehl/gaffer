@@ -410,15 +410,11 @@ def formatSystemIncludes( includeList ) :
 			formattedList += [ "-isystem", i ]
 	return formattedList
 
-systemIncludesOption = env["LOCATE_DEPENDENCY_SYSTEMPATH"]
-if type(systemIncludesOption) != list :
-	systemIncludesOption = systemIncludesOption.split(",")
-
 systemIncludes = [
 		"$BUILD_DIR/include",
 		"$BUILD_DIR/include/OpenEXR",
 		"$BUILD_DIR/include/GL",
-	] + systemIncludesOption
+	] + env["LOCATE_DEPENDENCY_SYSTEMPATH"]
 
 if env["PLATFORM"] != "win32" :
 	systemIncludes += "$BUILD_DIR/include/python$PYTHON_VERSION"
@@ -1665,11 +1661,7 @@ def buildDocs( target, source, env ) :
 
 	subprocess.check_call(
 		[
-<<<<<<< HEAD
 			"python",
-=======
-			gafferCmd, "env", "python",
->>>>>>> 5903a6d88... Scons : build documentation on Windows
 			findOnPath( env.subst( "$SPHINX" ), env["ENV"]["PATH"] ),
 			"-b", "html",
 			str( source[0] ), os.path.dirname( str( target[0] ) )
