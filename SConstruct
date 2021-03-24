@@ -712,7 +712,7 @@ def runCommand( command ) :
 
 	command = commandEnv.subst( command )
 	sys.stderr.write( command + "\n" )
-	return subprocess.check_output( command, shell=True, env=commandEnv["ENV"] )
+	return subprocess.check_output( command, shell=True, env=commandEnv["ENV"] ).decode()
 
 ###############################################################################################
 # The basic environment for building libraries
@@ -774,14 +774,14 @@ basePythonEnv = baseLibEnv.Clone()
 
 basePythonEnv["PYTHON_VERSION"] = subprocess.check_output(
 	[ "python", "-c", "import sys; print( '{}.{}'.format( *sys.version_info[:2] ) )" ],
-	env=commandEnv["ENV"], universal_newlines=True
-).strip()
+	env=commandEnv["ENV"]
+).decode().strip()
 
 basePythonEnv["PYTHON_ABI_VERSION"] = basePythonEnv["PYTHON_VERSION"]
 basePythonEnv["PYTHON_ABI_VERSION"] += subprocess.check_output(
 	[ "python", "-c", "import sysconfig; print( sysconfig.get_config_var( 'abiflags' ) or '' )" ],
-	env=commandEnv["ENV"], universal_newlines=True
-).strip()
+	env=commandEnv["ENV"]
+).decode().strip()
 
 # if BOOST_PYTHON_LIB_SUFFIX is provided, use it
 boostPythonLibSuffix = basePythonEnv.get( "BOOST_PYTHON_LIB_SUFFIX", None )
@@ -815,7 +815,7 @@ if basePythonEnv["PLATFORM"]=="darwin" :
 else :
 
 	basePythonEnv.Append(
-		CPPPATH = [ os.path.join( "$BUILD_DIR", "include", "python$PYTHON_ABI_VERSION" ) ]
+		LIBPATH = [ os.path.join( "$BUILD_DIR", "libs" ) ]
 	)
 
 ###############################################################################################
@@ -1537,7 +1537,8 @@ for libraryName, libraryDef in libraries.items() :
 	# osl headers
 
 	for oslHeader in libraryDef.get( "oslHeaders", [] ) :
-		destinationFile = env.subst( os.path.join( installRoot, oslHeader ) )
+		destinationFile = env.subst( os.path.join( installRoot
+		, oslHeader ) )
 		oslHeaderInstall = env.InstallAs(
 			destinationFile,
 			fileOrigin.get( destinationFile, oslHeader )
