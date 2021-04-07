@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-
 ##########################################################################
 #
-#  Copyright (c) 2017, Image Engine Design Inc. All rights reserved.
+#  Copyright (c) 2021, Hypothetical Inc. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are
@@ -34,83 +33,46 @@
 #
 ##########################################################################
 
-import os
 import sys
 import argparse
-import hashlib
-import subprocess
-import glob
-import shutil
+import os
+import urllib
+import zipfile
 
 if sys.version_info[0] < 3 :
-	from urllib import urlretrieve
-else :
-	from urllib.request import urlretrieve
-
-# Determine default archive URL.
+    from urllib import urlretrieve
+else:
+    from urllib.request import urlretrieve
 
 platform = { "darwin" : "osx", "win32" : "windows" }.get( sys.platform, "linux" )
-defaultURL = "https://github.com/GafferHQ/dependencies/releases/download/4.0.0/gafferDependencies-4.0.0-Python2-" + platform + ".tar.gz"
-
-# Parse command line arguments.
+format = { "win32" : "zip" }.get( sys.platform, "tar.gz" )
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-	"--archiveURL",
-	help = "The URL to download the dependencies archive from.",
-	default = defaultURL,
-)
-
-parser.add_argument(
-	"--dependenciesDir",
-	help = "The directory to unpack the dependencies into.",
-	default = "dependencies",
-)
-
-parser.add_argument(
-	"--outputFormat",
-	help = "A format string that specifies the output printed "
-		"by this script. May contain {archiveURL} and {archiveDigest} "
-		"tokens that will be substituted appropriately.",
-	default = "",
+    "--version",
+    help = "The Arnold version to install."
 )
 
 args = parser.parse_args()
 
-# Download and unpack the archive.
+archive = "Arnold-{version}-{platform}.{format}".format(
+    version = args.version,
+    platform = platform,
+    format = format
+)
 
-sys.stderr.write( "Downloading dependencies \"%s\"\n" % args.archiveURL )
-archiveFileName, headers = urlretrieve( args.archiveURL )
+url="https://forgithubci.solidangle.com/arnold/{}".format( archive )
 
-os.makedirs( args.dependenciesDir )
-if platform != "windows":
-	os.system( "tar xf %s -C %s --strip-components=1" % ( archiveFileName, args.dependenciesDir ) )
-else:
-	subprocess.check_output( "7z x %s -o%s -aoa -y" % ( archiveFileName, args.dependenciesDir ) )
-	# 7z (and zip extractors generally) don't have an equivalent of --strip-components=1
-	# Copy the files up one directory level to compensate
-	for p in glob.glob(
-		os.path.join(
-			args.dependenciesDir.replace( "/", "\\" ),
-			os.path.splitext( args.archiveURL.split( "/" )[-1] )[0],
-			"*"
-		)
-	):
-		shutil.move( p, args.dependenciesDir )
+installDir = os.path.join( "arnoldRoot", args.version )
+os.makedirs( installDir )
+os.chdir( installDir )
 
+print( "Downloading Arnold \"{}\"".format( url ) )
+archiveFile, headers = urlretrieve( url )
 
-# Tell the world
-
-if args.outputFormat :
-
-	md5 = hashlib.md5()
-	with open( archiveFileName ) as f :
-		md5.update( f.read() )
-
-	print(
-		args.outputFormat.format(
-			archiveURL = args.archiveURL,
-			archiveDigest = md5.hexdigest()
-		)
-	)
+if format == "tar.gz" :
+    os.system( "tar -xzf {}".format( archiveFile ) )
+elif format == "zip":
+    with zipfile.ZipFile( archiveFile ) as f :
+        f.extractall()
