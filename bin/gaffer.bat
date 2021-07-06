@@ -71,16 +71,32 @@ if "%ARNOLD_ROOT%" NEQ "" (
 )
 
 rem Set up 3rd party extensions
-for /f "delims=" %%A in ("%GAFFER_EXTENSION_PATHS%" ) do (
-	call :appendToPath "%%A\bin" PATH
-	call :appendToPath "%%A\lib" PATH
-	call :appendToPath "%%A\python" PYTHONPATH
-	call :appendToPath "%%A\apps" GAFFER_APP_PATHS
-	call :appendToPath "%%A\graphics" GAFFERUI_IMAGE_PATHS
-	call :appendToPath "%%A\glsl" IECOREGL_SHADER_PATHS
-	call :appendToPath "%%A\glsl" IECOREGL_SHADER_INCLUDE_PATHS
-	call :appendToPath "%%A\shaders" OSL_SHADER_PATHS
-	call :prependToPath "%%A\startup" GAFFER_STARTUP_PATHS
+rem Batch files are awkward at `for` loops. The default `for`, without `/f`
+rem uses semi-colons AND spaces as delimiters, meaning we would not be able
+rem to support spaces in extension paths. Bad. Using the `/f` switch lets
+rem us specify the delimiter, but it then separates the tokens into a
+rem set number that must be known ahead of time (i.e. %%A, %%B, etc.).
+rem The accepted pattern seems to be to use recursion to pop the first token
+rem then recurse through the remaining tokens until there are none left.
+
+set EXTENSION_PATH=%GAFFER_EXTENSION_PATHS%
+:NextPath
+for /f "tokens=1* delims=;" %%A in ("%EXTENSION_PATH%" ) do (
+	if "%%A" NEQ "" (
+		call :appendToPath "%%A\bin" PATH
+		call :appendToPath "%%A\lib" PATH
+		call :appendToPath "%%A\python" PYTHONPATH
+		call :appendToPath "%%A\apps" GAFFER_APP_PATHS
+		call :appendToPath "%%A\graphics" GAFFERUI_IMAGE_PATHS
+		call :appendToPath "%%A\glsl" IECOREGL_SHADER_PATHS
+		call :appendToPath "%%A\glsl" IECOREGL_SHADER_INCLUDE_PATHS
+		call :appendToPath "%%A\shaders" OSL_SHADER_PATHS
+		call :prependToPath "%%A\startup" GAFFER_STARTUP_PATHS
+	)
+	if "%%B" NEQ "" (
+		set EXTENSION_PATH=%%B
+		goto :NextPath
+	)
 )
 
 if "%GAFFER_DEBUG%" NEQ "" (
