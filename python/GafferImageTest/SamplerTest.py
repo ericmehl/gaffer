@@ -37,10 +37,12 @@
 import os
 import unittest
 import imath
+import random
 
 import IECore
 
 import Gaffer
+import GafferTest
 import GafferImage
 import GafferImageTest
 
@@ -219,6 +221,19 @@ class SamplerTest( GafferImageTest.ImageTestCase ) :
 
 		with self.assertRaises( RuntimeError ) :
 			sampler = GafferImage.Sampler( merge["out"], "R", imath.Box2i( imath.V2i( 0 ), imath.V2i( 200 ) ), boundingMode = GafferImage.Sampler.BoundingMode.Black )
+
+	@GafferTest.TestRunner.PerformanceTestMethod()
+	def testPerformance( self ) :
+		constant = GafferImage.Constant()
+		width = 100000
+		height = 100000
+
+		constant["format"].setValue( GafferImage.Format( width, height ) )
+
+		sampler = GafferImage.Sampler( constant["out"], "R", constant["out"]["dataWindow"].getValue() )
+		with GafferTest.TestRunner.PerformanceScope() :
+			for i in range(0, 500000) :
+				sampler.sample(random.randint( 0, width ), random.randint( 0, height ) )
 
 if __name__ == "__main__":
 	unittest.main()
