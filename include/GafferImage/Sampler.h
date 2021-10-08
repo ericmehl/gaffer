@@ -40,6 +40,7 @@
 #include "GafferImage/ImagePlug.h"
 
 #include <vector>
+#include <tbb/concurrent_vector.h>
 
 namespace GafferImage
 {
@@ -115,8 +116,8 @@ class GAFFERIMAGE_API Sampler
 		Imath::Box2i m_sampleWindow;
 		Imath::Box2i m_dataWindow;
 
-		std::vector< IECore::ConstFloatVectorDataPtr > m_dataCache;
-		std::vector< const float * > m_dataCacheRaw;
+		tbb::concurrent_vector< IECore::ConstFloatVectorDataPtr > m_dataCache;
+		tbb::concurrent_vector< const float * > m_dataCacheRaw;
 		Imath::Box2i m_cacheWindow;
 		int m_cacheWidth;
 
