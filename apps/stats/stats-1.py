@@ -752,7 +752,7 @@ class _Memory( object ) :
 			return cls( resource.getrusage( resource.RUSAGE_SELF ).ru_maxrss )
 		elif sys.platform == "win32" :
 			result = subprocess.check_output( ["wmic", "process", "where", "processid={}".format(os.getpid()), "get", "PeakWorkingSetSize"] )
-			return cls( long( result.split()[1] ) * 1024 )
+			return cls( int( result.split()[1] ) * 1024 )
 		else :
 			return cls( resource.getrusage( resource.RUSAGE_SELF ).ru_maxrss * 1024 )
 
