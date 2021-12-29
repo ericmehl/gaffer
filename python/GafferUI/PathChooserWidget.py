@@ -201,9 +201,14 @@ class PathChooserWidget( GafferUI.Widget ) :
 			return
 
 		with Gaffer.BlockedConnection( self.__pathChangedConnection ) :
-			path_root = self.__directoryListing.getPath().root()
-			path_root = path_root if not selection.paths()[0].startswith(path_root) else ""
-			self.__path.setFromString( path_root + selection.paths()[0] )
+			pathRoot = self.__directoryListing.getPath().root()
+			# The PathListingWidget returns a PathMatcher, which always starts with a '/'
+			# This will confuse Windows which often starts a file path with a drive letter + ':'
+			# We can remove the initial slash and to lead with the drive letter. If this is
+			# a Linux path, adding `pathRoot` will take care of the neccessary leading '/'
+			selectedPath = selection.paths()[0].lstrip( '/' )
+			selectedPath = selectedPath if selectedPath.startswith( pathRoot ) else pathRoot + selectedPath
+			self.__path.setFromString( selectedPath )
 
 	# This slot is connected to the pathSelectedSignals of the children and just forwards
 	# them to our own pathSelectedSignal.
