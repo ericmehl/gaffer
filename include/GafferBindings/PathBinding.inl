@@ -179,7 +179,8 @@ PathClass<T, TWrapper>::PathClass( const char *docString )
 	this->def( "isValid", &Detail::isValid<T>, boost::python::arg( "canceller" ) = boost::python::object() );
 	this->def( "isLeaf", &Detail::isLeaf<T>, boost::python::arg( "canceller" ) = boost::python::object() );
 	this->def( "propertyNames", &Detail::propertyNames<T>, boost::python::arg( "canceller" ) = boost::python::object() );
-	this->def( "property", &Detail::property<T>, ( boost::python::arg( "name" ), boost::python::arg( "canceller" ) = boost::python::object() ) );
+	boost::python::object o = boost::python::object();
+	this->def( "property", &Detail::property<T>, ( boost::python::arg( "name" ), boost::python::arg( "canceller" ) = o ) );
 	this->def( "cancellationSubject", &Detail::cancellationSubject<T> );
 	// Backwards compatibility with deprecated Path.info()
 	// method from original python implementation.
