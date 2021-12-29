@@ -65,9 +65,28 @@ rem )
 
 rem Arnold
 if "%ARNOLD_ROOT%" NEQ "" (
-	call :prependToPath "%GAFFER_ROOT%\arnold\plugins" ARNOLD_PLUGIN_PATH
 	call :appendToPath "%ARNOLD_ROOT%\bin" PATH
 	call :appendToPath "%ARNOLD_ROOT%\python" PYTHONPATH
+
+	if exist "%ARNOLD_ROOT%\include\ai_version.h" (
+		for /f "tokens=3" %%A in ('findstr /R /C:"#define *AI_VERSION_ARCH_NUM" "%ARNOLD_ROOT%\include\ai_version.h"') do (
+			set ARNOLD_ARCH_NUM=%%A
+		)
+		for /f "tokens=3" %%A in ('findstr /R /C:"#define *AI_VERSION_MAJOR_NUM" "%ARNOLD_ROOT%\include\ai_version.h"') do (
+			set ARNOLD_VERSION_NUM=%%A
+		)
+
+		set ARNOLD_VERSION=!ARNOLD_ARCH_NUM!.!ARNOLD_VERSION_NUM!
+		if exist "%GAFFER_ROOT%\arnold\%ARNOLD_VERSION%" (
+			call :prependToPath "%GAFFER_ROOT%\arnold\!ARNOLD_VERSION!" GAFFER_EXTENSION_PATHS
+			call :prependToPath "%GAFFER_ROOT%\arnold\!ARNOLD_VERSION!\arnoldPlugins" ARNOLD_PLUGIN_PATH
+			call :prependToPath "%ARNOLD_ROOT%\plugins" ARNOLD_PLUGIN_PATH
+		) else (
+			echo WARNING : GafferArnold extension not available for Arnold %ARNOLD_VERSION%
+		)
+	) else (
+		echo WARNING : Unable to determine Arnold version
+	)
 )
 
 rem Set up 3rd party extensions
@@ -81,7 +100,7 @@ rem then recurse through the remaining tokens until there are none left.
 
 set EXTENSION_PATH=%GAFFER_EXTENSION_PATHS%
 :NextPath
-for /f "tokens=1* delims=;" %%A in ("%EXTENSION_PATH%" ) do (
+for /f "tokens=1* delims=;" %%A in ("%EXTENSION_PATH%") do (
 	if "%%A" NEQ "" (
 		call :appendToPath "%%A\bin" PATH
 		call :appendToPath "%%A\lib" PATH
