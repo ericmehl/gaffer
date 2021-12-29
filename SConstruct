@@ -1061,7 +1061,7 @@ libraries = {
 
 	"GafferArnold" : {
 		"envAppends" : {
-			"LIBPATH" : [ "$ARNOLD_ROOT/bin" ],
+			"LIBPATH" : [ "$ARNOLD_ROOT/bin", "$ARNOLD_ROOT/lib" ],
 			"LIBS" : [ "Gaffer", "GafferScene", "GafferDispatch", "ai", "GafferVDB", "openvdb$VDB_LIB_SUFFIX",  "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreVDB$CORTEX_LIB_SUFFIX", "IECoreArnold", "GafferOSL" ],
 			"CXXFLAGS" : [ "-DAI_ENABLE_DEPRECATION_WARNINGS" ],
 			"CPPPATH" : [ "$ARNOLD_ROOT/include" ],
@@ -1112,7 +1112,7 @@ libraries = {
 
 	"GafferArnoldPlugin" : {
 		"envAppends" : {
-			"LIBPATH" : [ "$ARNOLD_ROOT/bin" ],
+			"LIBPATH" : [ "$ARNOLD_ROOT/bin", "$ARNOLD_ROOT/lib" ],
 			"LIBS" : [ "IECoreArnold", "ai", "IECoreImage$CORTEX_LIB_SUFFIX" ],
 			"CXXFLAGS" : [ "-DAI_ENABLE_DEPRECATION_WARNINGS" ],
 			"CPPPATH" : [ "$ARNOLD_ROOT/include" ],
