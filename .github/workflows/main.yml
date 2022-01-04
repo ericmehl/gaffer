@@ -3,8 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - master
-      - '*_maintenance'
+      - '*'
   pull_request:
     branches:
       - master
