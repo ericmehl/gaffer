@@ -32,6 +32,7 @@ jobs:
           linux-python2-debug,
           linux-python3,
           macos-python2,
+          windows-python3,
         ]
 
         include:
@@ -78,6 +79,14 @@ jobs:
             testRunner: bash -c
             sconsCacheMegabytes: 400
 
+          - name: windows-python3
+            os: windows-2016
+            buildType: RELEASE
+            variant: windows-python3
+            publish: false
+            containerImage:
+            dependenciesURL: https://github.com/hypothetical-inc/gafferDependencies/releases/download/4.0.0/gafferDependencies-4.0.0-Python3-windows.zip
+
     runs-on: ${{ matrix.os }}
 
     container: ${{ matrix.containerImage }}
@@ -91,6 +100,21 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
+
+    - uses: ilammy/msvc-dev-cmd@v1.10.0
+      with:
+        sdk: 10.0.17763.0
+
+    - name: Install toolchain (Windows)
+      run: python -m pip install scons
+      if: runner.os == 'Windows'
+
+    - name: Install Inkscape (Windows)
+      run: |
+        Invoke-WebRequest -Uri "https://inkscape.org/gallery/item/18067/inkscape-0.92.5-x64.exe" -OutFile "inkscape.exe"
+        Start-Process .\inkscape.exe /S -NoNewWindow -Wait
+      shell: pwsh
+      if: runner.os == 'Windows'
 
     - name: Install toolchain (MacOS)
       # Prefer `pip install` where possible because it is faster
@@ -130,6 +154,7 @@ jobs:
       env:
        GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
        GAFFER_BUILD_VARIANT: ${{ matrix.name }}
+      shell: bash
 
     - name: Disable macOS PR Docs
       run: |
@@ -145,6 +170,7 @@ jobs:
         echo GAFFER_DEPENDENCIES_HASH=`python .github/workflows/main/installDependencies.py --archiveURL ${{ matrix.dependenciesURL }} --dependenciesDir ${{ env.GAFFER_BUILD_DIR }} --outputFormat "{archiveDigest}"` >> $GITHUB_ENV
         ./.github/workflows/main/installDelight.py
         echo DELIGHT=$GITHUB_WORKSPACE/3delight >> $GITHUB_ENV
+      shell: bash
 
     - name: Cache
       uses: actions/cache@v1
@@ -167,8 +193,9 @@ jobs:
         echo "::add-matcher::./.github/workflows/main/problemMatchers/unittest.json"
         ${{ matrix.testRunner }} "${{ env.GAFFER_BUILD_DIR }}/bin/gaffer test"
         echo "::remove-matcher owner=unittest::"
+      if: runner.os == 'macOS' || runner.os == 'Linux'
 
-    - name: Build and test Arnold extension
+    - name: Build and test Arnold extension (MacOS and Linux)
       run: |
         for arnoldVersion in 6.2.0.1 7.0.0.0
         do
@@ -185,6 +212,22 @@ jobs:
           # so we can build the docs for GafferArnold.
           echo ARNOLD_ROOT=$ARNOLD_ROOT >> $GITHUB_ENV
         done
+      if: runner.os == 'macOS' || runner.os == 'Linux'
+
+    - name: Build and test Arnold extension (Windows)
+      run: |
+        for %%G in (6.2.0.1 7.0.0.0) do (
+          REM Install Arnold
+          python .github/workflows/main/installArnold.py --version %%G
+          set ARNOLD_ROOT=%GITHUB_WORKSPACE%\arnoldRoot\%%G
+          REM Build Arnold extension
+          scons -j 2 build BUILD_TYPE=${{ matrix.buildType }} OPTIONS=.github/workflows/main/sconsOptions
+          REM Publish ARNOLD_ROOT to the environment for subsequent steps,
+          REM so we can build the docs for GafferArnold.
+          echo ARNOLD_ROOT=%ARNOLD_ROOT% >> %GITHUB_ENV%
+        )
+      shell: cmd
+      if: runner.os == 'Windows'
 
     - name: Build Docs and Package
       # We currently experience sporadic hangs in the docs builds (mac), this
