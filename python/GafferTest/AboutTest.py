@@ -63,7 +63,7 @@ class AboutTest( GafferTest.TestCase ) :
 # builds and mark the test as being an expected failure, so as to cut
 # down on noise.
 packagedWithDependencies = False
-for f in glob.glob( os.path.expandvars( "$GAFFER_ROOT/lib/*" ) ) :
+for f in glob.glob( os.path.join( os.environ["GAFFER_ROOT"], "lib", "*" ) ) :
 	if "Gaffer" not in os.path.basename( f ) :
 		packagedWithDependencies = True
 
