@@ -35,162 +35,163 @@
 ##########################################################################
 
 import os
+import tempfile
 import shutil
 import unittest
+if os.name == "nt" :
+	import ctypes
 
 import Gaffer
 import GafferTest
 
 class FileSequencePathFilterTest( GafferTest.TestCase ) :
 
-	__dir = "/tmp/gafferFileSequencePathFilterTest"
-
 	def test( self ) :
 
 		p = Gaffer.FileSystemPath( self.__dir, includeSequences = True )
 		self.assertTrue( p.getIncludeSequences() )
 
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 		p.setFilter( Gaffer.FileSequencePathFilter( mode = Gaffer.FileSequencePathFilter.Keep.Files ) )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Files )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "dir" )
 		] ) )
 
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.SequentialFiles )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.SequentialFiles )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" )
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Sequences )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Sequences )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Concise )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Concise )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Verbose )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Verbose )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" )
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.All )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.All )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 		p = Gaffer.FileSystemPath( self.__dir, includeSequences = True )
 		self.assertTrue( p.getIncludeSequences() )
 
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 		p.setFilter( Gaffer.FileSequencePathFilter( mode = Gaffer.FileSequencePathFilter.Keep.Files ) )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Files )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "dir" )
 		] ) )
 
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.SequentialFiles )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.SequentialFiles )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Sequences )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Sequences )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Concise )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Concise )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Verbose )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Verbose )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.All )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.All )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 	def testNoSequences( self ) :
@@ -203,66 +204,66 @@ class FileSequencePathFilterTest( GafferTest.TestCase ) :
 		p = Gaffer.FileSystemPath( self.__dir, includeSequences = False )
 		self.assertFalse( p.getIncludeSequences() )
 
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 		p.setFilter( Gaffer.FileSequencePathFilter( mode = Gaffer.FileSequencePathFilter.Keep.Files ) )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Files )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.SequentialFiles )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.SequentialFiles )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Sequences )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Sequences )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Concise )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Concise )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "dir" )
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.Verbose )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Verbose )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 		p.getFilter().setMode( Gaffer.FileSequencePathFilter.Keep.All )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.All )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 	def testEnabled( self ) :
@@ -272,26 +273,28 @@ class FileSequencePathFilterTest( GafferTest.TestCase ) :
 
 		p.setFilter( Gaffer.FileSequencePathFilter( mode = Gaffer.FileSequencePathFilter.Keep.Files ) )
 		self.assertEqual( p.getFilter().getMode(), Gaffer.FileSequencePathFilter.Keep.Files )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/dir",
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "dir" ),
 		] ) )
 
 		p.getFilter().setEnabled( False )
-		self.assertEqual( set( [ str( c ) for c in p.children() ] ), set( [
-			self.__dir + "/singleFile.txt",
-			self.__dir + "/a.001.txt",
-			self.__dir + "/a.002.txt",
-			self.__dir + "/a.004.txt",
-			self.__dir + "/b.003.txt",
-			self.__dir + "/dir",
-			self.__dir + "/a.###.txt",
-			self.__dir + "/b.###.txt"
+		self.assertEqual( set( [ c.nativeString() for c in p.children() ] ), set( [
+			os.path.join( self.__dir, "singleFile.txt" ),
+			os.path.join( self.__dir, "a.001.txt" ),
+			os.path.join( self.__dir, "a.002.txt" ),
+			os.path.join( self.__dir, "a.004.txt" ),
+			os.path.join( self.__dir, "b.003.txt" ),
+			os.path.join( self.__dir, "dir" ),
+			os.path.join( self.__dir, "a.###.txt" ),
+			os.path.join( self.__dir, "b.###.txt" )
 		] ) )
 
 	def setUp( self ) :
 
 		GafferTest.TestCase.setUp( self )
+
+		self.__dir = os.path.join( tempfile.gettempdir(), "gafferFileSequencePathFilterTest" )
 
 		# clear out old files and make empty directory
 		# to work in
@@ -299,9 +302,22 @@ class FileSequencePathFilterTest( GafferTest.TestCase ) :
 			shutil.rmtree( self.__dir )
 		os.mkdir( self.__dir )
 
-		os.mkdir( self.__dir + "/dir" )
+		# On Windows, Python returns a temporary directory in Windows 8.3 file
+		# naming format, which is a shortened version of the full filename.
+		# This name contains numbers, which causes the test to fail when
+		# IECore::findSequences thinks it finds a sequence due to the number
+		# in the directory name.
+		# The only way to expand the shortened name is either the Win32 Python
+		# extensions, or calling the needed function through ctypes. We choose
+		# ctypes to eliminate the need for additional modules.
+		if os.name == "nt" :
+			buffer = ctypes.create_unicode_buffer( 4096 )
+			ctypes.windll.kernel32.GetLongPathNameW( self.__dir, buffer, 4096 )
+			self.__dir = buffer.value
+
+		os.mkdir( os.path.join( self.__dir, "dir" ) )
 		for n in [ "singleFile.txt", "a.001.txt", "a.002.txt", "a.004.txt", "b.003.txt" ] :
-			with open( self.__dir + "/" + n, "w" ) as f :
+			with open( os.path.join( self.__dir, n ), "w" ) as f :
 				f.write( "AAAA" )
 
 	def tearDown( self ) :

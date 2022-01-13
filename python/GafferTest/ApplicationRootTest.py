@@ -35,6 +35,7 @@
 ##########################################################################
 
 import os
+import tempfile
 import unittest
 import imath
 
@@ -44,8 +45,11 @@ import GafferTest
 
 class ApplicationRootTest( GafferTest.TestCase ) :
 
-	__defaultPreferencesFile = os.path.expanduser( "~/gaffer/startup/testApp/preferences.py" )
-	__preferencesFile = "/tmp/testPreferences.py"
+	def setUp( self ) :
+		GafferTest.TestCase.setUp( self )
+
+		self.__defaultPreferencesFile = os.path.expanduser( os.path.join( "~", "gaffer", "startup", "testApp", "preferences.py" ) )
+		self.__preferencesFile = os.path.join( self.temporaryDirectory(), "testPreferences.py" )
 
 	class testApp( Gaffer.Application ) :
 
@@ -149,6 +153,7 @@ class ApplicationRootTest( GafferTest.TestCase ) :
 		] :
 			if os.path.exists( f ) :
 				os.remove( f )
+
 
 if __name__ == "__main__":
 	unittest.main()
