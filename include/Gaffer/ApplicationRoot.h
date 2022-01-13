@@ -103,8 +103,9 @@ class GAFFER_API ApplicationRoot : public GraphComponent
 		/// Saves the current preferences value to the specified file.
 		virtual void savePreferences( const std::string &fileName ) const;
 		/// Returns ~/gaffer/startup/appName - the directory in which preferences are
-		/// stored, and ensures that the directory exists. Other application components
-		/// may use this location to store settings they wish to persist across invocations.
+		/// stored, in OS native format,  and ensures that the directory exists.
+		/// Other application components may use this location to store settings they 
+		/// wish to persist across invocations.
 		/// \todo Perhaps this should include a major version number in the future.
 		std::string preferencesLocation() const;
 		//@}
