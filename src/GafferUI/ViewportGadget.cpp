@@ -40,7 +40,7 @@
 #include "GafferUI/Style.h"
 #include "GafferUI/Pointer.h"
 
-#include "IECoreGL/PerspectiveCamera.h"
+#include "IECoreGL/Camera.h"
 #include "IECoreGL/Selector.h"
 #include "IECoreGL/State.h"
 #include "IECoreGL/ToGLCameraConverter.h"
@@ -1911,7 +1911,7 @@ void ViewportGadget::SelectionScope::begin( const ViewportGadget *viewportGadget
 	camera->setTransform( viewportGadget->getCameraTransform() );
 	/// \todo It would be better to base this on whether we have a depth buffer or not, but
 	/// we don't have access to that information right now.
-	m_depthSort = camera->isInstanceOf( IECoreGL::PerspectiveCamera::staticTypeId() );
+	m_depthSort = camera->isInstanceOf( IECoreGL::Camera::staticTypeId() );
 	camera->render( nullptr );
 
 	glClearColor( 0.3f, 0.3f, 0.3f, 0.0f );
