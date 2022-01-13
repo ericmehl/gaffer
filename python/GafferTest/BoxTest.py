@@ -1054,7 +1054,7 @@ class BoxTest( GafferTest.TestCase ) :
 	def testPassThroughCreatedInVersion0_52( self ) :
 
 		s = Gaffer.ScriptNode()
-		s["fileName"].setValue( os.path.dirname( __file__ ) + "/scripts/boxPassThroughVersion-0.52.0.0.gfr" )
+		s["fileName"].setValue( os.path.join( os.path.dirname( __file__ ), "scripts", "boxPassThroughVersion-0.52.0.0.gfr" ) )
 		s.load()
 
 		def assertPassThrough( script ) :
@@ -1082,7 +1082,7 @@ class BoxTest( GafferTest.TestCase ) :
 	def testAddPassThroughToBoxFromVersion0_52( self ) :
 
 		s = Gaffer.ScriptNode()
-		s["fileName"].setValue( os.path.dirname( __file__ ) + "/scripts/boxVersion-0.52.0.0.gfr" )
+		s["fileName"].setValue( os.path.join( os.path.dirname( __file__ ), "scripts", "boxVersion-0.52.0.0.gfr" ) )
 		s.load()
 
 		# The original Box had no pass-through behaviour defined,
