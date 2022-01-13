@@ -40,6 +40,7 @@
 
 #include "Gaffer/Export.h"
 #include "Gaffer/TypeIds.h"
+#include "Gaffer/PathFilter.h"
 
 #include "IECore/CompoundData.h"
 #include "IECore/InternedString.h"
