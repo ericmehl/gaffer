@@ -166,6 +166,7 @@ from .ShufflePlugTest import ShufflePlugTest
 from .EditScopeTest import EditScopeTest
 from .FileSystemPathInOutNode import FileSystemPathInOutNode
 from .FileSystemPathPlugTest import FileSystemPathPlugTest
+from .HiddenFilePathFilterTest import HiddenFilePathFilterTest
 
 from .IECorePreviewTest import *
 

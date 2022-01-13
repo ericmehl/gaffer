@@ -143,6 +143,7 @@ enum TypeId
 	ScriptNodeFocusSetTypeId = 110096,
 	AnimationKeyTypeId = 110097,
 	FileSystemPathPlugTypeId = 110098,
+	HiddenFilePathFilterTypeId = 110099,
 
 	LastTypeId = 110159,
 
