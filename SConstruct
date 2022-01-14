@@ -1491,8 +1491,16 @@ for libraryName, libraryDef in libraries.items() :
 
 	# osl shaders
 
-	def buildOSL( target, source, env ) :
-		subprocess.check_call( [ "oslc", "-I./shaders", "-o", str( target[0] ), str( source[0] ) ], env = env["ENV"], shell=True )
+	def buildOSL( target, source, env ) :	
+		subprocess.check_call(
+			[
+				shutil.which( "oslc", path = env["ENV"]["PATH"] ),
+				"-I./shaders",
+				"-o",
+				str( target[0] ), str( source[0] )
+			],
+			env = env["ENV"]
+		)
 
 	for oslShader in libraryDef.get( "oslShaders", [] ) :
 		env.Alias( "build", oslShader )
