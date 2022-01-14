@@ -829,32 +829,9 @@ if env["ARNOLD_ROOT"] :
 # Definitions for the libraries we wish to build
 ###############################################################################################
 
-vTuneRoot = env.subst("$VTUNE_ROOT")
-
-if env["PLATFORM"] == "win32" : 
-	gafferLib = {
-		"envAppends" : {
-			"LIBS" : [ "Advapi32" ]
-		}
-	}
-else:
-	gafferLib = {}
-
-if os.path.exists( vTuneRoot ):
-	gafferLib = {
-		"envAppends" : {
-			"CXXFLAGS" : [ systemIncludeArgument, "$VTUNE_ROOT/include", "-DGAFFER_VTUNE"],
-			"LIBPATH" : [ "$VTUNE_ROOT/lib64" ],
-			"LIBS" : [ "ittnotify" ]
-		},
-		"pythonEnvAppends" : {
-			"CXXFLAGS" : [ "-DGAFFER_VTUNE"]
-		}
-	}
-
 libraries = {
 
-	"Gaffer" : gafferLib,
+	"Gaffer" : {},
 
 	"GafferTest" : {
 		"envAppends" : {
@@ -1252,6 +1229,32 @@ for library in ( "GafferUI", ) :
 	addQtLibrary( library, "Test" )
 	if int( env["QT_VERSION"] ) > 4 :
 		addQtLibrary( library, "Widgets" )
+
+# Add required libraries for Windows
+
+if env["PLATFORM"] == "win32" :
+
+	for library in ( "Gaffer", ) :
+
+		libraries[library].setdefault( "envAppends", {} )
+		libraries[library]["envAppends"].setdefault( "LIBS", [] ).extend( [ "Advapi32" ] )
+
+# Optionally add vTune requirements
+
+if os.path.exists( env.subst("$VTUNE_ROOT") ):
+
+	for library in ( "Gaffer", ) :
+
+		libraries[library].setdefault( "envAppends", {} )
+		libraries[library]["envAppends"].setdefault( "CXXFLAGS", [] ).extend(
+			[ systemIncludeArgument, "$VTUNE_ROOT/include", "-DGAFFER_VTUNE" ]
+		)
+		libraries[library]["envAppends"].setdefault( "LIBPATH", [] ).extend( [ "$VTUNE_ROOT/lib64" ] )
+		libraries[library]["envAppends"].setdefault( "LIBS", [] ).extend( [ "ittnotify" ] )
+
+		
+		libraries[library].setdefault( "pythonEnvAppends", {} )
+		libraries[library]["pythonEnvAppends"].setdefault( "CXXFLAGS", [] ).extend( [ "-DGAFFER_VTUNE" ] )
 
 #########################################################################################################
 # Repair Symlinks on Windows
