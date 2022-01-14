@@ -1265,38 +1265,51 @@ if os.path.exists( env.subst("$VTUNE_ROOT") ):
 # file with the symlink target as its content. 'fileOrigin' is a dictionary of the form
 # fileSource: fileTarget used by installers to check for overriding the file's origin.
 
-fileOrigin = {}
-
 if env["PLATFORM"] == "win32" :
 
-	fileList = runCommand( "git ls-files -s" )
+	def customInstaller( dest, source, env ) :
 
-	for file in fileList.split( '\n' ) :
-
-		fileInfo = file.split()
+		fileInfo = runCommand( "git ls-files -s {}".format( source ) ).split()
 
 		if len( fileInfo ) == 4 or len( fileInfo ) == 5:
-
+	
 			# ls-files output format: [<tag> ]<mode> <object> <stage> <file>
 			# The magic code for symlinks in git is file mode 120000
 
 			fileMode = fileInfo[1] if len( fileInfo ) == 5 else fileInfo[0]
 			filePath = fileInfo[4] if len( fileInfo ) == 5 else fileInfo[3]
 			filePath = filePath.replace( "/", "\\" )  # filePath comes in from git with /
+
 			if fileMode == "120000" and os.path.exists( filePath ):
 
 				with open( filePath, "r" ) as f :
 
 					sourceFile = f.readline().replace( "/", "\\" )
 
-					if os.path.isfile( os.path.abspath( os.path.join(
-						os.getcwd(),
-						os.path.dirname(filePath ),
-						sourceFile
-					) ) ):
-						fileOrigin[ os.path.join( env.subst( "$BUILD_DIR" ), filePath ) ]= os.path.abspath(
-							os.path.join( os.path.dirname( filePath ), sourceFile ) 
+					linkSource = os.path.abspath(
+						os.path.join(
+							os.getcwd(),
+							os.path.dirname(filePath ),
+							sourceFile
 						)
+					)
+
+					# If running with priveleges that allow symlinks, the file content will
+					# already be correct (`linkSource` will likely be the first line of
+					# the license). Don't copy those files by checking if the linked file exists.
+					if os.path.isfile( linkSource ) :
+						source = os.path.abspath( os.path.join( os.path.dirname( linkSource ), sourceFile )  )
+						
+						# Make the source relative to the current directory as SCons expects
+						source = source.replace( os.getcwd(), "" ).lstrip( os.path.sep )
+
+						shutil.copy2( source, dest )
+
+						return
+
+		shutil.copy2( source, dest )
+
+	env["INSTALL"] = customInstaller
 
 ###############################################################################################
 # The stuff that actually builds the libraries and python modules
@@ -1451,24 +1464,14 @@ for libraryName, libraryDef in libraries.items() :
 	# apps
 
 	for app in libraryDef.get( "apps", [] ) :
-		destinationFile = env.subst( os.path.join( installRoot, "apps", app, "{app}-1.py".format( app=app ) ) )
-		appInstall = env.InstallAs(
-			destinationFile,
-			fileOrigin.get(destinationFile, os.path.join( "apps", app, "{app}-1.py".format( app=app ) ) )
-		)
+		appInstall = env.InstallAs( os.path.join( installRoot, "apps", app, "{app}-1.py".format( app=app ) ), "apps/{app}/{app}-1.py".format( app=app ) )
 		env.Alias( "build", appInstall )
 
 	# startup files
 
 	for startupDir in libraryDef.get( "apps", [] ) + [ libraryName ] :
-		for startupFile in glob.glob(
-			os.path.join( "startup", "{startupDir}".format( startupDir=startupDir ), "*.py" )
-		) :
-			destinationFile = env.subst( os.path.join( installRoot, startupFile ) )
-			startupFileInstall = env.InstallAs(
-				destinationFile,
-				fileOrigin.get( destinationFile, startupFile )
-			)
+		for startupFile in glob.glob( "startup/{startupDir}/*.py".format( startupDir=startupDir ) ) :
+			startupFileInstall = env.InstallAs( os.path.join( installRoot, startupFile ), startupFile )
 			env.Alias( "build", startupFileInstall )
 
 	# additional files
@@ -1476,21 +1479,13 @@ for libraryName, libraryDef in libraries.items() :
 	for additionalFile in libraryDef.get( "additionalFiles", [] ) :
 		if additionalFile in pythonFiles :
 			continue
-		destinationFile = env.subst( os.path.join( installRoot, additionalFile ) )
-		additionalFileInstall = env.InstallAs(
-			destinationFile,
-			fileOrigin.get( destinationFile, additionalFile)
-		)
+		additionalFileInstall = env.InstallAs( os.path.join( installRoot, additionalFile ), additionalFile )
 		env.Alias( "build", additionalFileInstall )
 
 	# osl headers
 
 	for oslHeader in libraryDef.get( "oslHeaders", [] ) :
-		destinationFile = env.subst( os.path.join( installRoot, oslHeader ) )
-		oslHeaderInstall = env.InstallAs(
-			destinationFile,
-			fileOrigin.get( destinationFile, oslHeader )
-		)
+		oslHeaderInstall = env.InstallAs( os.path.join( installRoot, oslHeader ), oslHeader )
 		env.Alias( "oslHeaders", oslHeaderInstall )
 		env.Alias( "build", oslHeaderInstall )
 
