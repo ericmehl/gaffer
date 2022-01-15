@@ -1354,7 +1354,7 @@ class ScriptNodeTest( GafferTest.TestCase ) :
 
 		s["r"] = Gaffer.Reference()
 		# since this will be a Gaffer native path, ensure it only has / on all OS
-		s["r"].load( os.path.join( self.temporaryDirectory(), "test.grf" ).replace( 	"\\", "/" ) )
+		s["r"].load( os.path.join( self.temporaryDirectory(), "test.grf" ).replace( "\\", "/" ) )
 
 		s["r"]["op1"].setInput( s["n"]["sum"] )
 
