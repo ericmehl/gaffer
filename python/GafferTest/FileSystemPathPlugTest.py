@@ -51,13 +51,19 @@ class FileSystemPathPlugTest( GafferTest.TestCase ) :
 		self.assertHashesValid( n )
 
 		n["in"].setValue( "C:/path/test.exr" )
-		self.assertEqual( n["out"].getValue(), os.path.join( "C:", os.sep, "path", "test.exr" ) )
+		if os.name == "nt" :
+			self.assertEqual( n["out"].getValue(), os.path.join( "C:", os.path.sep, "path", "test.exr" ) )
+		else :
+			self.assertEqual( n["out"].getValue(), os.path.join( "C:", "path", "test.exr" ) )
 
 		n2 = GafferTest.FileSystemPathInOutNode()
 		self.assertHashesValid( n2 )
 
 		n2["in"].setInput( n["out"] )
-		self.assertEqual( n2["out"].getValue(), os.path.join( "C:", os.sep, "path", "test.exr") )
+		if os.name == "nt" :
+			self.assertEqual( n2["out"].getValue(), os.path.join( "C:", os.path.sep, "path", "test.exr") )
+		else :
+			self.assertEqual( n2["out"].getValue(), os.path.join( "C:", "path", "test.exr") )
 
 		n3 = GafferTest.FileSystemPathInOutNode()
 		self.assertHashesValid( n3 )
@@ -67,32 +73,33 @@ class FileSystemPathPlugTest( GafferTest.TestCase ) :
 		n4 = GafferTest.FileSystemPathInOutNode()
 		self.assertHashesValid( n4 )
 		n4["in"].setValue( "C:\\backslash\\should\\work\\too.exr" )
-		self.assertEqual( n4["out"].getValue(), os.path.join("C:", os.sep, "backslash", "should", "work", "too.exr"))
+		if os.name == "nt" :
+			self.assertEqual( n4["out"].getValue(), os.path.join("C:", os.path.sep, "backslash", "should", "work", "too.exr"))
+		else :
+			self.assertEqual( n4["out"].getValue(), os.path.join("C:", "backslash", "should", "work", "too.exr"))
+
+		n5 = GafferTest.FileSystemPathInOutNode()
+		self.assertHashesValid( n5 )
+		n4["in"].setValue( "/rooted/path/works.exr" )
+		if os.name == "nt" :
+			self.assertEqual( n4["out"].getValue(), os.path.sep + os.path.sep + os.path.join( "rooted", "path", "works.exr" ) )
+		else :
+			self.assertEqual( n4["out"].getValue(), os.path.join( os.path.sep, "rooted", "path", "works.exr" ) )
 
 	def testUNC( self ) :
-		if os.name == "nt":
-			n = GafferTest.FileSystemPathInOutNode()
-			self.assertHashesValid( n )
+		n = GafferTest.FileSystemPathInOutNode()
+		self.assertHashesValid( n )
 
-			# generic starting with a single forward slash is interpreted
-			# as a UNC path and should start with double back slash
+		n["in"].setValue( "//test.server/path/test.exr" )
+		self.assertEqual( n["out"].getValue(), os.path.sep + os.path.sep + os.path.join( "test.server", "path", "test.exr" ) )
 
-			n["in"].setValue( "/test.server/path/test.exr" )
-			self.assertEqual( n["out"].getValue(), "\\\\test.server\\path\\test.exr" )
-
-	def testPosixRootPath( self ):
-		if os.name != "nt":
-			n = GafferTest.FileSystemPathInOutNode()
-			self.assertHashesValid( n )
-
-			n["in"].setValue( "root/path/test.exr" )
-			self.assertEqual( n["out"].getValue(), "root/path/test.exr" )
+		n["in"].setValue( "\\\\back.slash\\should\\work\\too.exr" )
+		self.assertEqual( n["out"].getValue(), os.path.sep + os.path.sep + os.path.join( "back.slash", "should", "work", "too.exr" ) )
 		
 	def testStringNodeCompatibility( self ):
 		n = GafferTest.FileSystemPathInOutNode()
 		s = GafferTest.StringInOutNode()
 		s["in"].setValue( "test/string.exr" )
-
 
 		n["in"].setInput( s["out"] )
 
