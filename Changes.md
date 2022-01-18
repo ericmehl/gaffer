@@ -1,3 +1,10 @@
+0.61.1.2 (relative to 0.61.1.1)
+========
+
+- Browsing UNC paths in a file dialog is now supported.
+- Fixed regression where scene paths chosen from a path widget or dialog would leave out the leading slash.
+- Showing / hiding hidden files are now supported on Windows.
+
 0.61.1.1 (relative to 0.61.1.0)
 ========
 
