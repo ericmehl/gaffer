@@ -121,8 +121,6 @@ void visit_each( Visitor &visitor, const Slot<Signal, Caller> &slot, int )
 	}
 }
 
-GAFFERBINDINGS_API boost::python::object pythonConnection( const Gaffer::Signals::Connection &connection, const boost::python::object &scoped );
-
 template<typename Signal, typename SlotCaller>
 boost::python::object connect( Signal &s, boost::python::object &slot, const boost::python::object &scoped )
 {

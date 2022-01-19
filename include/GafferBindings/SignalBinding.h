@@ -38,12 +38,21 @@
 #ifndef GAFFERBINDINGS_SIGNALBINDING_H
 #define GAFFERBINDINGS_SIGNALBINDING_H
 
-#include "boost/python.hpp"
-
 #include "GafferBindings/Export.h"
+
+#include "Gaffer/Signals.h"
+
+#include "boost/python.hpp"
 
 namespace GafferBindings
 {
+
+namespace Detail
+{
+
+	GAFFERBINDINGS_API boost::python::object pythonConnection( const Gaffer::Signals::Connection &connection, const boost::python::object &scoped );
+
+} // namespace Detail
 
 template<typename Signal>
 struct DefaultSignalCaller;
