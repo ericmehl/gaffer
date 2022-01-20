@@ -92,9 +92,14 @@ bool tolerantExec( const string &pythonScript, boost::python::object globals, bo
 {
 	bool result = false;
 	int lineNumber = 1;
+
+	const IECore::Canceller *canceller = Context::current()->canceller();
+
 	auto it = make_split_iterator( pythonScript, token_finder( is_any_of( "\n" ) ) );
 	while( it != split_iterator<string::const_iterator>() )
 	{
+		IECore::Canceller::check( canceller );
+
 		const string line( it->begin(), it->end() );
 		try
 		{
