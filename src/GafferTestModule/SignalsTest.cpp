@@ -94,12 +94,20 @@ void testDisconnectMatchingLambda()
 	auto connection2 = signal.connect( slot2 );
 	GAFFERTEST_ASSERTEQUAL( signal.numSlots(), 2 );
 
+#ifdef _MSC_VER
+	signal.disconnect( static_cast<void( __cdecl * )()>( slot1 ) );
+#else
 	signal.disconnect( slot1 );
+#endif
 	GAFFERTEST_ASSERTEQUAL( signal.numSlots(), 1 );
 	GAFFERTEST_ASSERT( !connection1.connected() );
 	GAFFERTEST_ASSERT( connection2.connected() );
 
+#ifdef _MSC_VER
+	signal.disconnect( static_cast<void( __cdecl * )()>( slot2 ) );
+#else
 	signal.disconnect( slot2 );
+#endif
 	GAFFERTEST_ASSERTEQUAL( signal.numSlots(), 0 );
 	GAFFERTEST_ASSERT( signal.empty() );
 	GAFFERTEST_ASSERT( !connection1.connected() );
