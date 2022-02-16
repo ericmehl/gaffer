@@ -34,8 +34,6 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferArnoldUI/ArnoldLightVisualiser.h"
-
 #include "GafferArnoldUI/Private/VisualiserAlgo.h"
 
 #include "GafferSceneUI/StandardLightVisualiser.h"
@@ -175,14 +173,34 @@ IECoreGL::RenderablePtr iesVisualisation( const std::string &filename )
 #endif
 }
 
-}  // namespace
-
 //////////////////////////////////////////////////////////////////////////
 // ArnoldLightVisualiser implementation
 //////////////////////////////////////////////////////////////////////////
 
-namespace GafferArnoldUI
+class GAFFERSCENEUI_API ArnoldLightVisualiser : public GafferSceneUI::StandardLightVisualiser
 {
+
+	public :
+
+		IE_CORE_DECLAREMEMBERPTR( ArnoldLightVisualiser )
+
+		ArnoldLightVisualiser();
+		~ArnoldLightVisualiser() override;
+
+		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
+
+	protected :
+
+		IECore::DataPtr surfaceTexture( const IECoreScene::ShaderNetwork *shaderNetwork, const IECore::CompoundObject *attributes, int maxTextureResolution ) const override;
+
+	private :
+
+		static LightVisualiser::LightVisualiserDescription<ArnoldLightVisualiser> g_description;
+
+};
+
+IE_CORE_DECLAREPTR( ArnoldLightVisualiser )
+
 
 IECoreGLPreview::LightVisualiser::LightVisualiserDescription<ArnoldLightVisualiser> ArnoldLightVisualiser::g_description( "ai:light", "*" );
 
@@ -271,4 +289,4 @@ IECore::DataPtr ArnoldLightVisualiser::surfaceTexture( const IECoreScene::Shader
 	return surfaceTexture;
 }
 
-} // namespace GafferArnoldUI
+}
