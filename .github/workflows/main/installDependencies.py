@@ -89,8 +89,7 @@ if platform != "windows":
 else:
 	subprocess.check_call(
 		[ "7z", "x", archiveFileName, "-o{}".format( args.dependenciesDir ), "-aoa", "-y" ],
-		stdout = subprocess.DEVNULL,
-		stderr = subprocess.DEVNULL
+		stdout = sys.stderr,
 	)
 	# 7z (and zip extractors generally) don't have an equivalent of --strip-components=1
 	# Copy the files up one directory level to compensate
