@@ -214,7 +214,14 @@ jobs:
           arnoldRoot = os.path.join( os.environ["GITHUB_WORKSPACE"], "arnoldRoot", arnoldVersion )
           os.environ["ARNOLD_ROOT"] =  arnoldRoot
 
-          subprocess.check_call( sys.executable + " .github/workflows/main/installArnold.py --version " + arnoldVersion, shell = True )
+          subprocess.check_call(
+            [
+              sys.executable,
+              ".github/workflows/main/installArnold.py",
+              "--version",
+              arnoldVersion
+            ]
+          )
           #Build Arnold extension
           subprocess.check_call( "scons -j 8 build BUILD_TYPE=RELEASE OPTIONS=.github/workflows/main/sconsOptions", shell = True )
 
