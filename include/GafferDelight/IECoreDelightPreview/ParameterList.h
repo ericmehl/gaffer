@@ -35,8 +35,6 @@
 #ifndef IECOREDELIGHT_PARAMETERLIST_H
 #define IECOREDELIGHT_PARAMETERLIST_H
 
-#include "GafferDelight/Export.h"
-
 #include "IECoreScene/PrimitiveVariable.h"
 
 #include "IECore/CompoundData.h"
@@ -53,7 +51,7 @@ namespace IECoreDelight
 /// NSI API. The ParameterList does not copy any of the data passed
 /// to it; it is the caller's responsibility to keep all data alive
 /// for as long as the ParameterList is used.
-class GAFFERDELIGHT_API ParameterList
+class ParameterList
 {
 
 	public :
