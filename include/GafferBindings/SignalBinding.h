@@ -47,13 +47,6 @@
 namespace GafferBindings
 {
 
-namespace Detail
-{
-
-	GAFFERBINDINGS_API boost::python::object pythonConnection( const Gaffer::Signals::Connection &connection, const boost::python::object &scoped );
-
-} // namespace Detail
-
 template<typename Signal>
 struct DefaultSignalCaller;
 
