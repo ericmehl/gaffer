@@ -223,7 +223,7 @@ jobs:
             ]
           )
           #Build Arnold extension
-          subprocess.check_call( "scons -j 8 build BUILD_TYPE=RELEASE OPTIONS=.github/workflows/main/sconsOptions", shell = True )
+          subprocess.check_call( "scons -j 2 build BUILD_TYPE=${{ matrix.buildType }} OPTIONS=.github/workflows/main/sconsOptions", shell = True )
 
           if os.name != "nt" :
             # Test Arnold extension
