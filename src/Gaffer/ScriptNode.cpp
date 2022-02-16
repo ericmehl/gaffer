@@ -59,6 +59,15 @@
 
 #include <fstream>
 
+// Help MSVC check if a file is writable
+#ifndef _MSC_VER
+#include <unistd.h>
+#else
+#include <io.h>
+#define access _waccess
+#define W_OK 6
+#endif
+
 using namespace boost::placeholders;
 using namespace Gaffer;
 
@@ -969,17 +978,9 @@ void ScriptNode::plugSet( Plug *plug )
 		const boost::filesystem::path fileName( fileNamePlug()->getValue() );
 		context()->set( g_scriptName, fileName.stem().string() );
 
-		bool isReadOnly = false;
-		if( boost::filesystem::exists( fileName ) )
-		{
-			std::ofstream testOpen( fileName.c_str(), std::fstream::app );
-			isReadOnly = !testOpen.is_open();
-			testOpen.close();
-		}
-
 		MetadataAlgo::setReadOnly(
 			this,
-			isReadOnly,
+			boost::filesystem::exists( fileName ) && 0 != access( fileName.c_str(), W_OK ),
 			/* persistent = */ false
 		);
 	}
