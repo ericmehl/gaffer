@@ -171,7 +171,3 @@ with open( os.environ["GITHUB_ENV"], "a" ) as f :
 
 	print( "Setting $GAFFER_GITHUB_RELEASEID to '%s'" % releaseId )
 	f.write( 'GAFFER_GITHUB_RELEASEID=%s\n' % releaseId )
-
-	if os.name != "nt":
-		print( "Setting $LD_PRELOAD to 'ligSegFault.so'" )
-		f.write( 'LD_PRELOAD=libSegFault.so\n' )

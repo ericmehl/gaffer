@@ -136,6 +136,7 @@ jobs:
         Xvfb :99 -screen 0 1280x1024x24 &
         metacity&
         useradd -m testUser
+        echo LD_PRELOAD=libSegFault.so >> $GITHUB_ENV
 
         # The Docker container configures bash shells such that they enable the
         # software collections we want. If we could set GitHub's
