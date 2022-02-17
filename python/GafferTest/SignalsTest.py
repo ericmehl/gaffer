@@ -582,6 +582,14 @@ class SignalsTest( GafferTest.TestCase ) :
 
 		self.assertFalse( connection.connected() )
 
+	def testConnectNoncapturingLambda( self ) :
+
+		GafferTest.testConnectNoncapturingLambda()
+
+	def testConnectCapturingLambda( self ) :
+
+		GafferTest.testConnectCapturingLambda()
+
 	def testDisconnectMatchingLambda( self ) :
 
 		GafferTest.testSignalDisconnectMatchingLambda()

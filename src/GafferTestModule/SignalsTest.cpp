@@ -83,12 +83,36 @@ void testCallPerformance()
 	GAFFERTEST_ASSERTEQUAL( callsMade, callsToMake );
 }
 
+void testConnectNoncapturingLambda()
+{
+	Signals::Signal<void()> signal;
+
+	auto slot = static_cast<Signals::NoncapturingLambdaFunctor>( [](){} );
+
+	auto connection = signal.connect( slot );
+
+	GAFFERTEST_ASSERTEQUAL( signal.numSlots(), 1 );
+}
+
+void testConnectCapturingLambda()
+{
+	Signals::Signal<void()> signal;
+
+	int i;
+
+	auto slot = [&i](){};
+
+	auto connection = signal.connect( slot );
+
+	GAFFERTEST_ASSERTEQUAL( signal.numSlots(), 1 );
+}
+
 void testDisconnectMatchingLambda()
 {
 	Signals::Signal<void()> signal;
 
-	auto slot1 = [](){};
-	auto slot2 = [](){};
+	auto slot1 = static_cast<Signals::NoncapturingLambdaFunctor>( [](){} );
+	auto slot2 = static_cast<Signals::NoncapturingLambdaFunctor>( [](){} );
 
 	auto connection1 = signal.connect( slot1 );
 	auto connection2 = signal.connect( slot2 );
@@ -188,6 +212,8 @@ void GafferTestModule::bindSignalsTest()
 	def( "testSignalConstructionPerformance", &testConstructionPerformance );
 	def( "testSignalConnectionPerformance", &testConnectionPerformance );
 	def( "testSignalCallPerformance", &testCallPerformance );
+	def( "testConnectNoncapturingLambda", &testConnectNoncapturingLambda );
+	def( "testConnectCapturingLambda", &testConnectCapturingLambda );
 	def( "testSignalDisconnectMatchingLambda", &testDisconnectMatchingLambda );
 	def( "testSignalDisconnectMatchingBind", &testDisconnectMatchingBind );
 	def( "testSignalSelfDisconnectingSlot", &testSelfDisconnectingSlot );

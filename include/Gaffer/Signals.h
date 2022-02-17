@@ -50,6 +50,20 @@
 namespace Gaffer::Signals
 {
 
+// When connecting a Signal to a Slot that is a non-capturing lambda, the calling
+// convention must be specified for MSVC to be able to compare the functor during
+// connection. To make such a connection, ensure the calling convention is specified
+// by casting the lambda to NoncapturingLambdaFunctor.
+// Example usage :
+// ```
+// auto slot1 = static_cast<Signals::NoncapturingLambdaFunctor>( [](){} );
+// ```
+#ifndef _MSC_VER
+using NoncapturingLambdaFunctor = void();
+#else
+using NoncapturingLambdaFunctor = void( __cdecl * )();
+#endif
+
 /// Returned by `Signal::connect()`, and used to disconnect and/or block the
 /// slot.
 class Connection
