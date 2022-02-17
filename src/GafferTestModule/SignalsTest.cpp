@@ -94,6 +94,7 @@ void testDisconnectMatchingLambda()
 	auto connection2 = signal.connect( slot2 );
 	GAFFERTEST_ASSERTEQUAL( signal.numSlots(), 2 );
 
+	/// \todo Can this be dealt with internally in`Signal::disconnect()`?
 #ifdef _MSC_VER
 	signal.disconnect( static_cast<void( __cdecl * )()>( slot1 ) );
 #else
