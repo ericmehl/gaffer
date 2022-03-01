@@ -158,7 +158,7 @@ jobs:
       run: |
        scons -j 2 build BUILD_TYPE=${{ matrix.buildType }} OPTIONS=.github/workflows/main/sconsOptions
 
-    - name: Test
+    - name: Test (Linux and macOS)
       # Tests should complete in well under an hour. If they don't it's most likely because
       # of a hang, in which case we'd like to know more quickly than the default 6hr timeout
       # allows.
@@ -168,6 +168,17 @@ jobs:
         ${{ matrix.testRunner }} "${{ env.GAFFER_BUILD_DIR }}/bin/gaffer test"
         echo "::remove-matcher owner=unittest::"
       if: runner.os == 'macOS' || runner.os == 'Linux'
+
+    - name: Test (Windows)
+      # Tests should complete in well under an hour. If they don't it's most likely because
+      # of a hang, in which case we'd like to know more quickly than the default 6hr timeout
+      # allows.
+      timeout-minutes: 60
+      run: |
+        echo "::add-matcher::./.github/workflows/main/problemMatchers/unittest.json"
+        ${{ matrix.testRunner }} "${{ env.GAFFER_BUILD_DIR }}/bin/gaffer test GafferTest.FileSystemPathTest"
+        echo "::remove-matcher owner=unittest::"
+      if: runner.os == 'Windows'
 
     - name: Build and test Arnold extension
       run: |
