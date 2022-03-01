@@ -50,6 +50,7 @@
 #include "boost/date_time/posix_time/conversion.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/operations.hpp"
+#include "boost/regex.hpp"
 
 #ifndef _MSC_VER
 	#include <grp.h>
@@ -174,6 +175,13 @@ static InternedString g_modificationTimePropertyName( "fileSystem:modificationTi
 static InternedString g_sizePropertyName( "fileSystem:size" );
 static InternedString g_frameRangePropertyName( "fileSystem:frameRange" );
 
+static InternedString g_windowsSeparator( "\\" );
+static InternedString g_posixSeparator( "/" );
+static InternedString g_genericSeparator( "/" );
+static InternedString g_uncPrefix( "\\\\" );
+static InternedString g_uncGenericPrefix( "//" );
+static boost::regex g_driveLetterPattern{ "[A-Za-z]:" };
+
 FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 	:	Path( filter ), m_includeSequences( includeSequences )
 {
@@ -182,6 +190,7 @@ FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 FileSystemPath::FileSystemPath( const std::string &path, PathFilterPtr filter, bool includeSequences )
 	:	Path( path, filter ), m_includeSequences( includeSequences )
 {
+	setFromString( path );
 }
 
 FileSystemPath::FileSystemPath( const Names &names, const IECore::InternedString &root, PathFilterPtr filter, bool includeSequences )
@@ -251,7 +260,7 @@ FileSequencePtr FileSystemPath::fileSequence() const
 
 	FileSequencePtr sequence = nullptr;
 	/// \todo Add cancellation support to `ls`.
-	IECore::ls( this->string(), sequence, /* minSequenceSize = */ 1 );
+	IECore::ls( this->nativeString(), sequence, /* minSequenceSize = */ 1 );
 	return sequence;
 }
 
@@ -457,7 +466,7 @@ void FileSystemPath::doChildren( std::vector<PathPtr> &children, const IECore::C
 	{
 		IECore::Canceller::check( canceller );
 		std::vector<FileSequencePtr> sequences;
-		IECore::ls( p.string(), sequences, /* minSequenceSize */ 1 );
+		IECore::ls( this->nativeString(), sequences, /* minSequenceSize */ 1 );
 		for( std::vector<FileSequencePtr>::iterator it = sequences.begin(); it != sequences.end(); ++it )
 		{
 			IECore::Canceller::check( canceller );
@@ -537,5 +546,121 @@ PathFilterPtr FileSystemPath::createStandardFilter( const std::vector<std::strin
 
 	result->addFilter( searchFilter );
 
+	return result;
+}
+
+// Create a path that is aware of differences in OS naming schemes.
+// Linux and MacOS can have a relative path with no root, or a path rooted at "/" :
+// Windows can have a relative path with no root, a path rooted at a drive letter followed by a colon
+// or a path rooted at a server name and share name (UNC paths).
+
+void FileSystemPath::setFromString(const std::string &string)
+{
+	Names newNames;
+	std::string sanitizedString = string;
+
+	boost::replace_all( sanitizedString, g_windowsSeparator.c_str(), g_genericSeparator.c_str() );
+
+#ifdef _MSC_VER
+	// If `string` is coming from a PathMatcher, it will always have a single leading slash.
+	// On Windows, interpret that to be the start of a UNC path by adding an addition leading slash
+	// If it is in fact a drive letter path, the extra slash won't cause problems in
+	// the conditionals below with `newNames`.
+	if(
+		sanitizedString.size() &&
+		sanitizedString[0] == '/' &&
+		!boost::starts_with( sanitizedString, g_uncPrefix.string() )
+	)
+	{
+		sanitizedString = g_genericSeparator.string() + sanitizedString;
+	}
+#endif
+
+	StringAlgo::tokenize<InternedString>(sanitizedString, '/', back_inserter(newNames));
+
+	InternedString newRoot;
+	if ( newNames.size() && boost::regex_match( newNames[0].string(), g_driveLetterPattern ) )
+	{
+		newRoot = newNames[0];
+		newNames.erase( newNames.begin() );
+	}
+	else if ( boost::starts_with( sanitizedString, g_uncGenericPrefix.string() ) )
+	{
+		// The server name and share name are both required before the path is valid.
+		if( newNames.size() > 1 )
+		{
+			newRoot = newNames[0].string() + g_genericSeparator.string() + newNames[1].string();
+			newNames.erase( newNames.begin(), newNames.begin() + 2 );
+		}
+	}
+	else if( sanitizedString.size() && sanitizedString[0] == '/' )
+	{
+		newRoot = g_genericSeparator;
+	}
+
+	if (newRoot == this->root() && newNames == this->names() )
+	{
+		return;
+	}
+
+	set( 0, this->names().size(), newNames );
+	setRoot( newRoot );
+
+	emitPathChanged();
+}
+
+std::string FileSystemPath::string() const
+{
+	std::string result = this->root();
+
+	if ( boost::regex_match(result, g_driveLetterPattern) )
+	{
+		result += g_genericSeparator;
+	}
+	else if( result.size() && result != "/" )
+	{
+		result = g_uncGenericPrefix.string() + result + g_genericSeparator.string();
+	}
+
+	Path::Names names = this->names();
+	for (size_t i = 0, s = names.size(); i < s; ++i)
+	{
+		if (i != 0)
+		{
+			result += g_genericSeparator;
+		}
+		result += names[i].string();
+	}
+	return result;
+}
+
+std::string FileSystemPath::nativeString() const
+{
+#ifndef _MSC_VER
+    return string();
+#endif
+
+	std::string result = this->root();
+
+	if( boost::regex_match( result, g_driveLetterPattern ) )
+	{
+		result += g_windowsSeparator;
+	}
+	else if( result.size() && result != "/" )
+	{
+		// We included the generic separator in the root name, now it needs to be converted back.
+		boost::replace_all( result, g_genericSeparator.string(), g_windowsSeparator.string() );
+		result = g_uncPrefix.string() + result + g_windowsSeparator.string();
+	}
+
+	Path::Names names = this->names();
+	for( size_t i = 0, s = names.size(); i < s; ++i )
+	{
+		if( i != 0 )
+		{
+			result += g_windowsSeparator.string();
+		}
+		result += names[i].string();
+	}
 	return result;
 }

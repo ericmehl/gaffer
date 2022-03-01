@@ -19,6 +19,17 @@ Fixes
   - Error when pressing <kbd>Return</kbd> or <kbd>Enter</kbd> with no cells selected.
   - Error when double-clicking the `Name` column.
 
+API
+---
+
+- Path : 
+  - Added `setRoot` function.
+  - Made `setFromString` and `string` functions virtual to allow subclasses to override them.
+- FileSystemPath : Added support for Windows paths.
+  - Setting a `FileSystemPath` from a string will now convert the string to a generic internal format where forward slashes separate directories.
+  - The functions `string()` in c++ and `str` in Python will now return the path in generic format.
+  - Added `nativeString()` function to return the path as an OS-specific string.
+
 1.0.0.0 (relative to 0.61.x.x)
 =======
 
