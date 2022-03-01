@@ -213,7 +213,10 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		g = p.property( "fileSystem:group" )
 		self.assertTrue( isinstance( g, str ) )
-		self.assertEqual( g, grp.getgrgid( os.stat( str( p ) ).st_gid ).gr_name )
+		if os.name != "nt" :
+			self.assertEqual( g, grp.getgrgid( os.stat( p.nativeString() ).st_gid ).gr_name )
+		else :
+			self.assertEQual( g, "" )
 
 	def testPropertyNames( self ) :
 
