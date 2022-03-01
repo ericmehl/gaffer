@@ -1,3 +1,17 @@
+1.0.x.x (relative to 1.0.2.0)
+=======
+
+API
+---
+
+- Path : 
+  - Added `setRoot()` and `getRoot()` methods.
+  - Deprecated `root()`. Use `getRoot()` instead.
+- FileSystemPath : Added support for Windows paths.
+  - Added `setFromNativeString()` method to convert from OS-native file system paths to Gaffer's internal path representation.
+  - Constructing a `FileSystemPath` from a string will now convert the string to a `Path` representation by calling `setFromNativeString()`.
+  - Added `nativeString()` function to return the path as an OS-specific string.
+
 1.0.2.0 (relative to 1.0.1.0)
 =======
 
