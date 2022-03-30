@@ -815,16 +815,16 @@ class ScriptNodeTest( GafferTest.TestCase ) :
 		s = Gaffer.ScriptNode()
 		s["n"] = Gaffer.Node()
 
-		s["fileName"].setValue( self.temporaryDirectory().replace( "\\", "/" ) + "/test.gfr" )
+		s["fileName"].setValue( os.path.join( self.temporaryDirectory(), "test.gfr" ) )
 		s.save()
 
 		shutil.move( os.path.join( self.temporaryDirectory(), "test.gfr" ), os.path.join( self.temporaryDirectory(), "test2.gfr" ) )
 
 		s = Gaffer.ScriptNode()
-		s["fileName"].setValue( self.temporaryDirectory().replace( "\\", "/" ) + "/test2.gfr" )
+		s["fileName"].setValue( os.path.join( self.temporaryDirectory(), "test2.gfr" ) )
 		s.load()
 
-		self.assertEqual( s["fileName"].getValue(), self.temporaryDirectory().replace( "\\", "/" ) + "/test2.gfr" )
+		self.assertEqual( s["fileName"].getValue(), os.path.join( self.temporaryDirectory(), "test2.gfr" ) )
 
 	def testUnsavedChanges( self ) :
 
@@ -1306,7 +1306,7 @@ class ScriptNodeTest( GafferTest.TestCase ) :
 
 	def testFileNameInExecutionError( self ) :
 
-		fileName = self.temporaryDirectory().replace( "\\", "/" ) + "/test.gfr"
+		fileName = os.path.join( self.temporaryDirectory(), "test.gfr" )
 		with open( fileName, "w" ) as f :
 			f.write( "a = 10\n" )
 			f.write( "a = iDontExist\n" )
@@ -1318,7 +1318,7 @@ class ScriptNodeTest( GafferTest.TestCase ) :
 
 			six.assertRaisesRegex( self,
 				RuntimeError,
-				"Line 2 of " + fileName + " : NameError: name 'iDontExist' is not defined",
+				"Line 2 of " + Gaffer.FileSystemPath( fileName ).nativeString().replace( "\\", "\\\\" ) + " : NameError: name 'iDontExist' is not defined",
 				method
 			)
 
