@@ -95,7 +95,12 @@ bool HiddenFilePathFilter::invert( bool b ) const
 bool HiddenFilePathFilter::remove( PathPtr path ) const
 {
 #ifndef _MSC_VER
-	const std::string s = path->string();
+	if( !path->names().size() )
+	{
+		return invert( true );
+	}
+
+	const std::string s = path->names().back().string();
 	if( s.size() && s[0] == '.' )
 	{
 		return invert( false );
