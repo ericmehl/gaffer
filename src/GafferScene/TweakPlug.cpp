@@ -38,17 +38,12 @@
 
 #include "GafferScene/Shader.h"
 
-#include "Gaffer/PlugAlgo.h"
 #include "Gaffer/ScriptNode.h"
-#include "Gaffer/SplinePlug.h"
 
 #include "IECoreScene/ShaderNetwork.h"
 #include "IECoreScene/ShaderNetworkAlgo.h"
 
-#include "IECore/DataAlgo.h"
-#include "IECore/TypeTraits.h"
 #include "IECore/SimpleTypedData.h"
-#include "IECore/SplineData.h"
 #include "IECore/StringAlgo.h"
 
 #include <unordered_map>
@@ -209,76 +204,6 @@ IECore::MurmurHash TweakPlug::hash() const
 // Utility methods need by applyTweak
 namespace
 {
-
-const char *modeToString( TweakPlug::Mode mode )
-{
-	switch( mode )
-	{
-		case TweakPlug::Replace :
-			return "Replace";
-		case TweakPlug::Add :
-			return "Add";
-		case TweakPlug::Subtract :
-			return "Subtract";
-		case TweakPlug::Multiply :
-			return "Multiply";
-		case TweakPlug::Remove :
-			return "Remove";
-		default :
-			return "Invalid";
-	}
-}
-
-// TODO - if these make sense, I guess they should be pushed back to cortex
-
-// IsColorTypedData
-template< typename T > struct IsColorTypedData : boost::mpl::and_< TypeTraits::IsTypedData<T>, TypeTraits::IsColor< typename TypeTraits::ValueType<T>::type > > {};
-
-// SupportsArithmeticData
-template< typename T > struct SupportsArithData : boost::mpl::or_<  TypeTraits::IsNumericSimpleTypedData<T>, TypeTraits::IsVecTypedData<T>, IsColorTypedData<T>> {};
-
-class NumericTweak
-{
-public:
-	NumericTweak( IECore::Data *sourceData, TweakPlug::Mode mode, const std::string &tweakName )
-		: m_sourceData( sourceData ), m_mode( mode ), m_tweakName( tweakName )
-	{
-	}
-
-	template<typename T>
-	void operator()( T * data, typename std::enable_if<SupportsArithData<T>::value>::type *enabler = nullptr ) const
-	{
-		T *sourceDataCast = runTimeCast<T>( m_sourceData );
-		switch( m_mode )
-		{
-			case TweakPlug::Add :
-				data->writable() += sourceDataCast->readable();
-				break;
-			case TweakPlug::Subtract :
-				data->writable() -= sourceDataCast->readable();
-				break;
-			case TweakPlug::Multiply :
-				data->writable() *= sourceDataCast->readable();
-				break;
-			case TweakPlug::Replace :
-			case TweakPlug::Remove :
-				// These cases are unused - we handle replace and remove mode outside of numericTweak.
-				// But the compiler gets unhappy if we don't handle some cases
-				break;
-		}
-	}
-
-	void operator()( Data * data ) const
-	{
-		throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : Data type %s not supported." ) % modeToString( m_mode ) % m_tweakName % m_sourceData->typeName() ) );
-	}
-
-private:
-
-	IECore::Data *m_sourceData;
-	TweakPlug::Mode m_mode;
-	const std::string &m_tweakName;
-};
 
 bool applyTweakInternal( TweakPlug::Mode mode, const ValuePlug *valuePlug, const std::string &tweakName, const InternedString &parameterName, IECore::CompoundData *parameters, TweakPlug::MissingMode missingMode )
 {
@@ -537,7 +462,21 @@ bool TweaksPlug::applyTweaks( IECore::CompoundData *parameters, TweakPlug::Missi
 	bool applied = false;
 	for( TweakPlug::Iterator it( this ); !it.done(); ++it )
 	{
-		if( (*it)->applyTweak( parameters, missingMode ) )
+		if(
+			(*it)->applyTweak(
+				[&parameters]( const std::string &valueName) { return parameters->member( valueName ); },
+				[&parameters]( const std::string &valueName, DataPtr newData )
+				{
+					if( newData == nullptr )
+					{
+						return parameters->writable().erase( valueName ) > 0;
+					}
+					parameters->writable()[valueName] = newData;
+					return true;
+				},
+				missingMode
+			)
+		)
 		{
 			applied = true;
 		}

@@ -107,6 +107,21 @@ class GAFFERSCENE_API TweakPlug : public Gaffer::ValuePlug
 
 		/// \deprecated. Use `TweaksPlug::applyTweaks()` instead.
 		bool applyTweak( IECore::CompoundData *parameters, MissingMode missingMode = MissingMode::Error ) const;
+
+		/// Applies the tweak using functors to get and set the data.
+		/// \returns true if any tweaks were applied
+		template<class GetDataFunctor, class SetDataFunctor>
+		bool applyTweak(
+			/// Signature : IECore::Data *functor( const std::string &valueName ).
+			/// \returns `nullptr` if `valueName` is invalid.
+			GetDataFunctor &&getDataFunctor,
+			/// Signature : bool functor( const std::string &valueName, IECore::DataPtr newData).
+			/// Passing `nullptr` in `newData` removes the entry for `valueName`.
+			/// \returns true if the value was set or erased, false if erasure failed.
+			SetDataFunctor &&setDataFunctor,
+			MissingMode missingMode = MissingMode::Error
+		) const;
+
 		/// \returns true if any tweaks were applied
 		static bool applyTweaks( const Plug *tweaksPlug, IECoreScene::ShaderNetwork *shaderNetwork, MissingMode missingMode = MissingMode::Error );
 
