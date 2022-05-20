@@ -1841,7 +1841,7 @@ SceneView::SceneView( const std::string &name )
 
 	// add a node for deleting objects
 
-	DeleteObjectPtr deleteObject = new DeleteObject( "deleteObject" );
+	DeleteObjectPtr deleteObject = new GafferScene::DeleteObject( "deleteObject" );
 
 	preprocessor->addChild( deleteObject );
 	deleteObject->inPlug()->setInput( preprocessorInput );
