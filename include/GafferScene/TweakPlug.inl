@@ -39,9 +39,6 @@
 
 #include "Gaffer/PlugAlgo.h"
 
-#include "IECore/DataAlgo.h"
-#include "IECore/TypeTraits.h"
-
 namespace
 {
 
@@ -62,112 +59,6 @@ const char *modeToString( GafferScene::TweakPlug::Mode mode )
 		default :
 			return "Invalid";
 	}
-}
-
-// TODO - if these make sense, I guess they should be pushed back to cortex
-
-// IsColorTypedData
-template< typename T > struct IsColorTypedData : boost::mpl::and_< IECore::TypeTraits::IsTypedData<T>, IECore::TypeTraits::IsColor< typename IECore::TypeTraits::ValueType<T>::type > > {};
-
-// SupportsArithmeticData
-template< typename T > struct SupportsArithData : boost::mpl::or_<  IECore::TypeTraits::IsNumericSimpleTypedData<T>, IECore::TypeTraits::IsVecTypedData<T>, IsColorTypedData<T>> {};
-
-
-class NumericTweak
-{
-public:
-	NumericTweak( IECore::Data *sourceData, GafferScene::TweakPlug::Mode mode, const std::string &tweakName )
-		: m_sourceData( sourceData ), m_mode( mode ), m_tweakName( tweakName )
-	{
-	}
-
-	template<typename T>
-	void operator()( T * data, typename std::enable_if<SupportsArithData<T>::value>::type *enabler = nullptr ) const
-	{
-		T *sourceDataCast = IECore::runTimeCast<T>( m_sourceData );
-		switch( m_mode )
-		{
-			case GafferScene::TweakPlug::Add :
-				data->writable() += sourceDataCast->readable();
-				break;
-			case GafferScene::TweakPlug::Subtract :
-				data->writable() -= sourceDataCast->readable();
-				break;
-			case GafferScene::TweakPlug::Multiply :
-				data->writable() *= sourceDataCast->readable();
-				break;
-			case GafferScene::TweakPlug::Replace :
-			case GafferScene::TweakPlug::Remove :
-				// These cases are unused - we handle replace and remove mode outside of numericTweak.
-				// But the compiler gets unhappy if we don't handle some cases
-				break;
-		}
-	}
-
-	void operator()( IECore::Data * data ) const
-	{
-		throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : Data type %s not supported." ) % modeToString( m_mode ) % m_tweakName % m_sourceData->typeName() ) );
-	}
-
-private:
-
-	IECore::Data *m_sourceData;
-	GafferScene::TweakPlug::Mode m_mode;
-	const std::string &m_tweakName;
-};
-
-template<typename GetDataFunctor, typename SetDataFunctor>
-bool applyTweakInternal(
-	GafferScene::TweakPlug::Mode mode,
-	const Gaffer::ValuePlug *valuePlug,
-	const std::string &tweakName,
-	const IECore::InternedString &parameterName,
-	GetDataFunctor &&getDataFunctor,
-	SetDataFunctor &&setDataFunctor,
-	GafferScene::TweakPlug::MissingMode missingMode
-)
-{
-	if( mode == GafferScene::TweakPlug::Remove )
-	{
-		return setDataFunctor( parameterName,  nullptr );
-	}
-
-	IECore::Data *parameterValue = getDataFunctor( parameterName );
-	IECore::DataPtr newData = Gaffer::PlugAlgo::getValueAsData( valuePlug );
-	if( !newData )
-	{
-		throw IECore::Exception(
-			boost::str( boost::format( "Cannot apply tweak to \"%s\" : Value plug has unsupported type \"%s\"" ) % tweakName % valuePlug->typeName() )
-		);
-	}
-	if( parameterValue && parameterValue->typeId() != newData->typeId() )
-	{
-		throw IECore::Exception(
-			boost::str( boost::format( "Cannot apply tweak to \"%s\" : Value of type \"%s\" does not match parameter of type \"%s\"" ) % tweakName % parameterValue->typeName() % newData->typeName() )
-		);
-	}
-
-	if( !parameterValue )
-	{
-		if( missingMode == GafferScene::TweakPlug::MissingMode::Ignore )
-		{
-			return false;
-		}
-		else if( !( mode == GafferScene::TweakPlug::Replace && missingMode == GafferScene::TweakPlug::MissingMode::IgnoreOrReplace) )
-		{
-			throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : This parameter does not exist" ) % modeToString( mode ) % tweakName ) );
-		}
-	}
-
-	if( mode == GafferScene::TweakPlug::Replace )
-	{
-		setDataFunctor( parameterName, newData );
-		return true;
-	}
-
-	NumericTweak t( newData.get(), mode, tweakName );
-	dispatch( parameterValue, t );
-	return true;
 }
 
 }  // namespace
@@ -206,7 +97,81 @@ bool TweakPlug::applyTweak(
 	}
 
 	const Mode mode = static_cast<Mode>( modePlug()->getValue() );
-	return applyTweakInternal( mode, this->valuePlug(), name, name, getDataFunctor, setDataFunctor, missingMode );
+
+	if( mode == GafferScene::TweakPlug::Remove )
+	{
+		return setDataFunctor( name,  nullptr );
+	}
+
+	const IECore::Data *currentValue = getDataFunctor( name );
+	IECore::DataPtr newData = Gaffer::PlugAlgo::getValueAsData( valuePlug() );
+	if( !newData )
+	{
+		throw IECore::Exception(
+			boost::str( boost::format( "Cannot apply tweak to \"%s\" : Value plug has unsupported type \"%s\"" ) % name % valuePlug()->typeName() )
+		);
+	}
+	if( currentValue && currentValue->typeId() != newData->typeId() )
+	{
+		throw IECore::Exception(
+			boost::str( boost::format( "Cannot apply tweak to \"%s\" : Value of type \"%s\" does not match parameter of type \"%s\"" ) % name % currentValue->typeName() % newData->typeName() )
+		);
+	}
+
+	if( !currentValue )
+	{
+		if( missingMode == GafferScene::TweakPlug::MissingMode::Ignore )
+		{
+			return false;
+		}
+		else if( !( mode == GafferScene::TweakPlug::Replace && missingMode == GafferScene::TweakPlug::MissingMode::IgnoreOrReplace) )
+		{
+			throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : This parameter does not exist" ) % modeToString( mode ) % name ) );
+		}
+	}
+
+	if(
+		mode == GafferScene::TweakPlug::Add ||
+		mode == GafferScene::TweakPlug::Subtract ||
+		mode == GafferScene::TweakPlug::Multiply
+	)
+	{
+		modifyData( currentValue, newData.get(), newData.get(), mode, name );
+	}
+
+	setDataFunctor( name, newData );
+
+	return true;
+}
+
+template<class GetDataFunctor, class SetDataFunctor>
+bool TweaksPlug::applyTweaks(
+	GetDataFunctor &&getDataFunctor,
+	SetDataFunctor &&setDataFunctor,
+	TweakPlug::MissingMode missingMode
+) const
+{
+	bool tweakApplied = false;
+
+	for( auto tweakPlug : TweakPlug::Range( *this ) )
+	{
+		if( !tweakPlug->enabledPlug()->getValue() )
+		{
+			continue;
+		}
+		const std::string name = tweakPlug->namePlug()->getValue();
+		if( name.empty() )
+		{
+			continue;
+		}
+
+		if( tweakPlug->applyTweak( getDataFunctor, setDataFunctor, missingMode ) )
+		{
+			tweakApplied = true;
+		}
+	}
+
+	return tweakApplied;
 }
 
 } // namespace GafferScene

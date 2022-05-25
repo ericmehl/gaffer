@@ -112,7 +112,7 @@ class GAFFERSCENE_API TweakPlug : public Gaffer::ValuePlug
 		/// \returns true if any tweaks were applied
 		template<class GetDataFunctor, class SetDataFunctor>
 		bool applyTweak(
-			/// Signature : IECore::Data *functor( const std::string &valueName ).
+			/// Signature : const IECore::Data *functor( const std::string &valueName ).
 			/// \returns `nullptr` if `valueName` is invalid.
 			GetDataFunctor &&getDataFunctor,
 			/// Signature : bool functor( const std::string &valueName, IECore::DataPtr newData).
@@ -131,6 +131,14 @@ class GAFFERSCENE_API TweakPlug : public Gaffer::ValuePlug
 		const Gaffer::ValuePlug *valuePlugInternal() const;
 
 		std::pair<const Shader *, const Gaffer::Plug *> shaderOutput() const;
+
+		void modifyData(
+			const IECore::Data *sourceData,
+			const IECore::Data *tweakData,
+			IECore::Data *destData,
+			TweakPlug::Mode mode,
+			const std::string &tweakName
+		) const;
 
 };
 
@@ -159,6 +167,22 @@ class GAFFERSCENE_API TweaksPlug : public Gaffer::ValuePlug
 
 		bool applyTweaks( IECore::CompoundData *parameters, TweakPlug::MissingMode missingMode = TweakPlug::MissingMode::Error ) const;
 		bool applyTweaks( IECoreScene::ShaderNetwork *shaderNetwork, TweakPlug::MissingMode missingMode = TweakPlug::MissingMode::Error ) const;
+
+		/// Applies the tweak using functors to get and set the data.
+		/// \returns true if any tweaks were applied
+		template<class GetDataFunctor, class SetDataFunctor>
+		bool applyTweaks(
+			/// Signature : const IECore::Data *functor( const std::string &valueName ).
+			/// \returns `nullptr` if `valueName` is invalid.
+			GetDataFunctor &&getDataFunctor,
+			/// Signature : bool functor( const std::string &valueName, IECore::DataPtr newData ).
+			/// Passing `nullptr` in `newData` removes the entry for `valueName`.
+			/// \returns true if the value was set or erased, false if erasure failed.
+			SetDataFunctor &&setDataFunctor,
+			TweakPlug::MissingMode missingMode = TweakPlug::MissingMode::Error
+		) const;
+
+		
 
 };
 

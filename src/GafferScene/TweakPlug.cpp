@@ -38,13 +38,16 @@
 
 #include "GafferScene/Shader.h"
 
+#include "Gaffer/PlugAlgo.h"
 #include "Gaffer/ScriptNode.h"
 
 #include "IECoreScene/ShaderNetwork.h"
 #include "IECoreScene/ShaderNetworkAlgo.h"
 
+#include "IECore/DataAlgo.h"
 #include "IECore/SimpleTypedData.h"
 #include "IECore/StringAlgo.h"
+#include "IECore/TypeTraits.h"
 
 #include <unordered_map>
 
@@ -205,66 +208,77 @@ IECore::MurmurHash TweakPlug::hash() const
 namespace
 {
 
-bool applyTweakInternal( TweakPlug::Mode mode, const ValuePlug *valuePlug, const std::string &tweakName, const InternedString &parameterName, IECore::CompoundData *parameters, TweakPlug::MissingMode missingMode )
+// TODO - if these make sense, I guess they should be pushed back to cortex
+
+// IsColorTypedData
+template< typename T > struct IsColorTypedData : boost::mpl::and_< IECore::TypeTraits::IsTypedData<T>, IECore::TypeTraits::IsColor< typename IECore::TypeTraits::ValueType<T>::type > > {};
+
+// SupportsArithmeticData
+template< typename T > struct SupportsArithData : boost::mpl::or_<  IECore::TypeTraits::IsNumericSimpleTypedData<T>, IECore::TypeTraits::IsVecTypedData<T>, IsColorTypedData<T>> {};
+
+
+class NumericTweak
 {
-	if( mode == TweakPlug::Remove )
+public:
+	NumericTweak( const IECore::Data *sourceData, const IECore::Data *tweakData, GafferScene::TweakPlug::Mode mode, const std::string &tweakName )
+		: m_sourceData( sourceData ), m_tweakData( tweakData ), m_mode( mode ), m_tweakName( tweakName )
 	{
-		return parameters->writable().erase( parameterName );
 	}
 
-	Data *parameterValue = parameters->member<Data>( parameterName );
-	DataPtr newData = PlugAlgo::getValueAsData( valuePlug );
-	if( !newData )
+	template<typename T>
+	void operator()( T * data, typename std::enable_if<SupportsArithData<T>::value>::type *enabler = nullptr ) const
 	{
-		throw IECore::Exception(
-			boost::str( boost::format( "Cannot apply tweak to \"%s\" : Value plug has unsupported type \"%s\"" ) % tweakName % valuePlug->typeName() )
-		);
-	}
-	if( parameterValue && parameterValue->typeId() != newData->typeId() )
-	{
-		throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak to \"%s\" : Value of type \"%s\" does not match parameter of type \"%s\"" ) % tweakName % parameterValue->typeName() % newData->typeName() ) );
-	}
-
-	if( !parameterValue )
-	{
-		if( missingMode == TweakPlug::MissingMode::Ignore )
+		const T *sourceDataCast = IECore::runTimeCast<const T>( m_sourceData );
+		const T *tweakDataCast = IECore::runTimeCast<const T>( m_tweakData );
+		switch( m_mode )
 		{
-			return false;
-		}
-		else if( !( mode == TweakPlug::Replace && missingMode == TweakPlug::MissingMode::IgnoreOrReplace ) )
-		{
-			throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : This parameter does not exist" ) % modeToString( mode ) % tweakName ) );
+			case GafferScene::TweakPlug::Add :
+				data->writable() = sourceDataCast->readable() + tweakDataCast->readable();
+				break;
+			case GafferScene::TweakPlug::Subtract :
+				data->writable() = sourceDataCast->readable() - tweakDataCast->readable();
+				break;
+			case GafferScene::TweakPlug::Multiply :
+				data->writable() = sourceDataCast->readable() * tweakDataCast->readable();
+				break;
+			case GafferScene::TweakPlug::Replace :
+			case GafferScene::TweakPlug::Remove :
+				// These cases are unused - we handle replace and remove mode outside of numericTweak.
+				// But the compiler gets unhappy if we don't handle some cases
+				break;
 		}
 	}
 
-	if( mode == TweakPlug::Replace )
+	void operator()( IECore::Data * data ) const
 	{
-		parameters->writable()[parameterName] = newData;
-		return true;
+		throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : Data type %s not supported." ) % modeToString( m_mode ) % m_tweakName % m_sourceData->typeName() ) );
 	}
 
-	NumericTweak t( newData.get(), mode, tweakName );
-	dispatch( parameterValue, t );
-	return true;
-}
+private:
+
+	const IECore::Data *m_sourceData;
+	const IECore::Data *m_tweakData;
+	GafferScene::TweakPlug::Mode m_mode;
+	const std::string &m_tweakName;
+};
 
 } // namespace
 
 bool TweakPlug::applyTweak( IECore::CompoundData *parameters, MissingMode missingMode ) const
 {
-	if( !enabledPlug()->getValue() )
-	{
-		return false;
-	}
-
-	const std::string name = namePlug()->getValue();
-	if( name.empty() )
-	{
-		return false;
-	}
-
-	const Mode mode = static_cast<Mode>( modePlug()->getValue() );
-	return applyTweakInternal( mode, this->valuePlug(), name, name, parameters, missingMode );
+	return applyTweak(
+		[&parameters]( const std::string &valueName ) { return parameters->member( valueName ); },
+		[&parameters]( const std::string &valueName, DataPtr newData )
+		{
+			if( newData == nullptr )
+			{
+				return parameters->writable().erase( valueName ) > 0;
+			}
+			parameters->writable()[valueName] = newData;
+			return true;
+		},
+		missingMode
+	);
 }
 
 bool TweakPlug::applyTweaks( const Plug *tweaksPlug, IECoreScene::ShaderNetwork *shaderNetwork, TweakPlug::MissingMode missingMode )
@@ -381,6 +395,18 @@ bool TweakPlug::applyTweaks( const Plug *tweaksPlug, IECoreScene::ShaderNetwork 
 	return appliedTweaks || removedConnections;
 }
 
+void TweakPlug::modifyData(
+	const IECore::Data *sourceData,
+	const IECore::Data *tweakData,
+	IECore::Data *destData,
+	TweakPlug::Mode mode,
+	const std::string &tweakName
+) const
+{
+	NumericTweak t( sourceData, tweakData, mode, tweakName );
+	dispatch( destData, t );
+}
+
 std::pair<const GafferScene::Shader *, const Gaffer::Plug *> TweakPlug::shaderOutput() const
 {
 	const Plug *source = valuePlug()->source();
@@ -460,23 +486,9 @@ Gaffer::PlugPtr TweaksPlug::createCounterpart( const std::string &name, Directio
 bool TweaksPlug::applyTweaks( IECore::CompoundData *parameters, TweakPlug::MissingMode missingMode ) const
 {
 	bool applied = false;
-	for( TweakPlug::Iterator it( this ); !it.done(); ++it )
+	for( const auto &tweak : TweakPlug::Range( *this ) )
 	{
-		if(
-			(*it)->applyTweak(
-				[&parameters]( const std::string &valueName) { return parameters->member( valueName ); },
-				[&parameters]( const std::string &valueName, DataPtr newData )
-				{
-					if( newData == nullptr )
-					{
-						return parameters->writable().erase( valueName ) > 0;
-					}
-					parameters->writable()[valueName] = newData;
-					return true;
-				},
-				missingMode
-			)
-		)
+		if( tweak->applyTweak( parameters, missingMode ) )
 		{
 			applied = true;
 		}
@@ -488,3 +500,5 @@ bool TweaksPlug::applyTweaks( IECoreScene::ShaderNetwork *shaderNetwork, TweakPl
 {
 	return TweakPlug::applyTweaks( this, shaderNetwork, missingMode );
 }
+
+/// \todo : Implement and bind applyTweaks
