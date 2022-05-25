@@ -135,53 +135,35 @@ IECore::ConstCompoundObjectPtr AttributeTweaks::computeProcessedAttributes( cons
 
 	CompoundObjectPtr result = new CompoundObject();
 	result->members() = inputAttributes->members();
-	CompoundObject::ObjectMap &out = result->members();
 
 	// We switch our source attributes depending on whether we are
 	// localising inherted attributes or just using the ones at the location
 
-	const CompoundObject::ObjectMap *source = &inputAttributes->members();
+	const CompoundObject *source = inputAttributes;
 
-	// If we're using fullAttributes, we need to keep them alive.
 	ConstCompoundObjectPtr fullAttributes;
 	if( localisePlug()->getValue() )
 	{
 		fullAttributes = inPlug()->fullAttributes( path );
-		source = &fullAttributes->members();
+		source = fullAttributes.get();
 	}
 
-	for( TweakPlug::Iterator it( tweaksPlug ); !it.done(); ++it )
-	{
-		if( !(*it)->enabledPlug()->getValue() )
+	tweaksPlug->applyTweaks(
+		[&source]( const std::string &valueName )
 		{
-			continue;
-		}
-		const std::string name = (*it)->namePlug()->getValue();
-		if( name.empty() )
+			return source->member<Data>( valueName );
+		},
+		[&result]( const std::string &valueName, DataPtr newData )
 		{
-			continue;
-		}
-
-		CompoundObject::ObjectMap::const_iterator aIt = source->find( name );
-		if( aIt != source->end() )
-		{
-			out[name] = (*aIt).second->copy();
-		}
-
-		(*it)->applyTweak(
-			[&result]( const std::string &valueName ) { return result->member<Data>( valueName ); },
-			[&out]( const std::string &valueName, DataPtr newData )
+			if( newData == nullptr )
 			{
-				if( newData == nullptr )
-				{
-					return out.erase( valueName ) > 0;
-				}
-				out[valueName] = newData;
-				return true;
-			},
-			ignoreMissing ? TweakPlug::MissingMode::Ignore : TweakPlug::MissingMode::Error
-		);
-	}
+				return result->members().erase( valueName ) > 0;
+			}
+			result->members()[valueName] = newData;
+			return true;
+		},
+		ignoreMissing ? TweakPlug::MissingMode::Ignore : TweakPlug::MissingMode::Error
+	);
 
 	return result;
 }
