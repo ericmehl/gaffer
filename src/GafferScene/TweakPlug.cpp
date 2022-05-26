@@ -287,9 +287,8 @@ bool TweakPlug::applyTweaks( const Plug *tweaksPlug, IECoreScene::ShaderNetwork 
 
 	bool appliedTweaks = false;
 	bool removedConnections = false;
-	for( TweakPlug::Iterator tIt( tweaksPlug ); !tIt.done(); ++tIt )
+	for( const auto &tweakPlug : TweakPlug::Range( *tweaksPlug ) )
 	{
-		const TweakPlug *tweakPlug = tIt->get();
 		const std::string name = tweakPlug->namePlug()->getValue();
 		if( name.empty() )
 		{
@@ -376,7 +375,7 @@ bool TweakPlug::applyTweaks( const Plug *tweaksPlug, IECoreScene::ShaderNetwork 
 			}
 
 			if(
-				(*tIt)->applyTweak(
+				tweakPlug->applyTweak(
 					[&parameter, &modifiedShader]( const std::string &valueName )
 					{
 						return modifiedShader.first->second->parametersData()->member( parameter.name );
@@ -489,9 +488,9 @@ bool TweaksPlug::acceptsInput( const Plug *input ) const
 Gaffer::PlugPtr TweaksPlug::createCounterpart( const std::string &name, Direction direction ) const
 {
 	PlugPtr result = new TweaksPlug( name, direction, getFlags() );
-	for( Plug::Iterator it( this ); !it.done(); ++it )
+	for( const auto &tweakPlug : TweakPlug::Range( *this ) )
 	{
-		result->addChild( (*it)->createCounterpart( (*it)->getName(), direction ) );
+		result->addChild( tweakPlug->createCounterpart( tweakPlug->getName(), direction ) );
 	}
 	return result;
 }
