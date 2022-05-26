@@ -39,10 +39,13 @@
 
 #include "Gaffer/PlugAlgo.h"
 
-namespace
+namespace GafferScene
 {
 
-const char *modeToString( GafferScene::TweakPlug::Mode mode )
+namespace Detail
+{
+
+inline const char *modeToString( GafferScene::TweakPlug::Mode mode )
 {
 	switch( mode )
 	{
@@ -61,10 +64,7 @@ const char *modeToString( GafferScene::TweakPlug::Mode mode )
 	}
 }
 
-}  // namespace
-
-namespace GafferScene
-{
+}  // namespace Detail
 
 template<typename T>
 T *TweakPlug::valuePlug()
@@ -126,7 +126,7 @@ bool TweakPlug::applyTweak(
 		}
 		else if( !( mode == GafferScene::TweakPlug::Replace && missingMode == GafferScene::TweakPlug::MissingMode::IgnoreOrReplace) )
 		{
-			throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : This parameter does not exist" ) % modeToString( mode ) % name ) );
+			throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : This parameter does not exist" ) % Detail::modeToString( mode ) % name ) );
 		}
 	}
 

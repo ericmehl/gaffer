@@ -251,7 +251,7 @@ public:
 
 	void operator()( IECore::Data * data ) const
 	{
-		throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : Data type %s not supported." ) % modeToString( m_mode ) % m_tweakName % m_sourceData->typeName() ) );
+		throw IECore::Exception( boost::str( boost::format( "Cannot apply tweak with mode %s to \"%s\" : Data type %s not supported." ) % GafferScene::Detail::modeToString( m_mode ) % m_tweakName % m_sourceData->typeName() ) );
 	}
 
 private:
