@@ -122,6 +122,8 @@ class GAFFERSCENE_API TweakPlug : public Gaffer::ValuePlug
 			MissingMode missingMode = MissingMode::Error
 		) const;
 
+		/// \deprecated
+		/// \todo Remove when `ShaderTweaks::applyTweaks` has been refactored.
 		/// \returns true if any tweaks were applied
 		static bool applyTweaks( const Plug *tweaksPlug, IECoreScene::ShaderNetwork *shaderNetwork, MissingMode missingMode = MissingMode::Error );
 
@@ -166,6 +168,8 @@ class GAFFERSCENE_API TweaksPlug : public Gaffer::ValuePlug
 		/// Functions return true if any tweaks were applied.
 
 		bool applyTweaks( IECore::CompoundData *parameters, TweakPlug::MissingMode missingMode = TweakPlug::MissingMode::Error ) const;
+		/// \deprecated
+		/// \todo Refactor into `ShaderTweaks` and move `TweakPlug` to `Gaffer` module.
 		bool applyTweaks( IECoreScene::ShaderNetwork *shaderNetwork, TweakPlug::MissingMode missingMode = TweakPlug::MissingMode::Error ) const;
 
 		/// Applies the tweak using functors to get and set the data.
@@ -181,9 +185,6 @@ class GAFFERSCENE_API TweaksPlug : public Gaffer::ValuePlug
 			SetDataFunctor &&setDataFunctor,
 			TweakPlug::MissingMode missingMode = TweakPlug::MissingMode::Error
 		) const;
-
-		
-
 };
 
 } // namespace GafferScene

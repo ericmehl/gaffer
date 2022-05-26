@@ -375,7 +375,20 @@ bool TweakPlug::applyTweaks( const Plug *tweaksPlug, IECoreScene::ShaderNetwork 
 				modifiedShader.first->second = shader->copy();
 			}
 
-			if( applyTweakInternal( mode, tweakPlug->valuePlug(), name, parameter.name, modifiedShader.first->second->parametersData(), missingMode ) )
+			if(
+				(*tIt)->applyTweak(
+					[&parameter, &modifiedShader]( const std::string &valueName )
+					{
+						return modifiedShader.first->second->parametersData()->member( parameter.name );
+					},
+					[&parameter, &modifiedShader]( const std::string &valueName, DataPtr newData )
+					{
+						modifiedShader.first->second->parameters()[parameter.name] = newData;
+						return true;
+					},
+					missingMode
+				)
+			)
 			{
 				appliedTweaks = true;
 			}
@@ -500,5 +513,3 @@ bool TweaksPlug::applyTweaks( IECoreScene::ShaderNetwork *shaderNetwork, TweakPl
 {
 	return TweakPlug::applyTweaks( this, shaderNetwork, missingMode );
 }
-
-/// \todo : Implement and bind applyTweaks
