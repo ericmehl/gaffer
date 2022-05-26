@@ -27,6 +27,7 @@ Improvements
   - <kbd>Shift+Alt+E</kbd> : Edit tweaks node.
 - Edit Menu : Added item to rename one or more selected nodes, with accompanying keyboard shortcut (#4286).
 - Box : Rename plug dialogue now ensures names are valid as they are typed.
+- Edit tweaks node : `AttributeTweaks` nodes are now recognized when using the <kbd>Shift+Alt+E</kbd> shortcut in the Hierarchy View, Viewer and Light Editor.
 
 Fixes
 -----
@@ -39,6 +40,7 @@ API
 - ArnoldShader : Added support for `gaffer.layout.activator` and `gaffer.layout.visibilityActivator` in `.mtd` files.
 - PlugLayout : User interface sections are now hidden if all plugs in that section are hidden.
 - TweakPlug : Added functor-based variation of `applyTweak` allowing greater control of how users get and set the data being tweaked. `TweaksPlug::applyTweaks` now uses that method and can be used as a reference implementation.
+- SceneAlgo : `objectTweaks()` now recognizes `AttributeTweaks` node in an object's history.
 
 0.61.9.0 (relative to 0.61.8.0)
 ========

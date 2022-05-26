@@ -593,7 +593,7 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 			tweaks2
 		)
 
-	def testObjectTweaks( self ) :
+	def testCameraObjectTweaks( self ) :
 
 		camera1 = GafferScene.Camera( "Camera1" )
 		camera1["name"].setValue( "camera1" )
@@ -626,6 +626,40 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 		self.assertEqual( GafferScene.SceneAlgo.objectTweaks( camera2Tweaks["out"], "/group" ), None )
 		self.assertEqual( GafferScene.SceneAlgo.objectTweaks( camera2Tweaks["out"], "/group/camera1" ), camera1Tweaks )
 		self.assertEqual( GafferScene.SceneAlgo.objectTweaks( camera2Tweaks["out"], "/group/camera2" ), camera2Tweaks )
+
+	def testAttributeObjectTweaks( self ) :
+
+		plane1 = GafferScene.Plane( "Plane1" )
+		plane1["name"].setValue( "plane1" )
+
+		plane1Filter = GafferScene.PathFilter()
+		plane1Filter["paths"].setValue( IECore.StringVectorData( [ "/plane1" ] ) )
+
+		plane1Tweaks = GafferScene.AttributeTweaks( "Plane1Tweaks" )
+		plane1Tweaks["in"].setInput( plane1["out"] )
+		plane1Tweaks["filter"].setInput( plane1Filter["out"] )
+
+		unfilteredTweaks = GafferScene.AttributeTweaks( "UnfilteredTweaks" )
+		unfilteredTweaks["in"].setInput( plane1Tweaks["out"] )
+
+		plane2 = GafferScene.Plane( "Plane2" )
+		plane2["name"].setValue( "plane2" )
+
+		group = GafferScene.Group()
+		group["in"][0].setInput( unfilteredTweaks["out"] )
+		group["in"][1].setInput( plane2["out"] )
+
+		plane2Filter = GafferScene.PathFilter()
+		plane2Filter["paths"].setValue( IECore.StringVectorData( [ "/group/plane2" ] ) )
+
+		plane2Tweaks = GafferScene.AttributeTweaks( "Plane2Tweaks" )
+		plane2Tweaks["in"].setInput( group["out"] )
+		plane2Tweaks["filter"].setInput( plane2Filter["out"] )
+
+		self.assertEqual( GafferScene.SceneAlgo.objectTweaks( plane2Tweaks["out"], "/" ), None )
+		self.assertEqual( GafferScene.SceneAlgo.objectTweaks( plane2Tweaks["out"], "/group" ), None )
+		self.assertEqual( GafferScene.SceneAlgo.objectTweaks( plane2Tweaks["out"], "/group/plane1" ), plane1Tweaks )
+		self.assertEqual( GafferScene.SceneAlgo.objectTweaks( plane2Tweaks["out"], "/group/plane2" ), plane2Tweaks )
 
 	def testMonitorMatchingPaths( self ) :
 

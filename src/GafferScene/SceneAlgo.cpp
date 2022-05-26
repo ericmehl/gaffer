@@ -36,6 +36,7 @@
 
 #include "GafferScene/SceneAlgo.h"
 
+#include "GafferScene/AttributeTweaks.h"
 #include "GafferScene/CameraTweaks.h"
 #include "GafferScene/CopyAttributes.h"
 #include "GafferScene/Filter.h"
@@ -635,7 +636,13 @@ void addMergeScenesPredecessors( const MergeScenes *mergeScenes, const SceneAlgo
 
 SceneProcessor *objectTweaksWalk( const SceneAlgo::History *h )
 {
-	if( auto tweaks = h->scene->parent<CameraTweaks>() )
+	FilteredSceneProcessor *tweaks = nullptr;
+	tweaks = h->scene->parent<CameraTweaks>();
+	if( tweaks == nullptr )
+	{
+		tweaks = h->scene->parent<AttributeTweaks>();
+	}
+	if( tweaks != nullptr )
 	{
 		if( h->scene == tweaks->outPlug() )
 		{

@@ -207,9 +207,9 @@ GAFFERSCENE_API AttributeHistory::Ptr attributeHistory( const History *attribute
 GAFFERSCENE_API ScenePlug *source( const ScenePlug *scene, const ScenePlug::ScenePath &path );
 
 /// Returns the last tweaks node to edit the specified object.
-/// > Note : Currently only CameraTweaks are recognised, but as other tweaks nodes are added
-/// > we should support them here (for instance, we might introduce an ExternalProceduralTweaks
-/// > node to replace the old Parameters node).
+/// > Note : Currently only CameraTweaks and AttributeTweaks are recognised, but as other tweaks
+/// > nodes are added we should support them here (for instance, we might introduce an
+/// > ExternalProceduralTweaks node to replace the old Parameters node).
 GAFFERSCENE_API SceneProcessor *objectTweaks( const ScenePlug *scene, const ScenePlug::ScenePath &path );
 
 /// Returns the last ShaderTweaks node to edit the specified attribute.
