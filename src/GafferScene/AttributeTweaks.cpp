@@ -37,8 +37,6 @@
 #include "GafferScene/AttributeTweaks.h"
 #include "GafferScene/TweakPlug.h"
 
-#include "Gaffer/CompoundDataPlug.h"
-
 using namespace std;
 using namespace IECore;
 using namespace IECoreScene;
