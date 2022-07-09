@@ -35,7 +35,10 @@
 ##########################################################################
 
 import os
-import subprocess32 as subprocess
+if os.name == 'posix' and sys.version_info[0] < 3:
+	import subprocess32 as subprocess
+else:
+	import subprocess
 import unittest
 
 import Gaffer
@@ -50,8 +53,8 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 
 		GafferTest.TestCase.setUp( self )
 
-		self.__scriptFileName = self.temporaryDirectory() + "/script.gfr"
-		self.__outputTextFile = self.temporaryDirectory() + "/output.txt"
+		self.__scriptFileName = os.path.join( self.temporaryDirectory(), "script.gfr" )
+		self.__outputTextFile = os.path.join( self.temporaryDirectory(), "output.txt" )
 
 	def writeSimpleScript( self ) :
 
@@ -73,7 +76,9 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		if "-settings" not in command :
 			command += " -settings"
 		if "-dispatcher.jobsDirectory" not in command :
-			command += " -dispatcher.jobsDirectory '\"{tmpDir}/dispatcher/local\"'".format( tmpDir = self.temporaryDirectory() )
+			command += " -dispatcher.jobsDirectory '\"{tmpFile}\"'".format(
+				tmpFile = os.path.join( self.temporaryDirectory(), "dispatcher", "local" )
+			)
 
 		p = subprocess.Popen( command, shell=True, stderr = subprocess.PIPE, universal_newlines = True )
 		p.wait()
@@ -242,8 +247,11 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
 		self.assertFalse( p.returncode )
-		jobDir = self.temporaryDirectory() + "/dispatcher/local/000000"
+		jobDir = os.path.join( self.temporaryDirectory(), "dispatcher", "local", "000000" )
 		with open( self.__outputTextFile, "r" ) as f :
+			# Substituting the `dispatcher:jobDirectory` context variable and
+			# printing will cause the backslashes in Windows `jobDirectory` to
+			# be lost. This is expected behavior users will have to compensate for.
 			self.assertEqual( f.readlines(), [ "userDefault test {jobDir}".format( jobDir = jobDir ) ] )
 
 	def testDispatcherOverrides( self ) :
