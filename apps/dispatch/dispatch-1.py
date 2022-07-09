@@ -282,7 +282,7 @@ class dispatch( Gaffer.Application ) :
 		if context :
 			## \todo: this eval isn't ideal. we should have a way of parsing values
 			# and setting them onto plugs.
-			parent["variables"].addChild( Gaffer.NameValuePlug( identifier, eval( value ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic ) )
+			parent["variables"].addChild( Gaffer.NameValuePlug( identifier, dispatch.__evalSanitised( value ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic ) )
 			return 0
 
 		plug = parent.descendant( identifier )
@@ -297,7 +297,7 @@ class dispatch( Gaffer.Application ) :
 			try :
 				## \todo: this eval isn't ideal. we should have a way of parsing values
 				# and setting them onto plugs.
-				plug.addMembers( eval( value ) )
+				plug.addMembers( dispatch.__evalSanitised( value ) )
 			except Exception as exception :
 				IECore.msg( IECore.Msg.Level.Error, "gaffer dispatch : setting \"%s\"" % identifier, str( exception ) )
 				return 1
@@ -307,7 +307,7 @@ class dispatch( Gaffer.Application ) :
 		try :
 			## \todo: this eval isn't ideal. we should have a way of parsing values
 			# and setting them onto plugs.
-			plug.setValue( eval( value ) )
+			plug.setValue( dispatch.__evalSanitised( value ) )
 		except Exception as exception :
 			IECore.msg( IECore.Msg.Level.Error, "gaffer dispatch : setting \"%s\"" % identifier, str( exception ) )
 			return 1
@@ -329,5 +329,10 @@ class dispatch( Gaffer.Application ) :
 			return None
 
 		return node
+	
+	@staticmethod
+	def __evalSanitised( expr ) :
+
+		return eval( expr.replace( "\\", "\\\\" ) )
 
 IECore.registerRunTimeTyped( dispatch )

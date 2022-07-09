@@ -49,6 +49,7 @@
 #include "IECore/MessageHandler.h"
 
 #include "boost/algorithm/string/predicate.hpp"
+#include "boost/algorithm/string/replace.hpp"
 #include "boost/filesystem.hpp"
 
 using namespace std;
@@ -248,7 +249,10 @@ void Dispatcher::createJobDirectory( const Gaffer::ScriptNode *script, Gaffer::C
 	}
 
 	m_jobDirectory = numberedJobDirectory.string();
-	context->set( g_jobDirectoryContextEntry, m_jobDirectory );
+	// Add an extra backslash (will only apply on Windows)
+	// to keep one remaining after string substitution
+	std::string d = boost::replace_all_copy( m_jobDirectory, "\\", "\\\\" );
+	context->set( g_jobDirectoryContextEntry, d );
 
 	// Now figure out where we'll save the script in that directory, and
 	// advertise it via the context. We'll do the actual saving later.
@@ -263,7 +267,8 @@ void Dispatcher::createJobDirectory( const Gaffer::ScriptNode *script, Gaffer::C
 		scriptFileName = numberedJobDirectory / "untitled.gfr";
 	}
 
-	context->set( g_scriptFileNameContextEntry, scriptFileName.string() );
+	std::string s = boost::replace_all_copy( scriptFileName.string(), "\\", "\\\\" );
+	context->set( g_scriptFileNameContextEntry, s );
 }
 
 // Static functions

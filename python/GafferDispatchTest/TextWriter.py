@@ -49,7 +49,7 @@ class TextWriter( GafferDispatch.TaskNode ) :
 
 		self.__requiresSequenceExecution = requiresSequenceExecution
 
-		self.addChild( Gaffer.StringPlug( "fileName", Gaffer.Plug.Direction.In ) )
+		self.addChild( Gaffer.FileSystemPathPlug( "fileName", Gaffer.Plug.Direction.In ) )
 		self.addChild( Gaffer.StringPlug( "mode", defaultValue = "w", direction = Gaffer.Plug.Direction.In ) )
 		self.addChild( Gaffer.StringPlug( "text", Gaffer.Plug.Direction.In ) )
 
