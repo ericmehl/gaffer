@@ -38,6 +38,7 @@ import unittest
 import inspect
 import imath
 import six
+import os
 
 import IECore
 
@@ -55,7 +56,7 @@ class PythonCommandTest( GafferTest.TestCase ) :
 	def __dispatcher( self, frameRange = None ) :
 
 		result = GafferDispatchTest.DispatcherTest.TestDispatcher()
-		result["jobsDirectory"].setValue( self.temporaryDirectory() + "/jobs" )
+		result["jobsDirectory"].setValue( os.path.join( self.temporaryDirectory(), "jobs" ) )
 
 		if frameRange is not None :
 			result["framesMode"].setValue( result.FramesMode.CustomRange )
