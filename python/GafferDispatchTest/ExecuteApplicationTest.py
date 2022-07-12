@@ -60,10 +60,10 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 
 		GafferTest.TestCase.setUp( self )
 
-		self.__scriptFileName = self.temporaryDirectory() + "/executeScript.gfr"
-		self.__scriptFileNameWithSpecialCharacters = self.temporaryDirectory() + "/executeScript-10.tmp.gfr"
-		self.__outputTextFile = self.temporaryDirectory() + "/executeOutput.txt"
-		self.__outputFileSeq = IECore.FileSequence( self.temporaryDirectory() + "/output.####.cob" )
+		self.__scriptFileName = os.path.join( self.temporaryDirectory(), "executeScript.gfr" )
+		self.__scriptFileNameWithSpecialCharacters = os.path.join( self.temporaryDirectory(), "executeScript-10.tmp.gfr" )
+		self.__outputTextFile = os.path.join( self.temporaryDirectory(), "executeOutput.txt" )
+		self.__outputFileSeq = IECore.FileSequence( os.path.join( self.temporaryDirectory(), "output.####.cob" ) )
 
 	def testErrorReturnStatusForMissingScript( self ) :
 
@@ -187,7 +187,8 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 
 		s = Gaffer.ScriptNode()
 		s["node"] = GafferDispatch.SystemCommand()
-		s["node"]["command"].setValue( "sleep .1" )
+		cmd = "sleep .1" if os.name != "nt" else "timeout 1"
+		s["node"]["command"].setValue( cmd )
 
 		# because this doesn't have the dynamic flag set,
 		# it won't serialise/load properly.
@@ -254,7 +255,7 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		s.save()
 
 		p = subprocess.Popen(
-			"gaffer execute -script '%s'" % self.__scriptFileNameWithSpecialCharacters,
+			"gaffer execute -script \"%s\"" % self.__scriptFileNameWithSpecialCharacters,
 			shell=True,
 			stderr = subprocess.PIPE,
 		)
@@ -315,18 +316,18 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		s.context().setFrame( 10 )
 		s.save()
 
-		subprocess.check_call( [ "gaffer", "execute", self.__scriptFileName ] )
+		subprocess.check_call( [ "gaffer.cmd", "execute", self.__scriptFileName ] )
 
 		self.assertEqual(
-			glob.glob( self.temporaryDirectory() + "/test.*.txt" ),
-			[ self.temporaryDirectory() + "/test.0010.txt" ]
+			glob.glob( os.path.join( self.temporaryDirectory(), "test.*.txt" ) ),
+			[ os.path.join( self.temporaryDirectory(), "test.0010.txt" ) ]
 		)
 
 	def testImathContextVariable( self ) :
 
 		s = Gaffer.ScriptNode()
 		s["t"] = GafferDispatchTest.TextWriter()
-		s["t"]["fileName"].setValue( self.temporaryDirectory() + "/test.txt" )
+		s["t"]["fileName"].setValue( os.path.join( self.temporaryDirectory(), "test.txt" ) )
 
 		s["e"] = Gaffer.Expression()
 		s["e"].setExpression( inspect.cleandoc(
@@ -339,7 +340,7 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		s["fileName"].setValue(  self.temporaryDirectory() + "/test.gfr" )
 		s.save()
 
-		subprocess.check_call( [ "gaffer", "execute", s["fileName"].getValue(), "-context", "c", "imath.Color3f( 0, 1, 2 )" ] )
+		subprocess.check_call( [ "gaffer.cmd", "execute", s["fileName"].getValue(), "-context", "c", "imath.Color3f( 0, 1, 2 )" ] )
 
 		self.assertEqual(
 			open( s["t"]["fileName"].getValue() ).read(),
@@ -373,16 +374,16 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 			s.context().setFrame( 10 )
 			s.save()
 
-			subprocess.check_call( [ "gaffer", "execute", self.__scriptFileName, "-frames", "5", "-nodes", "PythonCommand" ] )
+			subprocess.check_call( [ "gaffer.cmd", "execute", self.__scriptFileName, "-frames", "5", "-nodes", "PythonCommand" ] )
 
-			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/canSerialiseFrameDependentPlug.gfr" ) )
+			self.assertTrue( os.path.exists( os.path.join( self.temporaryDirectory(), "canSerialiseFrameDependentPlug.gfr" ) ) )
 
 			ss = Gaffer.ScriptNode()
 			ss["fileName"].setValue( self.temporaryDirectory() + "/canSerialiseFrameDependentPlug.gfr" )
 			ss.load()
 
 			# we must retain the non-substituted value
-			self.assertEqual( ss["t"]["fileName"].getValue(), "{}/test.####.txt".format( self.temporaryDirectory() ) )
+			self.assertEqual( ss["t"]["fileName"].getValue(), os.path.join( self.temporaryDirectory(), "test.####.txt" ) )
 
 		validate( sequence = True )
 		validate( sequence = False )
