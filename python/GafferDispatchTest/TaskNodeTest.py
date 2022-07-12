@@ -310,10 +310,10 @@ class TaskNodeTest( GafferTest.TestCase ) :
 		p = Gaffer.PlugAlgo.promote( s["b"]["e"]["preTasks"][0] )
 		p.setName( "p" )
 
-		s["b"].exportForReference( self.temporaryDirectory() + "/test.grf" )
+		s["b"].exportForReference( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 
 		s["r"] = Gaffer.Reference()
-		s["r"].load( self.temporaryDirectory() + "/test.grf" )
+		s["r"].load( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 
 		s["e"] = GafferDispatchTest.TextWriter()
 
@@ -328,10 +328,10 @@ class TaskNodeTest( GafferTest.TestCase ) :
 		p = Gaffer.PlugAlgo.promote( s["b"]["e"]["preTasks"] )
 		p.setName( "p" )
 
-		s["b"].exportForReference( self.temporaryDirectory() + "/test.grf" )
+		s["b"].exportForReference( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 
 		s["r"] = Gaffer.Reference()
-		s["r"].load( self.temporaryDirectory() + "/test.grf" )
+		s["r"].load( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 
 		s["e"] = GafferDispatchTest.TextWriter()
 

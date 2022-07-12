@@ -122,7 +122,7 @@ class DispatcherTest( GafferTest.TestCase ) :
 		dispatcher.dispatch( [ s["n1"] ] )
 
 		jobDir = dispatcher.jobDirectory()
-		self.assertEqual( jobDir, self.temporaryDirectory() + "/000000" )
+		self.assertEqual( jobDir, os.path.join( self.temporaryDirectory(), "000000" ) )
 		self.assertTrue( os.path.exists( jobDir ) )
 
 	def testDerivedClass( self ) :
@@ -431,7 +431,7 @@ class DispatcherTest( GafferTest.TestCase ) :
 	def testNotACycle( self ) :
 
 		dispatcher = GafferDispatch.Dispatcher.create( "testDispatcher" )
-		fileName = self.temporaryDirectory() + "/result.txt"
+		fileName = os.path.join( self.temporaryDirectory(), "result.txt" )
 
 		s = Gaffer.ScriptNode()
 		s["n1"] = GafferDispatchTest.TextWriter()
@@ -546,7 +546,7 @@ class DispatcherTest( GafferTest.TestCase ) :
 		dispatcher["framesMode"].setValue( GafferDispatch.Dispatcher.FramesMode.CustomRange )
 		frameList = IECore.FrameList.parse( "2-6x2" )
 		dispatcher["frameRange"].setValue( str(frameList) )
-		fileName = self.temporaryDirectory() + "/result.txt"
+		fileName = os.path.join(  self.temporaryDirectory(), "result.txt" )
 
 		s = Gaffer.ScriptNode()
 		s["n1"] = GafferDispatchTest.TextWriter()
@@ -582,7 +582,7 @@ class DispatcherTest( GafferTest.TestCase ) :
 		dispatcher = GafferDispatch.Dispatcher.create( "testDispatcher" )
 		dispatcher["framesMode"].setValue( GafferDispatch.Dispatcher.FramesMode.CustomRange )
 		dispatcher["frameRange"].setValue( "2-6x2" )
-		fileName = self.temporaryDirectory() + "/result.txt"
+		fileName = os.path.join(  self.temporaryDirectory(), "result.txt" )
 
 		s = Gaffer.ScriptNode()
 		s["n1"] = GafferDispatchTest.TextWriter()
@@ -628,7 +628,7 @@ class DispatcherTest( GafferTest.TestCase ) :
 		dispatcher = GafferDispatch.Dispatcher.create( "testDispatcher" )
 		dispatcher["framesMode"].setValue( GafferDispatch.Dispatcher.FramesMode.CustomRange )
 		dispatcher["frameRange"].setValue( "2-6x2" )
-		fileName = self.temporaryDirectory() + "/result.txt"
+		fileName = os.path.join(  self.temporaryDirectory(), "result.txt" )
 
 		s = Gaffer.ScriptNode()
 		s["n1"] = GafferDispatchTest.TextWriter()
@@ -680,7 +680,7 @@ class DispatcherTest( GafferTest.TestCase ) :
 		dispatcher = GafferDispatch.Dispatcher.create( "testDispatcher" )
 		dispatcher["framesMode"].setValue( GafferDispatch.Dispatcher.FramesMode.CustomRange )
 		dispatcher["frameRange"].setValue( "2-6x2" )
-		fileName = self.temporaryDirectory() + "/result.txt"
+		fileName = os.path.join(  self.temporaryDirectory(), "result.txt" )
 
 		s = Gaffer.ScriptNode()
 		s["n1"] = GafferDispatchTest.TextWriter()
@@ -706,9 +706,9 @@ class DispatcherTest( GafferTest.TestCase ) :
 		promotedTaskPlug = Gaffer.PlugAlgo.promote( s["b"]["n3"]["task"] )
 		s["n4"]["preTasks"][0].setInput( promotedTaskPlug )
 		# export a reference too
-		s["b"].exportForReference( self.temporaryDirectory() + "/test.grf" )
+		s["b"].exportForReference( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 		s["r"] = Gaffer.Reference()
-		s["r"].load( self.temporaryDirectory() + "/test.grf" )
+		s["r"].load( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 		s["r"][promotedPreTaskPlug.getName()].setInput( s["n1"]["task"] )
 
 		# dispatch a task that requires a Box
@@ -1000,7 +1000,7 @@ class DispatcherTest( GafferTest.TestCase ) :
 
 		GafferDispatch.Dispatcher.create( "testDispatcher" ).dispatch( [ s["c"] ] )
 
-		self.assertEqual( next( open( self.temporaryDirectory() + "/test.0010.txt" ) ), "testing 123" )
+		self.assertEqual( next( open( os.path.join( self.temporaryDirectory(), "test.0010.txt" ) ) ), "testing 123" )
 
 	def testBatchesCanAccessJobDirectory( self ) :
 
@@ -1008,6 +1008,7 @@ class DispatcherTest( GafferTest.TestCase ) :
 
 		s["w"] = GafferDispatchTest.TextWriter()
 		s["w"]["fileName"].setValue( "${dispatcher:jobDirectory}/test.####.txt" )
+		print(s["w"]["fileName"].getValue())
 		s["w"]["text"].setValue( "w on ${frame} from ${dispatcher:jobDirectory}" )
 
 		dispatcher = GafferDispatch.Dispatcher.create( "testDispatcher" )
@@ -1018,9 +1019,9 @@ class DispatcherTest( GafferTest.TestCase ) :
 
 		# a single dispatch should have the same job directory for all batches
 		jobDir = dispatcher.jobDirectory()
-		self.assertEqual( next( open( "%s/test.0002.txt" % jobDir ) ), "w on 2 from %s" % jobDir )
-		self.assertEqual( next( open( "%s/test.0004.txt" % jobDir ) ), "w on 4 from %s" % jobDir )
-		self.assertEqual( next( open( "%s/test.0006.txt" % jobDir ) ), "w on 6 from %s" % jobDir )
+		self.assertEqual( next( open( os.path.join( jobDir, "test.0002.txt" ) ) ), "w on 2 from %s" % jobDir )
+		self.assertEqual( next( open( os.path.join( jobDir, "test.0004.txt" ) ) ), "w on 4 from %s" % jobDir )
+		self.assertEqual( next( open( os.path.join( jobDir, "test.0006.txt" ) ) ), "w on 6 from %s" % jobDir )
 
 	def testNoOpDoesntBreakFrameParallelism( self ) :
 
