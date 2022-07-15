@@ -287,7 +287,7 @@ class LocalDispatcher( GafferDispatch.Dispatcher ) :
 			self.__setStatus( batch, LocalDispatcher.Job.Status.Running )
 			IECore.msg( IECore.MessageHandler.Level.Info, self.__messageTitle, " ".join( args ) )
 			if os.name == "nt":
-				process = subprocess.Popen( args )
+				process = subprocess.Popen( subprocess.list2cmdline( args ), shell=True )
 			else:
 				process = subprocess.Popen( args, start_new_session=True )
 			batch.blindData()["pid"] = IECore.IntData( process.pid )
