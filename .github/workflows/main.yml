@@ -176,7 +176,7 @@ jobs:
       timeout-minutes: 60
       run: |
         echo "::add-matcher::./.github/workflows/main/problemMatchers/unittest.json"
-        ${{ matrix.testRunner }} "${{ env.GAFFER_BUILD_DIR }}/bin/gaffer test GafferTest.FileSystemPathTest"
+        ${{ matrix.testRunner }} "${{ env.GAFFER_BUILD_DIR }}/bin/gaffer test GafferTest"
         echo "::remove-matcher owner=unittest::"
       if: runner.os == 'Windows'
 
