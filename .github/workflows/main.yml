@@ -76,7 +76,7 @@ jobs:
             containerImage:
             dependenciesURL: https://github.com/hypothetical-inc/gafferDependencies/releases/download/6.1.0/gafferDependencies-6.1.0-Python3-windows.zip
             testRunner: Invoke-Expression
-            testArguments: GafferTest
+            testArguments: GafferTest GafferDispatchTest GafferDispatchUITest
 
     runs-on: ${{ matrix.os }}
 
