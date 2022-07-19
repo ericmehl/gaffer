@@ -106,10 +106,10 @@ class ParameterisedHolderTest( GafferTest.TestCase ) :
 		with n.parameterModificationContext() as parameters :
 
 			parameters["multiply"].setNumericValue( 10 )
-			parameters["dst"].setTypedValue( self.temporaryDirectory() + "/s.####.exr" )
+			parameters["dst"].setTypedValue( os.path.join( self.temporaryDirectory(), "s.####.exr" ) )
 
 		self.assertEqual( n["parameters"]["multiply"].getValue(), 10 )
-		self.assertEqual( n["parameters"]["dst"].getValue(), self.temporaryDirectory() + "/s.####.exr" )
+		self.assertEqual( n["parameters"]["dst"].getValue(), os.path.join( self.temporaryDirectory(), "s.####.exr" ) )
 
 		n["parameters"]["multiply"].setValue( 20 )
 		n["parameters"]["dst"].setValue( "lalalal.##.tif" )
@@ -1069,7 +1069,7 @@ class ParameterisedHolderTest( GafferTest.TestCase ) :
 
 		GafferTest.TestCase.setUp( self )
 
-		os.environ["GAFFERCORTEXTEST_CLASS_PATHS"] = os.path.dirname( __file__ ) + "/classes"
+		os.environ["GAFFERCORTEXTEST_CLASS_PATHS"] = os.path.join( os.path.dirname( __file__ ), "classes" )
 
 if __name__ == "__main__":
 	unittest.main()

@@ -51,13 +51,13 @@ class ObjectWriterTest( GafferTest.TestCase ) :
 
 		GafferTest.TestCase.setUp( self )
 
-		self.__exrFileName = self.temporaryDirectory() + "/checker.exr"
-		self.__tifFileName = self.temporaryDirectory() + "/checker.tif"
-		self.__exrSequence = IECore.FileSequence( self.temporaryDirectory() + "/checker.####.exr 1-4" )
+		self.__exrFileName = os.path.join( self.temporaryDirectory(),"checker.exr" )
+		self.__tifFileName = os.path.join( self.temporaryDirectory(), "checker.tif" )
+		self.__exrSequence = IECore.FileSequence( os.path.join( self.temporaryDirectory(), "checker.####.exr 1-4" ) )
 
 	def test( self ) :
 
-		checker = os.path.expandvars( "$GAFFER_ROOT/python/GafferCortexTest/images/checker.exr" )
+		checker = os.path.join( os.environ["GAFFER_ROOT"], "python", "GafferCortexTest", "images", "checker.exr" )
 		checker = IECore.Reader.create( checker ).read()
 
 		node = GafferCortex.ObjectWriter()
@@ -87,7 +87,7 @@ class ObjectWriterTest( GafferTest.TestCase ) :
 
 	def testChangingFileType( self ) :
 
-		checker = os.path.expandvars( "$GAFFER_ROOT/python/GafferCortexTest/images/checker.exr" )
+		checker = os.path.join( os.environ["GAFFER_ROOT"], "python", "GafferCortexTest", "images", "checker.exr" )
 		checker = IECore.Reader.create( checker ).read()
 
 		node = GafferCortex.ObjectWriter()
@@ -122,7 +122,7 @@ class ObjectWriterTest( GafferTest.TestCase ) :
 
 	def testStringSubstitutions( self ) :
 
-		checker = os.path.expandvars( "$GAFFER_ROOT/python/GafferCortexTest/images/checker.exr" )
+		checker = os.path.join( os.environ["GAFFER_ROOT"], "python", "GafferCortexTest", "images", "checker.exr" )
 		checker = IECore.Reader.create( checker ).read()
 
 		node = GafferCortex.ObjectWriter()

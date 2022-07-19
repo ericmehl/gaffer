@@ -49,7 +49,7 @@ class ObjectReaderTest( GafferTest.TestCase ) :
 
 	def test( self ) :
 
-		fileName = os.path.expandvars( "$GAFFER_ROOT/python/GafferCortexTest/images/checker.exr" )
+		fileName = os.path.join( os.environ["GAFFER_ROOT"], "python", "GafferCortexTest", "images", "checker.exr" )
 
 		node = GafferCortex.ObjectReader()
 		node["fileName"].setValue( fileName )
@@ -62,8 +62,8 @@ class ObjectReaderTest( GafferTest.TestCase ) :
 
 	def testChangingFileType( self ) :
 
-		imageFileName = os.path.expandvars( "$GAFFER_ROOT/python/GafferCortexTest/images/checker.exr" )
-		cobFileName = os.path.expandvars( "$GAFFER_ROOT/python/GafferCortexTest/cobs/string.cob" )
+		imageFileName = os.path.join( os.environ["GAFFER_ROOT"], "python", "GafferCortexTest", "images", "checker.exr" )
+		cobFileName = os.path.join( os.environ["GAFFER_ROOT"], "python", "GafferCortexTest", "cobs", "string.cob" )
 
 		node = GafferCortex.ObjectReader()
 		node["fileName"].setValue( imageFileName )
@@ -78,7 +78,7 @@ class ObjectReaderTest( GafferTest.TestCase ) :
 
 		s = Gaffer.ScriptNode()
 		s["n"] = GafferCortex.ObjectReader()
-		s["n"]["fileName"].setValue( os.path.dirname( __file__ ) + "/images/checker.exr" )
+		s["n"]["fileName"].setValue( os.path.join( os.path.dirname( __file__ ), "images", "checker.exr" ) )
 
 		r = s["n"]["out"].getValue()
 
