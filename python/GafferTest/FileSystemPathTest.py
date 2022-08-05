@@ -358,7 +358,7 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		g = p.property( "fileSystem:group" )
 		self.assertTrue( isinstance( g, str ) )
-		self.assertEqual( g, grp.getgrgid( os.stat( str( p ) ).st_gid ).gr_name )
+		self.assertEqual( g, self.getFileGroup( p.nativeString() ) )
 
 	def testPropertyNames( self ) :
 
@@ -414,8 +414,7 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 				self.assertTrue( x.isLeaf() )
 
 			self.assertEqual( x.property( "fileSystem:owner" ), self.getFileOwner( p.nativeString() ) )
-			if os.name is not "nt" :
-				self.assertEqual( x.property( "fileSystem:group" ), grp.getgrgid( os.stat( str( p ) ).st_gid ).gr_name )
+			self.assertEqual( x.property( "fileSystem:group" ), self.getFileGroup( p.nativeString() ) )
 			self.assertLess( (datetime.datetime.utcnow() - x.property( "fileSystem:modificationTime" )).total_seconds(), 2 )
 			if "###" not in str( x ) :
 				self.assertFalse( x.isFileSequence() )
@@ -524,6 +523,14 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 			owner, domain = securityDescriptor.owner()
 			return owner
 
+	def getFileGroup( self, filePath ) :
+
+		if os.name is not "nt" :
+			return grp.getgrgid( os.stat( filePath ).st_gid ).gr_name
+		else :
+			securityDescriptor = GafferTest.WindowsUtils.getFileSecurity( filePath )
+			group, domain = securityDescriptor.group()
+			return group
 
 if __name__ == "__main__":
 	unittest.main()
