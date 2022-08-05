@@ -170,6 +170,9 @@ from .TweakPlugTest import TweakPlugTest
 
 from .IECorePreviewTest import *
 
+if os.name == "nt" :
+	from . import WindowsUtils
+
 if __name__ == "__main__":
 	import unittest
 	unittest.main()
