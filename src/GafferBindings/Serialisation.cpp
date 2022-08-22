@@ -376,6 +376,27 @@ std::string Serialisation::identifier( const Gaffer::GraphComponent *graphCompon
 	return childIdentifier( parentIdentifier, graphComponent );
 }
 
+std::string Serialisation::externalIdentifier( const Gaffer::GraphComponent *graphComponent ) const
+{
+	if( !graphComponent )
+	{
+		return "";
+	}
+
+	std::string parentIdentifier;
+	const GraphComponent *parent = graphComponent->parent();
+	if( parent == m_parent )
+	{
+		parentIdentifier = m_parentName;
+	}
+	else
+	{
+		parentIdentifier = externalIdentifier( parent );
+	}
+
+	return childIdentifier( parentIdentifier, graphComponent );
+}
+
 std::string Serialisation::childIdentifier( const std::string &parentIdentifier, const Gaffer::GraphComponent *child ) const
 {
 	if( parentIdentifier.empty() )

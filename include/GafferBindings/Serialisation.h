@@ -65,6 +65,10 @@ class GAFFERBINDINGS_API Serialisation : boost::noncopyable
 		/// within the serialisation. Returns the empty string if the object is not
 		/// to be included in the serialisation.
 		std::string identifier( const Gaffer::GraphComponent *graphComponent ) const;
+		/// Returns the name of the variable used to reference the specified object
+		/// outside the serialisation. Returns the empty string if the object is not
+		/// to be included in the serialisation.
+		std::string externalIdentifier( const Gaffer::GraphComponent *graphComponent ) const;
 		/// Returns an identifier for a child relative to its parent identifier. This
 		/// is quicker than calling `identifier( child )` if you already have the
 		/// parent identifier to hand.

@@ -177,6 +177,14 @@ std::string PlugSerialiser::postHierarchy( const Gaffer::GraphComponent *graphCo
 		{
 			result += identifier + ".setInput( " + inputIdentifier + " )\n";
 		}
+		else
+		{
+			std::string externalInputIdentifier = serialisation.externalIdentifier( plug->getInput() );
+			if( externalInputIdentifier.size() )
+			{
+				result += identifier + ".setInput( " + externalInputIdentifier + " )\n";
+			}
+		}
 	}
 
 	bool shouldSerialiseMetadata = true;
