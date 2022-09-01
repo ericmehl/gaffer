@@ -39,11 +39,11 @@
 
 #include "IECore/MessageHandler.h"
 
+#include "boost/function.hpp"
 #include "boost/iterator/iterator_facade.hpp"
 #include "boost/visit_each.hpp"
 
 #include <optional>
-#include <functional>
 
 
 namespace Gaffer::Signals
@@ -172,19 +172,10 @@ template<typename Result, typename... Args, typename Combiner>
 template<typename SlotFunctor>
 void Signal<Result( Args... ), Combiner>::disconnect( const SlotFunctor &slotFunctor )
 {
-	using FunctionType = std::function<Result( Args... )>;
-
 	Private::SlotBase::Ptr slot = m_firstSlot;
 	while( slot != lastSlot() )
 	{
-		FunctionType f1 = static_cast<Slot *>( slot.get() )->function;
-		FunctionType f2 = static_cast<FunctionType>( slotFunctor );
-		auto type1 = f1.target_type().name();
-		auto type2 = f2.target_type().name();
-		/// \todo How to get the pointer here?
-		FunctionType *pointer1 = f1.target<FunctionType*>();
-		FunctionType *pointer2 = f2.target<FunctionType*>();
-		if( pointer1 && pointer2 && *pointer1 == *pointer2 && type1 == type2 )
+		if( static_cast<Slot *>( slot.get() )->function == slotFunctor )
 		{
 			slot->disconnect();
 		}
@@ -261,7 +252,7 @@ struct Signal<Result( Args... ), Combiner>::Slot : public Private::SlotBase
 	/// equality comparison, which makes implementing
 	/// `Signal::disconnect( const SlotFunctor & )` hard to implement. Perhaps
 	/// it's achievable using `function::target_type` and `function::target`?
-	using FunctionType = std::function<Result( Args... )>;
+	using FunctionType = boost::function<Result( Args... )>;
 
 	Slot( Private::SlotBase::Ptr &previous, const FunctionType &function = FunctionType() )
 		: 	SlotBase( previous ), function( function )
@@ -282,7 +273,7 @@ struct Signal<Result( Args... ), Combiner>::Slot : public Private::SlotBase
 			// destruction of ScopedConnections for this slot, causing reentrant
 			// calls to `this->disconnect()`. We use `wasConnected` to protect
 			// against the double-clear this could otherwise cause.
-			function = 0;
+			function.clear();
 		}
 	}
 
@@ -309,7 +300,7 @@ struct Signal<Result( Args... ), Combiner>::Slot : public Private::SlotBase
 				// Slot was disconnected during call, and we couldn't
 				// clear the function while it was being called. Clear
 				// it now instead.
-				slot.function = 0;
+				slot.function.clear();
 			}
 		}
 		Slot &slot;
