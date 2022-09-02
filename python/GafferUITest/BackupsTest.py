@@ -40,11 +40,20 @@ import GafferTest
 import Gaffer
 
 import os
+import stat
 import sys
 import time
 import weakref
 
 class BackupsTest( GafferUITest.TestCase ) :
+
+	def tearDown( self ) :
+
+		for root, dirs, files in os.walk( os.path.join( self.temporaryDirectory() ) ) :
+			for fileName in files :
+				os.chmod( os.path.join( root, fileName ), stat.S_IWUSR )
+
+		GafferUITest.TestCase.tearDown( self )
 
 	def testAcquire( self ) :
 
@@ -75,7 +84,7 @@ class BackupsTest( GafferUITest.TestCase ) :
 		a["scripts"].addChild( s )
 		s.save()
 
-		backupFileName = self.temporaryDirectory() + "/backups/test.gfr"
+		backupFileName = os.path.join( self.temporaryDirectory(), "backups", "test.gfr" )
 		self.assertFalse( os.path.exists( backupFileName ) )
 		self.assertEqual( b.backups( s ), [] )
 
@@ -123,7 +132,7 @@ class BackupsTest( GafferUITest.TestCase ) :
 			s["add"]["op1"].setValue( i )
 			s.save()
 
-			backupFileName = "{0}/test-backup{1}.gfr".format( self.temporaryDirectory(), i % 3 )
+			backupFileName = os.path.join( self.temporaryDirectory(), "test-backup{}.gfr".format( i%3 ) )
 			if i < 3 :
 				self.assertFalse( os.path.exists( backupFileName ) )
 
@@ -155,11 +164,11 @@ class BackupsTest( GafferUITest.TestCase ) :
 		# Script hasn't even been saved - always choose the recovery file
 
 		b.backup( s )
-		self.assertEqual( b.recoveryFile( s ), self.temporaryDirectory() + "/test-backup0.gfr" )
+		self.assertEqual( b.recoveryFile( s ), os.path.join( self.temporaryDirectory(), "test-backup0.gfr" ) )
 
 		time.sleep( timeBetweenBackups )
 		b.backup( s )
-		self.assertEqual( b.recoveryFile( s ), self.temporaryDirectory() + "/test-backup1.gfr" )
+		self.assertEqual( b.recoveryFile( s ), os.path.join( self.temporaryDirectory(), "test-backup1.gfr" ) )
 
 		# Script has been saved, and backups are identical. No need for recovery.
 
@@ -175,7 +184,7 @@ class BackupsTest( GafferUITest.TestCase ) :
 		time.sleep( timeBetweenBackups )
 		s.addChild( Gaffer.Node() )
 		b.backup( s )
-		self.assertEqual( b.recoveryFile( s ), self.temporaryDirectory() + "/test-backup0.gfr" )
+		self.assertEqual( b.recoveryFile( s ), os.path.join( self.temporaryDirectory(), "test-backup0.gfr" ) )
 
 		# Script saved again, no need for recovery.
 
@@ -186,7 +195,7 @@ class BackupsTest( GafferUITest.TestCase ) :
 
 		del s["Node"]
 		b.backup( s )
-		self.assertEqual( b.recoveryFile( s ), self.temporaryDirectory() + "/test-backup1.gfr" )
+		self.assertEqual( b.recoveryFile( s ), os.path.join( self.temporaryDirectory(), "test-backup1.gfr" ) )
 
 	def testReadOnly( self ) :
 

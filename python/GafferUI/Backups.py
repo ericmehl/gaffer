@@ -62,7 +62,7 @@ class Backups( object ) :
 		self.__settings = Gaffer.Plug()
 		self.__settings["enabled"] = Gaffer.BoolPlug( defaultValue = True )
 		self.__settings["frequency"] = Gaffer.IntPlug( defaultValue = 5, minValue = 0 )
-		self.__settings["fileName"] = Gaffer.StringPlug( defaultValue = "${script:directory}/.gafferBackups/${script:name}-backup${backup:number}.gfr" )
+		self.__settings["fileName"] = Gaffer.FilePathPlug( defaultValue = "${script:directory}/.gafferBackups/${script:name}-backup${backup:number}.gfr" )
 		self.__settings["files"] = Gaffer.IntPlug( defaultValue = 10, minValue = 1 )
 
 		applicationRoot["preferences"]["backups"] = self.__settings
@@ -101,7 +101,7 @@ class Backups( object ) :
 			# Avoid the win32 module dependency by using ctypes to make directory hidden
 			# The magic number 2 comes from https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-setfileattributesa
 			if os.name == "nt":
-				ctypes.windll.kernel32.SetFileAttributesW( unicode( dirName, "utf-8" ), 2 )
+				ctypes.windll.kernel32.SetFileAttributesA( dirName, 2 )
 
 		except OSError :
 			# makedirs very unhelpfully raises an exception if
@@ -274,14 +274,14 @@ class Backups( object ) :
 
 		context = Gaffer.Context()
 		context["script:name"] = os.path.splitext( os.path.basename( fileName ) )[0]
-		context["script:directory"] = os.path.dirname( os.path.abspath( fileName ) ).replace( "\\", "/" )
+		context["script:directory"] = str( Gaffer.FileSystemPath( os.path.dirname( os.path.abspath( fileName ) ) ) )
 
-		pattern = self.__settings["fileName"].getValue()
+		pattern = str( Gaffer.FileSystemPath( self.__settings["fileName"].getValue() ) )
 		fileNames = []
 		for i in range( self.__settings["files"].getValue() ) :
 			context["backup:number"] = i
 			context.setFrame( i )
-			fileNames.append( context.substitute( pattern ) )
+			fileNames.append( Gaffer.FileSystemPath( context.substitute( pattern ) ).nativeString() )
 
 		# Make results unique while maintaining order
 		return collections.OrderedDict( [ ( x, x ) for x in fileNames ] ).keys()
