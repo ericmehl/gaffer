@@ -34,6 +34,7 @@
 #
 ##########################################################################
 
+import os
 import unittest
 
 import Gaffer
@@ -58,9 +59,9 @@ class ReferenceUITest( GafferUITest.TestCase ) :
 		g = GafferUI.GraphGadget( s )
 		self.assertTrue( g.nodeGadget( s["b"] ).nodule( s["b"]["p"] ) is None )
 
-		s["b"].exportForReference( self.temporaryDirectory() + "/test.grf" )
+		s["b"].exportForReference( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 		s["r"] = Gaffer.Reference()
-		s["r"].load( self.temporaryDirectory() + "/test.grf" )
+		s["r"].load(os.path.join( self.temporaryDirectory(), "test.grf" ) )
 
 		self.assertTrue( g.nodeGadget( s["r"] ).nodule( s["r"]["p"] ) is None )
 
@@ -72,10 +73,10 @@ class ReferenceUITest( GafferUITest.TestCase ) :
 		s["b"]["a1"] = Gaffer.Box()
 		s["b"]["a1"]["p1"] = Gaffer.IntPlug( "boxPlug", flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 		Gaffer.PlugAlgo.promote( s["b"]["a1"]["p1"] )
-		s["b"].exportForReference( self.temporaryDirectory() + "/test.grf" )
+		s["b"].exportForReference( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 
 		s["r"] = Gaffer.Reference()
-		s["r"].load( self.temporaryDirectory() + "/test.grf" )
+		s["r"].load( os.path.join( self.temporaryDirectory(), "test.grf" ) )
 
 		self.assertTrue( Gaffer.MetadataAlgo.getChildNodesAreReadOnly( s["r"] ) )
 		self.assertFalse( Gaffer.MetadataAlgo.readOnly( s["r"] ) )
