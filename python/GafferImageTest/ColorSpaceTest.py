@@ -173,7 +173,7 @@ class ColorSpaceTest( GafferImageTest.ImageTestCase ) :
 
 	def testContext( self ) :
 
-		scriptFileName = self.temporaryDirectory() + "/script.gfr"
+		scriptFileName = os.path.join( self.temporaryDirectory(), "script.gfr" )
 		contextImageFile = self.temporaryDirectory() + "/context.#.exr"
 		contextOverrideImageFile = self.temporaryDirectory() + "/context_override.#.exr"
 
