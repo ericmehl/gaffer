@@ -47,7 +47,7 @@ import GafferImageTest
 
 class AnaglyphTest( GafferImageTest.ImageTestCase ) :
 
-	file = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/multipart.exr" )
+	file = os.path.join( os.path.expandvars( "$GAFFER_ROOT" ), "python", "GafferImageTest", "images", "multipart.exr" )
 
 	def test( self ) :
 
