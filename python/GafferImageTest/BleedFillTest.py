@@ -48,7 +48,7 @@ import GafferImageTest
 
 class BleedFillTest( GafferImageTest.ImageTestCase ) :
 
-	path = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/" )
+	path = os.path.join( os.path.expandvars( "$GAFFER_ROOT" ), "python", "GafferImageTest", "images" )
 
 	def testBasics( self ) :
 
