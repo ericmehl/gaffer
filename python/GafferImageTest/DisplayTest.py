@@ -243,7 +243,7 @@ class DisplayTest( GafferImageTest.ImageTestCase ) :
 		s.save()
 
 		output = subprocess.check_output(
-			[ "gaffer", "execute", self.temporaryDirectory() + "test.gfr", "-nodes", "p" ],
+			[ "gaffer" if os.name != "nt" else "gaffer.cmd", "execute", self.temporaryDirectory() + "test.gfr", "-nodes", "p" ],
 			stderr = subprocess.STDOUT, universal_newlines = True
 		)
 		self.assertEqual( output, "" )
