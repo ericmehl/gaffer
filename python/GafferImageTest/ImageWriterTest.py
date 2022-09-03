@@ -45,6 +45,7 @@ import six
 import subprocess
 import imath
 import inspect
+import stat
 
 import IECore
 import IECoreImage
@@ -69,7 +70,16 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		GafferImageTest.ImageTestCase.setUp( self )
 		self.__defaultColorSpaceFunction = GafferImage.ImageWriter.getDefaultColorSpaceFunction()
 
+		if os.name == "nt" :
+			os.environ["USER"] = os.environ["USERNAME"]
+
 	def tearDown( self ) :
+
+		for root, dirs, files in os.walk( os.path.join( self.temporaryDirectory() ) ) :
+			for fileName in files :
+				os.chmod( os.path.join( root, fileName ), stat.S_IWUSR )
+			for dirName in dirs :
+				os.chmod( os.path.join( root, dirName ), stat.S_IWUSR )
 
 		GafferImageTest.ImageTestCase.tearDown( self )
 		GafferImage.ImageWriter.setDefaultColorSpaceFunction( self.__defaultColorSpaceFunction )
@@ -704,7 +714,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		w["task"].execute()
 
 		result["refreshCount"].setValue( result["refreshCount"].getValue() + 1 )
-		self.assertEqual( result["out"]["metadata"].getValue()["DocumentName"].value, "/my/gaffer/script.gfr" )
+		self.assertEqual( result["out"]["metadata"].getValue()["DocumentName"].value, Gaffer.FileSystemPath( "/my/gaffer/script.gfr" ).nativeString() )
 
 	def __testMetadataDoesNotAffectPixels( self, ext, overrideMetadata = {}, metadataToIgnore = [] ) :
 
@@ -1075,7 +1085,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 				GafferImage.ImageWriter.__init__( self, name )
 
-				self["copyFileName"] = Gaffer.StringPlug()
+				self["copyFileName"] = Gaffer.FilePathPlug()
 
 			def execute( self ) :
 
@@ -1117,7 +1127,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 	def __testFile( self, mode, channels, ext ) :
 
-		return self.temporaryDirectory() + "/test." + channels + "." + str( mode ) + "." + str( ext )
+		return os.path.join( self.temporaryDirectory(), "test." + channels + "." + str( mode ) + "." + str( ext ) )
 
 	def testJpgChroma( self ):
 
@@ -1132,7 +1142,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		chromaSubSamplings = ( "4:4:4", "4:2:2", "4:2:0", "4:1:1", "" )
 		for chromaSubSampling in chromaSubSamplings:
 
-			testFile = os.path.join( self.temporaryDirectory(), "chromaSubSampling.{0}.jpg".format( chromaSubSampling ) )
+			testFile = os.path.join( self.temporaryDirectory(), "chromaSubSampling.{0}.jpg".format( chromaSubSampling.replace( ':', '_' ) ) )
 
 			w["fileName"].setValue( testFile )
 			w["jpeg"]["chromaSubSampling"].setValue( chromaSubSampling )
