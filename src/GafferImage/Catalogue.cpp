@@ -50,6 +50,7 @@
 #include "Gaffer/Context.h"
 #include "Gaffer/DownstreamIterator.h"
 #include "Gaffer/FilePathPlug.h"
+#include "Gaffer/FileSystemPath.h"
 #include "Gaffer/ParallelAlgo.h"
 #include "Gaffer/ScriptNode.h"
 #include "Gaffer/StringPlug.h"
@@ -944,7 +945,7 @@ std::string Catalogue::generateFileName( const ImagePlug *image ) const
 	string directory = directoryPlug()->getValue();
 	if( const ScriptNode *script = ancestor<ScriptNode>() )
 	{
-		directory = script->context()->substitute( directory );
+		directory = script->context()->substitute( FileSystemPath( directory ).string() );
 	}
 	else if( IECore::StringAlgo::hasSubstitutions( directory ) )
 	{
