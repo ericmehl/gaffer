@@ -38,6 +38,7 @@
 
 #include "GafferOSL/Private/CapturingErrorHandler.h"
 
+#include "Gaffer/FileSystemPath.h"
 #include "Gaffer/Metadata.h"
 #include "Gaffer/Process.h"
 #include "Gaffer/SplinePlug.h"
@@ -343,7 +344,7 @@ class CompileProcess : public Gaffer::Process
 				string shaderName;
 				string shaderSource = generate( oslCode, shaderName );
 				boost::filesystem::path shaderFile = compile( shaderName, shaderSource );
-				oslCode->namePlug()->setValue( shaderFile.replace_extension().string() );
+				oslCode->namePlug()->setValue( Gaffer::FileSystemPath( shaderFile.replace_extension().string() ).string() );
 				oslCode->typePlug()->setValue( "osl:shader" );
 			}
 			catch( ... )
