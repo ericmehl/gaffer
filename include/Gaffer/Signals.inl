@@ -40,7 +40,6 @@
 #include "IECore/MessageHandler.h"
 
 #include "boost/function.hpp"
-#include "boost/function_equal.hpp"
 #include "boost/iterator/iterator_facade.hpp"
 #include "boost/visit_each.hpp"
 
@@ -173,15 +172,10 @@ template<typename Result, typename... Args, typename Combiner>
 template<typename SlotFunctor>
 void Signal<Result( Args... ), Combiner>::disconnect( const SlotFunctor &slotFunctor )
 {
-	using FunctionType = boost::function<Result( Args... )>;
-
 	Private::SlotBase::Ptr slot = m_firstSlot;
 	while( slot != lastSlot() )
 	{
-		const SlotFunctor *f = static_cast<Slot *>( slot.get() )->function.template target<SlotFunctor>();
-		const FunctionType &fs = slotFunctor;
-		const SlotFunctor *s = fs.target<SlotFunctor>();
-		if( *f == *s )
+		if( static_cast<Slot *>( slot.get() )->function == slotFunctor )
 		{
 			slot->disconnect();
 		}
