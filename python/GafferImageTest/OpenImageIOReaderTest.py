@@ -233,7 +233,7 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 
 	def testFileRefresh( self ) :
 
-		testFile = self.temporaryDirectory() + "/refresh.exr"
+		testFile = os.path.join( self.temporaryDirectory(), "refresh.exr" )
 		shutil.copyfile( self.fileName, testFile )
 
 		reader = GafferImage.OpenImageIOReader()
@@ -263,7 +263,7 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 
 	def testAvailableFrames( self ) :
 
-		testSequence = IECore.FileSequence( self.temporaryDirectory() + "/incompleteSequence.####.exr" )
+		testSequence = IECore.FileSequence( os.path.join( self.temporaryDirectory(), "incompleteSequence.####.exr" ) )
 		shutil.copyfile( self.fileName, testSequence.fileNameForFrame( 1 ) )
 		shutil.copyfile( self.offsetDataWindowFileName, testSequence.fileNameForFrame( 3 ) )
 
@@ -286,7 +286,7 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 
 	def testMissingFrameMode( self ) :
 
-		testSequence = IECore.FileSequence( self.temporaryDirectory() + "/incompleteSequence.####.exr" )
+		testSequence = IECore.FileSequence( os.path.join( self.temporaryDirectory(),"incompleteSequence.####.exr" ) )
 		shutil.copyfile( self.fileName, testSequence.fileNameForFrame( 1 ) )
 		shutil.copyfile( self.offsetDataWindowFileName, testSequence.fileNameForFrame( 3 ) )
 
@@ -431,7 +431,7 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 		# frame, so we need to check that the output
 		# still responds to frame changes.
 
-		testSequence = IECore.FileSequence( self.temporaryDirectory() + "/incompleteSequence.####.exr" )
+		testSequence = IECore.FileSequence( os.path.join( self.temporaryDirectory(), "incompleteSequence.####.exr" ) )
 		shutil.copyfile( self.fileName, testSequence.fileNameForFrame( 0 ) )
 		shutil.copyfile( self.offsetDataWindowFileName, testSequence.fileNameForFrame( 1 ) )
 
@@ -484,7 +484,7 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 		# Test a bunch of different data window alignments on disk.  This exercises code for reading
 		# weirdly aligned scanlines and partial tiles
 
-		tempFile = self.temporaryDirectory() + "/tempOffsetImage.exr"
+		tempFile = os.path.join( self.temporaryDirectory(), "tempOffsetImage.exr" )
 
 		r = GafferImage.OpenImageIOReader()
 		r["fileName"].setValue( self.alignmentTestSourceFileName )
@@ -523,7 +523,7 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 		s["reader"] = GafferImage.OpenImageIOReader()
 
 		s["expression"] = Gaffer.Expression()
-		s["expression"].setExpression( 'parent["reader"]["fileName"] = "%s"' % self.fileName )
+		s["expression"].setExpression( 'parent["reader"]["fileName"] = r"%s"' % self.fileName )
 
 		with Gaffer.ContextMonitor( root = s["expression"] ) as cm :
 			GafferImage.ImageAlgo.tiles( s["reader"]["out"] )
@@ -696,7 +696,7 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 	@GafferTest.TestRunner.PerformanceTestMethod()
 	def testImageOpenPerformance( self ):
 		# Test the overhead of opening images by opening lots of images, but only reading the view count
-		files = glob.glob( os.path.expandvars( "${GAFFER_ROOT}/python/GafferImageTest/images/*.exr" ) )
+		files = glob.glob( os.path.expandvars( os.path.join( "${GAFFER_ROOT}", "python", "GafferImageTest", "images", "*.exr" ) ) )
 		files = filter( lambda f : not ( "ChannelsOverlap" in f or "NukeSinglePart" in f ), files )
 		files = sorted( files )
 		filesWithResult = [ (i, 2 if "channelTestMultiView" in i else 1 ) for i in files ]
