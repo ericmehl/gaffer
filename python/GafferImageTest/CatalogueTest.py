@@ -491,14 +491,16 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 		# capture the display driver that we used to
 		# send it.
 
-		c = GafferImage.Catalogue()
-		c["directory"].setValue( os.path.join( self.temporaryDirectory(), "catalogue" ) )
+		s = Gaffer.ScriptNode()
+
+		s["c"] = GafferImage.Catalogue()
+		s["c"]["directory"].setValue( os.path.join( self.temporaryDirectory(), "catalogue" ) )
 
 		drivers = GafferTest.CapturingSlot( GafferImage.Display.driverCreatedSignal() )
 
 		r = GafferImage.ImageReader()
 		r["fileName"].setValue( "${GAFFER_ROOT}/python/GafferImageTest/images/checker.exr" )
-		self.sendImage( r["out"], c )
+		self.sendImage( r["out"], s["c"] )
 
 		self.assertEqual( len( drivers ), 1 )
 
@@ -506,8 +508,8 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 		# and the Catalogue should have dropped any reference it has to the driver,
 		# in order to save memory.
 
-		self.assertEqual( len( c["images"] ), 1 )
-		self.assertEqual( os.path.dirname( c["images"][0]["fileName"].getValue() ), c["directory"].getValue() )
+		self.assertEqual( len( s["c"]["images"] ), 1 )
+		self.assertEqual( os.path.dirname( s["c"]["images"][0]["fileName"].getValue() ), s["c"]["directory"].getValue() )
 
 		self.assertEqual( drivers[0][0].refCount(), 1 )
 
@@ -522,28 +524,28 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 
 		self.assertEqual(
 			display["out"].channelDataHash( "R", imath.V2i( 0 ) ),
-			c["out"].channelDataHash( "R", imath.V2i( 0 ) )
+			s["c"]["out"].channelDataHash( "R", imath.V2i( 0 ) )
 		)
 		self.assertTrue(
 			display["out"].channelData( "R", imath.V2i( 0 ), _copy = False ).isSame(
-				c["out"].channelData( "R", imath.V2i( 0 ), _copy = False )
+				s["c"]["out"].channelData( "R", imath.V2i( 0 ), _copy = False )
 			)
 		)
 
 		# This applies to copies too
 
-		c["images"].addChild( GafferImage.Catalogue.Image( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic ) )
-		self.assertEqual( len( c["images"] ), 2 )
-		c["images"][1].copyFrom( c["images"][0] )
+		s["c"]["images"].addChild( GafferImage.Catalogue.Image( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic ) )
+		self.assertEqual( len( s["c"]["images"] ), 2 )
+		s["c"]["images"][1].copyFrom( s["c"]["images"][0] )
 
-		c["imageIndex"].setValue( 1 )
+		s["c"]["imageIndex"].setValue( 1 )
 		self.assertEqual(
 			display["out"].channelDataHash( "R", imath.V2i( 0 ) ),
-			c["out"].channelDataHash( "R", imath.V2i( 0 ) )
+			s["c"]["out"].channelDataHash( "R", imath.V2i( 0 ) )
 		)
 		self.assertTrue(
 			display["out"].channelData( "R", imath.V2i( 0 ), _copy = False ).isSame(
-				c["out"].channelData( "R", imath.V2i( 0 ), _copy = False )
+				s["c"]["out"].channelData( "R", imath.V2i( 0 ), _copy = False )
 			)
 		)
 
@@ -760,41 +762,43 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 
 		# Create boxed Catalogue with promoted `images` plug.
 
-		box = Gaffer.Box()
+		s = Gaffer.ScriptNode()
 
-		box["catalogue"] = GafferImage.Catalogue()
-		box["catalogue"]["directory"].setValue( os.path.join( self.temporaryDirectory(), "catalogue" ) )
+		s["box"] = Gaffer.Box()
 
-		images = Gaffer.PlugAlgo.promote( box["catalogue"]["images"] )
+		s["box"]["catalogue"] = GafferImage.Catalogue()
+		s["box"]["catalogue"]["directory"].setValue( os.path.join( self.temporaryDirectory(), "catalogue" ) )
+
+		images = Gaffer.PlugAlgo.promote( s["box"]["catalogue"]["images"] )
 
 		# Send 2 images and name them using the promoted plugs.
 
 		red = GafferImage.Constant()
 		red["format"].setValue( GafferImage.Format( 64, 64 ) )
 		red["color"]["r"].setValue( 1 )
-		self.sendImage( red["out"], box["catalogue"] )
+		self.sendImage( red["out"], s["box"]["catalogue"] )
 		images[-1].setName( "Red" )
 
 		green = GafferImage.Constant()
 		green["format"].setValue( GafferImage.Format( 64, 64 ) )
 		green["color"]["g"].setValue( 1 )
-		self.sendImage( green["out"], box["catalogue"] )
+		self.sendImage( green["out"], s["box"]["catalogue"] )
 		images[-1].setName( "Green" )
 
 		# Assert that images are accessible under those names.
 
 		with Gaffer.Context() as c :
 			c["catalogue:imageName"] = "Red"
-			self.assertImagesEqual( box["catalogue"]["out"], red["out"], ignoreMetadata = True )
+			self.assertImagesEqual( s["box"]["catalogue"]["out"], red["out"], ignoreMetadata = True )
 			c["catalogue:imageName"] = "Green"
-			self.assertImagesEqual( box["catalogue"]["out"], green["out"], ignoreMetadata = True )
+			self.assertImagesEqual( s["box"]["catalogue"]["out"], green["out"], ignoreMetadata = True )
 
 		# And that invalid names generate errors.
 
 		with six.assertRaisesRegex( self, RuntimeError, 'Unknown image name "Blue"' ) :
 			with Gaffer.Context() as c :
 				c["catalogue:imageName"] = "Blue"
-				box["catalogue"]["out"].metadata()
+				s["box"]["catalogue"]["out"].metadata()
 
 		# Assert that we can rename the images and get them under the new name.
 
@@ -803,16 +807,16 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 
 		with Gaffer.Context() as c :
 			c["catalogue:imageName"] = "Crimson"
-			self.assertImagesEqual( box["catalogue"]["out"], red["out"], ignoreMetadata = True )
+			self.assertImagesEqual( s["box"]["catalogue"]["out"], red["out"], ignoreMetadata = True )
 			c["catalogue:imageName"] = "Emerald"
-			self.assertImagesEqual( box["catalogue"]["out"], green["out"], ignoreMetadata = True )
+			self.assertImagesEqual( s["box"]["catalogue"]["out"], green["out"], ignoreMetadata = True )
 
 		# And that the old names are now invalid.
 
 		with six.assertRaisesRegex( self, RuntimeError, 'Unknown image name "Red"' ) :
 			with Gaffer.Context() as c :
 				c["catalogue:imageName"] = "Red"
-				box["catalogue"]["out"].metadata()
+				s["box"]["catalogue"]["out"].metadata()
 
 	def testInternalImagePythonType( self ) :
 
