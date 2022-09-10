@@ -99,7 +99,7 @@ class ShaderViewTest( GafferUITest.TestCase ) :
 
 		view = GafferUI.View.create( shader["out"] )
 		self.assertTrue( isinstance( view.scene(), Gaffer.Reference ) )
-		self.assertEqual( view.scene().fileName(), self.temporaryDirectory() + "/test.grf" )
+		self.assertEqual( view.scene().fileName(), str( Gaffer.FileSystemPath( self.temporaryDirectory() ) ) + "/test.grf" )
 		self.assertEqual( view.scene()["out"].childNames( "/" ), IECore.InternedStringVectorData( [ "cube" ] ) )
 
 	def testScenesAreReused( self ) :
