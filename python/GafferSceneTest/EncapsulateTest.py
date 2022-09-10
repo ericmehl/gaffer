@@ -271,7 +271,7 @@ class EncapsulateTest( GafferSceneTest.SceneTestCase ) :
 
 		# This exposed a crash caused by non-threadsafe access to signals from Capsules. It
 		# will throw if the subprocess crashes.
-		subprocess.check_output( [ "gaffer", "stats", script["fileName"].getValue(), "-scene", "collect" ] )
+		subprocess.check_output( [ "gaffer" if os.name != "nt" else "gaffer.cmd", "stats", script["fileName"].getValue(), "-scene", "collect" ] )
 
 if __name__ == "__main__":
 	unittest.main()
