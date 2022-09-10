@@ -143,6 +143,10 @@ class SceneWriterTest( GafferSceneTest.SceneTestCase ) :
 		writer["in"].setInput( reader["out"] )
 		writer["fileName"].setValue( self.temporaryDirectory() + "/test.scc" )
 		writer.execute()
+
+		del reader
+		IECoreScene.SharedSceneInterfaces.clear()
+
 		os.remove( self.temporaryDirectory() + "/fromPython.scc" )
 
 		testCacheFile( self.temporaryDirectory() + "/test.scc" )
@@ -309,7 +313,7 @@ class SceneWriterTest( GafferSceneTest.SceneTestCase ) :
 			# Add artificial dependency on frame
 			context.getFrame()
 			parent["writer"]["fileName"] = "{}"
-			""".format( fileName )
+			""".format( fileName.replace( "\\", "\\\\" ) )
 		) )
 
 		dispatcher = GafferDispatch.LocalDispatcher()
@@ -340,7 +344,7 @@ class SceneWriterTest( GafferSceneTest.SceneTestCase ) :
 			for frame in range( 1, 10 ) :
 				context.setFrame( frame )
 				scene = IECoreScene.SceneInterface.create(
-					context.substitute( script["writer"]["fileName"].getValue() ),
+					context.substitute( str( Gaffer.FileSystemPath( script["writer"]["fileName"].getValue() ) ) ),
 					IECore.IndexedIO.OpenMode.Read
 				)
 				plane = scene.child( "plane" )
