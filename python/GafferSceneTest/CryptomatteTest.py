@@ -163,7 +163,7 @@ class CryptomatteTest( GafferSceneTest.SceneTestCase ) :
 		with six.assertRaisesRegex( self, Gaffer.ProcessException, r'No manifest file provided.' ) as raised :
 			self.compareValues( c, ["crypto_object"] )
 
-		invalidPath = os.path.dirname( self.testImage ) + "/not/a/valid/path.json"
+		invalidPath = os.path.join( os.path.dirname( self.testImage ), "not", "a", "valid", "path.json" ).replace( "\\", "\\\\" )
 		c["sidecarFile"].setValue( invalidPath )
 
 		with six.assertRaisesRegex( self, Gaffer.ProcessException, r'Manifest file not found: {}'.format( invalidPath ) ) as raised :
@@ -193,7 +193,7 @@ class CryptomatteTest( GafferSceneTest.SceneTestCase ) :
 		with six.assertRaisesRegex( self, Gaffer.ProcessException, r'No manifest directory provided.' ) as raised :
 			self.compareValues( c, ["crypto_object"] )
 
-		invalidPath = os.path.dirname( self.testImage ) + "/not/a/valid/path"
+		invalidPath = os.path.join( os.path.dirname( self.testImage ), "not", "a", "valid", "path" ).replace( "\\", "\\\\" )
 		c["manifestDirectory"].setValue( invalidPath )
 
 		with six.assertRaisesRegex( self, Gaffer.ProcessException, r'Manifest directory not found: {}'.format( invalidPath ) ) as raised :
