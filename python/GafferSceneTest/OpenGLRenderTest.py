@@ -108,7 +108,7 @@ class OpenGLRenderTest( GafferSceneTest.SceneTestCase ) :
 	def testOutputDirectoryCreation( self ) :
 
 		s = Gaffer.ScriptNode()
-		s["variables"].addChild( Gaffer.NameValuePlug( "renderDirectory", self.temporaryDirectory() + "/openGLRenderTest" ) )
+		s["variables"].addChild( Gaffer.NameValuePlug( "renderDirectory", self.temporaryDirectory().replace( "\\", "/" ) + "/openGLRenderTest" ) )
 
 		s["plane"] = GafferScene.Plane()
 
@@ -130,7 +130,7 @@ class OpenGLRenderTest( GafferSceneTest.SceneTestCase ) :
 		self.assertFalse( os.path.exists( self.temporaryDirectory() + "/openGLRenderTest" ) )
 		self.assertFalse( os.path.exists( self.temporaryDirectory() + "/openGLRenderTest/test.0001.exr" ) )
 
-		s["fileName"].setValue( "/tmp/test.gfr" )
+		s["fileName"].setValue( self.temporaryDirectory() + "/test.gfr" )
 
 		with s.context() :
 			s["render"]["task"].execute()
