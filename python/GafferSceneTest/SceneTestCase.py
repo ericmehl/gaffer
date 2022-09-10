@@ -58,6 +58,12 @@ class SceneTestCase( GafferImageTest.ImageTestCase ) :
 		sanitiser.__enter__()
 		self.addCleanup( sanitiser.__exit__, None, None, None )
 
+	def tearDown( self ) :
+
+		IECoreScene.SharedSceneInterfaces.clear()
+
+		GafferImageTest.ImageTestCase.tearDown( self )
+
 	def assertSceneValid( self, scenePlug, assertBuiltInSetsComplete=True ) :
 
 		def walkScene( scenePath ) :
@@ -168,7 +174,7 @@ class SceneTestCase( GafferImageTest.ImageTestCase ) :
 
 			childNames = scenePlug.childNames( scenePath, _copy = False )
 			for childName in childNames :
-				walkScene( os.path.join( scenePath, str( childName ) ) )
+				walkScene( scenePath + "/" + str( childName ) )
 
 		walkScene( "/" )
 
