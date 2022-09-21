@@ -45,6 +45,7 @@
 #include "Gaffer/StringPlug.h"
 
 #include "IECore/Exception.h"
+#include "IECore/SearchPath.h"
 #include "IECore/StringAlgo.h"
 
 #include "OSL/oslcomp.h"
@@ -285,10 +286,10 @@ boost::filesystem::path compile( const std::string &shaderName, const std::strin
 	vector<string> options;
 	if( const char *includePaths = getenv( "OSL_SHADER_PATHS" ) )
 	{
-		StringAlgo::tokenize( includePaths, ':', options );
-		for( vector<string>::iterator it = options.begin(), eIt = options.end(); it != eIt; ++it )
+		SearchPath searchPaths( includePaths );
+		for( SearchPath::Paths::const_iterator it = searchPaths.paths.begin(), eIt = searchPaths.paths.end(); it != eIt; ++it )
 		{
-			it->insert( 0, "-I" );
+			options.push_back( string( "-I" ) + it->generic_string() );
 		}
 	}
 
