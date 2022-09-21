@@ -467,7 +467,7 @@ class OSLObjectTest( GafferOSLTest.OSLTestCase ) :
 
 	def testTextureOrientation( self ) :
 
-		textureFileName = os.path.dirname( __file__ ) + "/images/vRamp.tx"
+		textureFileName = str( Gaffer.FileSystemPath( os.path.dirname( __file__ ) + "/images/vRamp.tx" ) )
 
 
 		outColor = GafferOSL.OSLCode()

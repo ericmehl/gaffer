@@ -339,7 +339,7 @@ class OSLCodeTest( GafferOSLTest.OSLTestCase ) :
 		s["o"]["out"]["o"] = Gaffer.Color3fPlug( direction = Gaffer.Plug.Direction.Out, flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 		s["o"]["code"].setValue( "o = i * color( u, v, 0 );")
 
-		self.assertTrue( self.__osoFileName( s["o"] ).startswith( os.environ["GAFFEROSL_CODE_DIRECTORY"] ) )
+		self.assertTrue( self.__osoFileName( s["o"] ).startswith( str( Gaffer.FileSystemPath( os.environ["GAFFEROSL_CODE_DIRECTORY"] ) ) ) )
 
 		# Now simulate the loading of that script in a different environment,
 		# with a different code directory.
@@ -352,7 +352,7 @@ class OSLCodeTest( GafferOSLTest.OSLTestCase ) :
 		s2 = Gaffer.ScriptNode()
 		s2.execute( ss )
 
-		self.assertTrue( self.__osoFileName( s2["o"] ).startswith( os.environ["GAFFEROSL_CODE_DIRECTORY"] ) )
+		self.assertTrue( self.__osoFileName( s2["o"] ).startswith( str( Gaffer.FileSystemPath( os.environ["GAFFEROSL_CODE_DIRECTORY"] ) ) ) )
 
 	def __osoFileName( self, oslCode ) :
 

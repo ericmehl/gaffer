@@ -41,13 +41,14 @@ if os.name == 'posix' and sys.version_info[0] < 3:
 else:
 	import subprocess
 
+import Gaffer
 import GafferSceneTest
 
 class OSLTestCase( GafferSceneTest.SceneTestCase ) :
 
 	def compileShader( self, sourceFileName ) :
 
-		outputFileName = self.temporaryDirectory() + "/" + os.path.splitext( os.path.basename( sourceFileName ) )[0] + ".oso"
+		outputFileName = str( Gaffer.FileSystemPath( self.temporaryDirectory() ) ) + "/" + os.path.splitext( os.path.basename( sourceFileName ) )[0] + ".oso"
 
 		subprocess.check_call(
 			[ "oslc", "-q" ] +

@@ -500,7 +500,7 @@ class OSLImageTest( GafferImageTest.ImageTestCase ) :
 		constant = GafferImage.Constant()
 		constant["format"].setValue( GafferImage.Format( 32, 32 ) )
 
-		textureFileName = os.path.dirname( __file__ ) + "/images/vRamp.tx"
+		textureFileName = str( Gaffer.FileSystemPath( os.path.dirname( __file__ ) ) ) + "/images/vRamp.tx"
 
 		outLayer = GafferOSL.OSLCode()
 		outLayer["out"]["layer"] = GafferOSL.ClosurePlug(

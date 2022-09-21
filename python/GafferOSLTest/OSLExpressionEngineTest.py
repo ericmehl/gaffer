@@ -371,7 +371,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 		script["writer"] = GafferDispatchTest.TextWriter()
 
 		script["expression"] = Gaffer.Expression()
-		script["expression"].setExpression( 'parent.writer.fileName = "' + self.temporaryDirectory() + '/test.txt"', "OSL" )
+		script["expression"].setExpression( 'parent.writer.fileName = "' + str( Gaffer.FileSystemPath( self.temporaryDirectory() ) ) + '/test.txt"', "OSL" )
 
 		dispatcher = GafferDispatch.LocalDispatcher( jobPool = GafferDispatch.LocalDispatcher.JobPool() )
 		dispatcher["jobsDirectory"].setValue( "/tmp/gafferOSLExpressionEngineTest/jobs" )
