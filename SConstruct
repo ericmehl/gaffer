@@ -1158,7 +1158,7 @@ libraries = {
 		"envReplacements" : {
 			"SHLIBPREFIX" : "",
 		},
-		"installName" : "arnoldPlugins/Gaffer",
+		"installName" : "arnoldPlugins/GafferArnold",
 		"requiredOptions" : [ "ARNOLD_ROOT" ],
 		"installRoot" : arnoldInstallRoot,
 	},
