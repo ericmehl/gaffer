@@ -347,6 +347,8 @@
 				"meshLight",
 				"photometricLight",
 				"emptyLocation",
+				"muteLight",
+				"unMuteLight",
 			]
 		},
 

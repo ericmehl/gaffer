@@ -13,6 +13,7 @@ Features
   - Added a visual indication to lights in the viewport when they are muted. Muted lights use a dark gray outline instead of yellow.
   - Cycles : Muted lights are disabled in renders.
   - Arnold : Muted lights are disabled in renders.
+- Light Editor : Added a column for toggling a light's mute attribute on and off.
 
 Improvements
 ------------

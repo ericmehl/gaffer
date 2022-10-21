@@ -48,6 +48,7 @@
 #include "Gaffer/Context.h"
 #include "Gaffer/Metadata.h"
 #include "Gaffer/ScriptNode.h"
+#include "Gaffer/TweakPlug.h"
 
 #include "IECoreScene/ShaderNetwork.h"
 
@@ -232,6 +233,89 @@ class InspectorColumn : public PathColumn
 
 };
 
+class MuteColumn : public InspectorColumn
+{
+
+	public :
+		IE_CORE_DECLAREMEMBERPTR( MuteColumn )
+
+		MuteColumn( GafferSceneUI::Private::InspectorPtr inspector ) : InspectorColumn( inspector, "Mute" )
+		{
+			buttonPressSignal().connect( boost::bind( &MuteColumn::buttonPress, this, ::_1, ::_2, ::_3 ) );
+			buttonReleaseSignal().connect( boost::bind( &MuteColumn::buttonRelease, this, ::_1, ::_2, ::_3 ) );
+		}
+
+		CellData cellData( const Gaffer::Path &path, const IECore::Canceller *canceller ) const override
+		{
+			CellData result = InspectorColumn::cellData( path, canceller );
+
+			if( auto value = runTimeCast<const BoolData>( result.value ) )
+			{
+				result.icon = value->readable() ? m_muteIconName : m_unMuteIconName;
+			}
+			else
+			{
+				result.icon = m_unMuteIconName;
+			}
+			
+			result.value = nullptr;
+
+			return result;
+		}
+
+		bool buttonPress( Gaffer::Path &path, GafferUI::PathListingWidget &widget, const GafferUI::ButtonEvent &event )
+		{
+			// We do our work on release, but we need to accept the press too, to
+			// block the default PathListingWidget selection behaviour.
+			return true;
+		}
+		bool buttonRelease( Gaffer::Path &path, PathListingWidget &widget, const GafferUI::ButtonEvent &event )
+		{
+			auto scenePath = runTimeCast<const ScenePath>( &path );
+			if( !scenePath )
+			{
+				return true;
+			}
+
+			ScenePlug::PathScope scope( scenePath->getContext(), &scenePath->names() );
+
+			Inspector::ResultPtr result = inspector()->inspect();
+			if( result && result->editWarning().empty() )
+			{
+				ValuePlugPtr valuePlug = result->acquireEdit();
+
+				if( auto tweakPlug = runTimeCast<TweakPlug>( valuePlug.get() ) )
+				{
+					auto plug = runTimeCast<BoolPlug>( tweakPlug->valuePlug() );
+
+					assert( plug );
+
+					plug->setValue( !plug->getValue() );
+					tweakPlug->enabledPlug()->setValue( true );
+				}
+				else if( auto nameValuePlug = runTimeCast<NameValuePlug>( valuePlug.get() ) )
+				{
+					auto plug = runTimeCast<BoolPlug>( nameValuePlug->valuePlug() );
+
+					assert( plug );
+
+					plug->setValue( !plug->getValue() );
+					nameValuePlug->enabledPlug()->setValue( true );
+				}
+			}
+
+			return true;
+		}
+
+	private :
+
+		static IECore::StringDataPtr m_muteIconName;
+		static IECore::StringDataPtr m_unMuteIconName;
+};
+
+StringDataPtr MuteColumn::m_muteIconName = new StringData( "muteLight.png" );
+StringDataPtr MuteColumn::m_unMuteIconName = new StringData( "unMuteLight.png" );
+
 PathColumn::CellData headerDataWrapper( PathColumn &pathColumn, const Canceller *canceller )
 {
 	IECorePython::ScopedGILRelease gilRelease;
@@ -259,6 +343,16 @@ void GafferSceneUIModule::bindLightEditor()
 			)
 		) )
 		.def( "inspector", &InspectorColumn::inspector, return_value_policy<IECorePython::CastToIntrusivePtr>() )
+		.def( "headerData", &headerDataWrapper, ( arg_( "canceller" ) = object() ) )
+	;
+
+	IECorePython::RefCountedClass<MuteColumn, InspectorColumn>( "_LightEditorMuteColumn" )
+		.def( init<GafferSceneUI::Private::InspectorPtr>(
+			(
+				arg_( "inspector" )
+			)
+		) )
+		.def( "inspector", &MuteColumn::inspector, return_value_policy<IECorePython::CastToIntrusivePtr>() )
 		.def( "headerData", &headerDataWrapper, ( arg_( "canceller" ) = object() ) )
 	;
 
