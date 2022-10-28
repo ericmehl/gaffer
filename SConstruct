@@ -2007,7 +2007,7 @@ def buildDocs( target, source, env ) :
 		env = env["ENV"]
 	)
 
-if haveSphinx and haveInkscape :
+if haveSphinx and haveInkscape and env["PLATFORM"] != "win32" :
 
 	# We build docs in the standard environment rather than commandEnv, so we can
 	# use host python to avoid needing a matrix of sphinx versions to match Gaffer's
@@ -2057,6 +2057,9 @@ if haveSphinx and haveInkscape :
 	docEnv.Alias( "docs", docs )
 
 else :
+
+	if env["PLATFORM"] == "win32" :
+		sys.stderr.write( "WARNING : Building documentation is not currently supported on Windows.\n" )
 
 	if not haveSphinx :
 		sys.stderr.write( "WARNING : Sphinx not found - not building docs. Check SPHINX build variable.\n" )
