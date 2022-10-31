@@ -40,8 +40,10 @@
 
 #include "GafferSceneUI/Private/Inspector.h"
 
+#include "GafferScene/SceneNode.h"
 #include "GafferScene/ScenePath.h"
 #include "GafferScene/ScenePlug.h"
+#include "GafferScene/SetAlgo.h"
 
 #include "GafferUI/PathColumn.h"
 
@@ -77,6 +79,7 @@ namespace
 {
 
 ConstStringDataPtr g_emptyLocation = new StringData( "emptyLocation.png" );
+static std::string g_soloLightsSetName = "soloLights";
 
 class LocationNameColumn : public StandardPathColumn
 {
@@ -249,15 +252,34 @@ class MuteColumn : public InspectorColumn
 		{
 			CellData result = InspectorColumn::cellData( path, canceller );
 
-			if( auto value = runTimeCast<const BoolData>( result.value ) )
+			auto scenePath = runTimeCast<const ScenePath>( &path );
+			if( !scenePath )
 			{
-				result.icon = value->readable() ? m_muteIconName : m_unMuteIconName;
+				return result;
+			}
+
+			if( !scenePath->getScene()->set( g_soloLightsSetName )->readable().isEmpty() )
+			{
+				if( auto value = runTimeCast<const BoolData>( result.value ) )
+				{
+					result.icon = value->readable() ? m_muteWithSoloIconName : m_unMuteWithSoloIconName;
+				}
+				else
+				{
+					result.icon = m_unMuteWithSoloIconName;
+				}
 			}
 			else
 			{
-				result.icon = m_unMuteIconName;
+				if( auto value = runTimeCast<const BoolData>( result.value ) )
+				{
+					result.icon = value->readable() ? m_muteIconName : m_unMuteIconName;
+				}
+				else
+				{
+					result.icon = m_unMuteIconName;
+				}
 			}
-			
 			result.value = nullptr;
 
 			return result;
@@ -311,10 +333,15 @@ class MuteColumn : public InspectorColumn
 
 		static IECore::StringDataPtr m_muteIconName;
 		static IECore::StringDataPtr m_unMuteIconName;
+		static IECore::StringDataPtr m_muteWithSoloIconName;
+		static IECore::StringDataPtr m_unMuteWithSoloIconName;
+
 };
 
 StringDataPtr MuteColumn::m_muteIconName = new StringData( "muteLight.png" );
 StringDataPtr MuteColumn::m_unMuteIconName = new StringData( "unMuteLight.png" );
+StringDataPtr MuteColumn::m_muteWithSoloIconName = new StringData( "muteLightWithSolo.png" );
+StringDataPtr MuteColumn::m_unMuteWithSoloIconName = new StringData( "unMuteLightWithSolo.png" );
 
 PathColumn::CellData headerDataWrapper( PathColumn &pathColumn, const Canceller *canceller )
 {
