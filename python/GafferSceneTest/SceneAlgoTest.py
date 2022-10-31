@@ -1528,6 +1528,45 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 		self.__assertParameterHistory( attributeHistory, [ 0, 0, 0 ], group["in"][0], "/light", "light", "light", "exposure", 0.0, 1 )
 		self.__assertParameterHistory( attributeHistory, [ 0, 0, 0, 0 ], testLight["out"], "/light", "light", "light", "exposure", 0.0, 0 )
 
+	def testAttributeHistoryWithCreatableAttribute( self ) :
+
+		testLight = GafferSceneTest.TestLight()
+		# testLight["visualiserAttributes"]["scale"]["enabled"].setValue( True )
+
+		lightFilter = GafferScene.PathFilter()
+		lightFilter["paths"].setValue( IECore.StringVectorData( [ "/light" ] ) )
+		
+		tweaks1 = GafferScene.AttributeTweaks()
+		tweaks1.setName( "upstream" )
+		tweaks1["in"].setInput( testLight["out"] )
+		tweaks1["filter"].setInput( lightFilter["out"] )
+
+		tweaks2 = GafferScene.AttributeTweaks()
+		tweaks2.setName( "downstream" )
+		tweaks2["in"].setInput( tweaks1["out"] )
+		tweaks2["filter"].setInput( lightFilter["out"] )
+		
+		tweak = Gaffer.TweakPlug( "gl:visualiser:scale", 2.0 )
+		tweak["mode"].setValue( tweak.Mode.Create )
+
+		tweaks1["tweaks"].addChild( tweak )
+		tweaks2["tweaks"].addChild( tweak )
+
+		history = GafferScene.SceneAlgo.history( tweaks2["out"]["attributes"], "/light" )
+		attributeHistory = GafferScene.SceneAlgo.attributeHistory( history, "gl:visualiser:scale" )
+
+		def printHistory( h ) :
+			t = h.scene.node().getName() + " : "
+			for p in h.predecessors :
+				t += p.scene.node().getName() + ", "
+			print( t )
+			for p in h.predecessors :
+				printHistory( p )
+
+		printHistory(attributeHistory)
+
+
+
 	def testAttributeHistoryWithMissingAttribute( self ) :
 
 		# Attribute doesn't exist, so we return None.

@@ -764,6 +764,8 @@ SceneAlgo::AttributeHistory::Ptr SceneAlgo::attributeHistory( const SceneAlgo::H
 	/// \todo Consider an official API that allows the nodes themselves to
 	/// take responsibility for this backtracking.
 
+	// cerr << attributesHistory->scene->node()->getName().string() << "\n";
+
 	auto node = runTimeCast<const SceneNode>( attributesHistory->scene->node() );
 	if( node && node->enabledPlug()->getValue() && attributesHistory->scene == node->outPlug() )
 	{

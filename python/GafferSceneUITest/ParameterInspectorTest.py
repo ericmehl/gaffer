@@ -623,6 +623,50 @@ class ParameterInspectorTest( GafferUITest.TestCase ) :
 			edit = edit
 		)
 
+	def testUncachedUpstreamEdit( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		s["light"] = GafferSceneTest.TestLight()
+
+		s["editScope1"] = Gaffer.EditScope()
+		s["editScope2"] = Gaffer.EditScope()
+
+		s["editScope1"].setup( s["light"]["out"] )
+		s["editScope1"]["in"].setInput( s["light"]["out"] )
+
+		s["editScope2"].setup( s["editScope1"]["out"] )
+		s["editScope2"]["in"].setInput( s["editScope1"]["out"] )
+
+		#  Add an edit to the second scope
+		inspection2 = self.__inspect(
+			s["editScope2"]["out"],
+			"/light",
+			"intensity",
+			s["editScope2"]
+		)
+
+		self.assertTrue( inspection2.editable() )
+		lightEditScope2Edit = inspection2.acquireEdit()
+		self.assertIsNotNone( lightEditScope2Edit )
+		
+		lightEditScope2Edit["enabled"].setValue( True )
+		lightEditScope2Edit["value"].setValue( imath.Color3f( .5, 0.5, 0.5 ) )
+
+		inspection1 = self.__inspect(
+			s["editScope2"]["out"],
+			"/light",
+			"intensity",
+			s["editScope1"]
+		)
+
+		self.assertTrue( inspection1.editable() )
+		lightEditScope1Edit = inspection1.acquireEdit()
+		self.assertIsNotNone( lightEditScope1Edit )
+
+		lightEditScope1Edit["enabled"].setValue( True )
+		lightEditScope1Edit["value"].setValue( imath.Color3f( 0.75, 0.75, 0.75 ) )
+
 
 if __name__ == "__main__":
 	unittest.main()
