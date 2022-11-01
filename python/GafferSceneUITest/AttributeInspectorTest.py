@@ -752,6 +752,17 @@ class AttributeInspectorTest( GafferUITest.TestCase ) :
 		lightEditScope1Edit["enabled"].setValue( True )
 		lightEditScope1Edit["value"].setValue( 4.0 )
 
+		s["light"]["visualiserAttributes"]["scale"]["enabled"].setValue( False )
+
+		inspection1 = self.__inspect(
+			s["editScope2"]["out"],
+			"/light",
+			"gl:visualiser:scale",
+			s["editScope1"]
+		)
+
+		self.assertFalse( inspection1.editable() )
+
 
 if __name__ == "__main__" :
 	unittest.main()
