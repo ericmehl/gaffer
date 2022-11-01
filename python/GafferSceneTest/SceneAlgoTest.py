@@ -1549,8 +1549,11 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 		tweak = Gaffer.TweakPlug( "gl:visualiser:scale", 2.0 )
 		tweak["mode"].setValue( tweak.Mode.Create )
 
+		tweak2 = Gaffer.TweakPlug( "gl:visualiser:scale", 4.0 )
+		tweak2["mode"].setValue( tweak.Mode.Create )
+
 		tweaks1["tweaks"].addChild( tweak )
-		tweaks2["tweaks"].addChild( tweak )
+		tweaks2["tweaks"].addChild( tweak2 )
 
 		history = GafferScene.SceneAlgo.history( tweaks2["out"]["attributes"], "/light" )
 		attributeHistory = GafferScene.SceneAlgo.attributeHistory( history, "gl:visualiser:scale" )
