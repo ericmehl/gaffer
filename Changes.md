@@ -4,7 +4,9 @@
 Fixes
 -----
 
-- UI : Fixed tooltips containing raw HTML.
+- UI :
+  - Fixed tooltips containing raw HTML.
+  - Fixed stalls caused by Qt repeatedly accessing the same icon files.
 - DocumentationAlgo : Fixed handling of raw HTML by `markdownToHTML()`.
 
 1.0.6.1 (relative to 1.0.6.0)
