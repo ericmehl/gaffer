@@ -1885,7 +1885,7 @@ def buildQtResourceFile( source, target, env ) :
 		qrcFile.write( "</qresource>\n</RCC>\n" )
 
 	# Run `rcc` on that to generate the resource file, and then clean up.
-	subprocess.check_call( [ "rcc", qrcFileName, "--binary", "-o", str( target[0] ) ], env = env["ENV"] )
+	subprocess.check_call( [ shutil.which( "rcc", path = env["ENV"]["PATH"] ), qrcFileName, "--binary", "-o", str( target[0] ) ], env = env["ENV"] )
 	os.remove( qrcFileName )
 
 # Gaffer UI Images
