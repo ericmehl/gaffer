@@ -1726,6 +1726,18 @@ def buildImageCommand( source, target, env ) :
 	]
 	subprocess.check_call( [ env["INKSCAPE"] ] + args )
 
+	split = os.path.splitext( os.path.abspath( filename ) )
+
+	args = [
+		"--export-png={}".format( split[0] + "@2x" + split[1] ),
+		"--export-id={}".format( substitutions["id"] ),
+		"--export-width={:d}".format( substitutions["width"] * 2 ),
+		"--export-height={:d}".format( substitutions["height"] * 2 ),
+		"--export-background-opacity=0",
+		os.path.abspath( svgFilename )
+	]
+	subprocess.check_call( [ env["INKSCAPE"] ] + args )
+
 def validateAndFlattenImageOptions( imageOptions, svg ) :
 
 	id_ = imageOptions["id"]
