@@ -242,7 +242,8 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 		nameColumn = self.__pathListing.getColumns()[0]
 		muteColumn = _GafferSceneUI._LightEditorMuteColumn(
-			GafferSceneUI.Private.AttributeInspector( self.__settingsNode["in"], self.__settingsNode["editScope"], "light:mute" )
+			self.__settingsNode["in"],
+			self.__settingsNode["editScope"]
 		)
 		self.__pathListing.setColumns( [ nameColumn, muteColumn ] + sectionColumns )
 
