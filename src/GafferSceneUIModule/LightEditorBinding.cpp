@@ -305,26 +305,35 @@ class MuteColumn : public InspectorColumn
 			ScenePlug::PathScope scope( scenePath->getContext(), &scenePath->names() );
 
 			Inspector::ResultPtr result = inspector()->inspect();
+
 			if( result && result->editWarning().empty() )
 			{
+				ConstObjectPtr currentData = result->value();
+				if( currentData && !currentData->isInstanceOf( IECore::BoolDataTypeId ) )
+				{
+					msg( Msg::Warning, "MuteColumn", "\"light:mute\" attribute must be BoolData" );
+				}
+
+				bool newValue = true;
+				if( auto resultData = runTimeCast<const BoolData>( currentData ) )
+				{
+					newValue = !resultData->readable();
+				}
+
 				ValuePlugPtr valuePlug = result->acquireEdit();
 
 				if( auto tweakPlug = runTimeCast<TweakPlug>( valuePlug.get() ) )
 				{
 					auto plug = runTimeCast<BoolPlug>( tweakPlug->valuePlug() );
 
-					assert( plug );
-
-					plug->setValue( !plug->getValue() );
+					plug->setValue( newValue );
 					tweakPlug->enabledPlug()->setValue( true );
 				}
 				else if( auto nameValuePlug = runTimeCast<NameValuePlug>( valuePlug.get() ) )
 				{
 					auto plug = runTimeCast<BoolPlug>( nameValuePlug->valuePlug() );
 
-					assert( plug );
-
-					plug->setValue( !plug->getValue() );
+					plug->setValue( newValue );
 					nameValuePlug->enabledPlug()->setValue( true );
 				}
 			}
