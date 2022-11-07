@@ -349,6 +349,8 @@
 				"emptyLocation",
 				"muteLight",
 				"unMuteLight",
+				"muteLightFaded",
+				"unMuteLightFaded",
 			]
 		},
 

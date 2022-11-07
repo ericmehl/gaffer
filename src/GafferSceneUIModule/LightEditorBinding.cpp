@@ -242,7 +242,7 @@ class MuteColumn : public InspectorColumn
 		IE_CORE_DECLAREMEMBERPTR( MuteColumn )
 
 		MuteColumn( const GafferScene::ScenePlugPtr &scene, const Gaffer::PlugPtr &editScope )
-			: InspectorColumn( new GafferSceneUI::Private::AttributeInspector( scene, editScope, "light:mute" ), "Mute" )
+			: InspectorColumn( new GafferSceneUI::Private::AttributeInspector( scene, editScope, "light:mute" ), "Mute" ), m_scene( scene )
 		{
 
 		}
@@ -251,13 +251,23 @@ class MuteColumn : public InspectorColumn
 		{
 			CellData result = InspectorColumn::cellData( path, canceller );
 
+			auto scenePath = runTimeCast<const ScenePath>( &path );
+			if( !scenePath )
+			{
+				return result;
+			}
+
 			if( auto value = runTimeCast<const BoolData>( result.value ) )
 			{
 				result.icon = value->readable() ? m_muteIconName : m_unMuteIconName;
 			}
 			else
 			{
-				result.icon = m_unMuteIconName;
+				auto fullAttributes = scenePath->getScene()->fullAttributes( scenePath->names() );
+				if( auto fullValue = fullAttributes->member<BoolData>( "light:mute" ) )
+				{
+					result.icon = fullValue->readable() ? m_muteFadedIconName : m_unMuteFadedIconName;
+				}
 			}
 
 			result.value = nullptr;
@@ -267,12 +277,18 @@ class MuteColumn : public InspectorColumn
 
 	private :
 
+		const GafferScene::ScenePlugPtr m_scene;
+
 		static IECore::StringDataPtr m_muteIconName;
 		static IECore::StringDataPtr m_unMuteIconName;
+		static IECore::StringDataPtr m_muteFadedIconName;
+		static IECore::StringDataPtr m_unMuteFadedIconName;
 };
 
 StringDataPtr MuteColumn::m_muteIconName = new StringData( "muteLight.png" );
 StringDataPtr MuteColumn::m_unMuteIconName = new StringData( "unMuteLight.png" );
+StringDataPtr MuteColumn::m_muteFadedIconName = new StringData( "muteLightFaded.png" );
+StringDataPtr MuteColumn::m_unMuteFadedIconName = new StringData( "unMuteLightFaded.png" );
 
 PathColumn::CellData headerDataWrapper( PathColumn &pathColumn, const Canceller *canceller )
 {

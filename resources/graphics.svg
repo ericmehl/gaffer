@@ -15,7 +15,7 @@
    height="1000"
    id="svg2"
    version="1.1"
-   inkscape:version="0.92.2 (5c3e80d, 2017-08-06)"
+   inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)"
    sodipodi:docname="graphics.svg"
    enable-background="new">
   <title
@@ -29,6 +29,15 @@
          style="stop-color:#ad5454;stop-opacity:1;"
          offset="0"
          id="stop2315" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient2172"
+       osb:paint="solid"
+       gradientTransform="matrix(2.0864196,0,0,2.0864196,97.62962,-2829.4304)">
+      <stop
+         style="stop-color:#bb2b2b;stop-opacity:1;"
+         offset="0"
+         id="stop2170" />
     </linearGradient>
     <linearGradient
        id="nodeBorder"
@@ -50,7 +59,7 @@
     <linearGradient
        id="boundsTemplate"
        osb:paint="solid"
-       gradientTransform="matrix(1.4488738,0,0,1.25,538.46586,5111.8015)">
+       gradientTransform="matrix(1.4488738,0,0,1.25,538.46586,5059.4394)">
       <stop
          style="stop-color:#ff0101;stop-opacity:0.0787037;"
          offset="0"
@@ -123,7 +132,7 @@
     <linearGradient
        id="backgroundLightLowlight-5"
        osb:paint="solid"
-       gradientTransform="matrix(1.2290988,0,0,1.2291084,-132.4402,-402.51184)">
+       gradientTransform="matrix(1.2290988,0,0,1.2291084,-132.4402,-34.51184)">
       <stop
          style="stop-color:#525252;stop-opacity:1;"
          offset="0"
@@ -250,7 +259,17 @@
      inkscape:guide-bbox="true"
      inkscape:object-paths="false"
      inkscape:bbox-paths="false"
-     inkscape:bbox-nodes="true">
+     inkscape:bbox-nodes="true"
+     showgrid="true"
+     inkscape:zoom="14.17042"
+     inkscape:cx="255.14099"
+     inkscape:cy="-1595.0519"
+     inkscape:window-width="5024"
+     inkscape:window-height="2752"
+     inkscape:window-x="96"
+     inkscape:window-y="54"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
     <inkscape:grid
        type="xygrid"
        id="grid3598"
@@ -2740,7 +2759,7 @@
        inkscape:label="LightEditor">
       <rect
          id="rect2136"
-         y="2596.3621"
+         y="2544"
          x="10"
          height="16"
          width="16"
@@ -2752,16 +2771,32 @@
          x="253"
          height="16"
          width="16"
-         style="display:inline;opacity:0.11100003;fill:none;fill-opacity:0.99215686;fill-rule:nonzero;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
+         style="display:inline;opacity:0.11100003;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
          inkscape:label="unMuteLight" />
       <rect
          inkscape:label="muteLight"
-         style="display:inline;opacity:0.11100003;fill:none;fill-opacity:0.99215686;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
+         style="display:inline;opacity:0.11100003;fill:none;fill-opacity:1;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
          width="16"
          height="16"
          x="231"
          y="2544"
          id="muteLight" />
+      <rect
+         inkscape:label="unMuteLightFaded"
+         style="display:inline;opacity:0.11100003;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
+         width="16"
+         height="16"
+         x="298"
+         y="2544"
+         id="unMuteLightFaded" />
+      <rect
+         id="muteLightFaded"
+         y="2544"
+         x="275"
+         height="16"
+         width="16"
+         style="display:inline;opacity:0.11100003;fill:none;fill-opacity:1;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
+         inkscape:label="muteLightFaded" />
     </g>
     <g
        id="g6806"
@@ -8502,6 +8537,36 @@
        id="layer5"
        inkscape:label="menus" />
     <g
+       id="LightEditor1"
+       inkscape:label="LightEditor"
+       transform="translate(0,-1.216875e-4)">
+       style=&quot;display:inline&quot;&gt;
+      <circle
+   style="opacity:1;vector-effect:none;fill:url(#linearGradient2172);fill-opacity:1;fill-rule:nonzero;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+   id="circle7668"
+   cx="239"
+   cy="2604.3623"
+   r="6.5" />
+<circle
+   cy="2604.3621"
+   cx="261"
+   id="circle7672"
+   style="opacity:1;vector-effect:none;fill:#5e7c5e;fill-opacity:1;fill-rule:nonzero;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+   r="6.5" />
+<circle
+   cy="2604.3621"
+   cx="282.99997"
+   id="circle7676"
+   style="opacity:0.4;vector-effect:none;fill:url(#linearGradient2172);fill-opacity:1;fill-rule:nonzero;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+   r="6.5" />
+<circle
+   style="opacity:0.4;vector-effect:none;fill:#5e7c5e;fill-opacity:1;fill-rule:nonzero;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+   id="circle7680"
+   cx="306"
+   cy="2604.3621"
+   r="6.5" />
+</g>
+    <g
        id="g6430"
        inkscape:label="hierarchyView"
        transform="translate(0,66)">
@@ -9033,50 +9098,6 @@
            id="path12185"
            inkscape:connector-curvature="0"
            sodipodi:nodetypes="ccccccc" />
-      </g>
-   <g
-       id="LightEditor1"
-       inkscape:label="LightEditor"
-       transform="translate(22.201477,0.28306112)">
-      <g
-         id="g2234">
-        <ellipse
-           style="opacity:1;vector-effect:none;fill:#f1c816;fill-opacity:0.99215686;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
-           id="path2165"
-           cx="234.79852"
-           cy="2604.0801"
-           rx="2.5"
-           ry="6.5" />
-        <rect
-           y="2138.2898"
-           x="1505.9019"
-           height="2"
-           width="9"
-           id="rect2225"
-           style="opacity:1;vector-effect:none;fill:#f1c816;fill-opacity:0.99215686;stroke:none;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
-           transform="rotate(30)" />
-        <rect
-           style="opacity:1;vector-effect:none;fill:#f1c816;fill-opacity:0.99215686;stroke:none;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
-           id="rect2227"
-           width="9"
-           height="2"
-           x="-1098.1771"
-           y="2370.1074"
-           transform="rotate(-30)" />
-        <ellipse
-           cy="2604.0791"
-           cx="212.79852"
-           id="ellipse2236"
-           style="opacity:1;vector-effect:none;fill:#787878;fill-opacity:1;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
-           rx="2.5"
-           ry="6.5" />
-        <rect
-           y="2603.0791"
-           x="233.90154"
-           height="2"
-           width="9"
-           id="rect2261"
-           style="opacity:1;vector-effect:none;fill:#f1c816;fill-opacity:0.99215686;stroke:none;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal" />
       </g>
     </g>
   </g>
