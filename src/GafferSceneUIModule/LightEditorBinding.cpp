@@ -43,6 +43,8 @@
 #include "GafferScene/ScenePath.h"
 #include "GafferScene/ScenePlug.h"
 
+#include "GafferSceneUI/Private/AttributeInspector.h"
+
 #include "GafferUI/PathColumn.h"
 
 #include "Gaffer/Context.h"
@@ -239,7 +241,8 @@ class MuteColumn : public InspectorColumn
 	public :
 		IE_CORE_DECLAREMEMBERPTR( MuteColumn )
 
-		MuteColumn( GafferSceneUI::Private::InspectorPtr inspector ) : InspectorColumn( inspector, "Mute" )
+		MuteColumn( const GafferScene::ScenePlugPtr &scene, const Gaffer::PlugPtr &editScope )
+			: InspectorColumn( new GafferSceneUI::Private::AttributeInspector( scene, editScope, "light:mute" ), "Mute" )
 		{
 			buttonPressSignal().connect( boost::bind( &MuteColumn::buttonPress, this, ::_1, ::_2, ::_3 ) );
 			buttonReleaseSignal().connect( boost::bind( &MuteColumn::buttonRelease, this, ::_1, ::_2, ::_3 ) );
@@ -347,9 +350,10 @@ void GafferSceneUIModule::bindLightEditor()
 	;
 
 	IECorePython::RefCountedClass<MuteColumn, InspectorColumn>( "_LightEditorMuteColumn" )
-		.def( init<GafferSceneUI::Private::InspectorPtr>(
+		.def( init<const GafferScene::ScenePlugPtr &, const Gaffer::PlugPtr &>(
 			(
-				arg_( "inspector" )
+				arg_( "scene" ),
+				arg_( "editScope" )
 			)
 		) )
 		.def( "inspector", &MuteColumn::inspector, return_value_policy<IECorePython::CastToIntrusivePtr>() )
