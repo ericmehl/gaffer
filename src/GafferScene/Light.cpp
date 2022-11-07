@@ -197,9 +197,7 @@ IECore::ConstCompoundObjectPtr Light::computeAttributes( const SceneNode::SceneP
 
 	if( mutePlug()->enabledPlug()->getValue() )
 	{
-		auto p = IECore::runTimeCast<const BoolPlug>( mutePlug()->valuePlug() );
-
-		assert(p);
+		auto p = mutePlug()->valuePlug<BoolPlug>();
 
 		result->members()[g_lightMuteAttributeName] = p->getValue() ? g_true : g_false;
 	}
