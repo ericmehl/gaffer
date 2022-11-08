@@ -244,8 +244,7 @@ class MuteColumn : public InspectorColumn
 		MuteColumn( const GafferScene::ScenePlugPtr &scene, const Gaffer::PlugPtr &editScope )
 			: InspectorColumn( new GafferSceneUI::Private::AttributeInspector( scene, editScope, "light:mute" ), "Mute" )
 		{
-			buttonPressSignal().connect( boost::bind( &MuteColumn::buttonPress, this, ::_1, ::_2, ::_3 ) );
-			buttonReleaseSignal().connect( boost::bind( &MuteColumn::buttonRelease, this, ::_1, ::_2, ::_3 ) );
+
 		}
 
 		CellData cellData( const Gaffer::Path &path, const IECore::Canceller *canceller ) const override
@@ -264,59 +263,6 @@ class MuteColumn : public InspectorColumn
 			result.value = nullptr;
 
 			return result;
-		}
-
-		bool buttonPress( Gaffer::Path &path, GafferUI::PathListingWidget &widget, const GafferUI::ButtonEvent &event )
-		{
-			// We do our work on release, but we need to accept the press too, to
-			// block the default PathListingWidget selection behaviour.
-			return true;
-		}
-		bool buttonRelease( Gaffer::Path &path, PathListingWidget &widget, const GafferUI::ButtonEvent &event )
-		{
-			auto scenePath = runTimeCast<const ScenePath>( &path );
-			if( !scenePath )
-			{
-				return true;
-			}
-
-			ScenePlug::PathScope scope( scenePath->getContext(), &scenePath->names() );
-
-			Inspector::ResultPtr result = inspector()->inspect();
-
-			if( result && result->editWarning().empty() )
-			{
-				ConstObjectPtr currentData = result->value();
-				if( currentData && !currentData->isInstanceOf( IECore::BoolDataTypeId ) )
-				{
-					msg( Msg::Warning, "MuteColumn", "\"light:mute\" attribute must be BoolData" );
-				}
-
-				bool newValue = true;
-				if( auto resultData = runTimeCast<const BoolData>( currentData ) )
-				{
-					newValue = !resultData->readable();
-				}
-
-				ValuePlugPtr valuePlug = result->acquireEdit();
-
-				if( auto tweakPlug = runTimeCast<TweakPlug>( valuePlug.get() ) )
-				{
-					auto plug = runTimeCast<BoolPlug>( tweakPlug->valuePlug() );
-
-					plug->setValue( newValue );
-					tweakPlug->enabledPlug()->setValue( true );
-				}
-				else if( auto nameValuePlug = runTimeCast<NameValuePlug>( valuePlug.get() ) )
-				{
-					auto plug = runTimeCast<BoolPlug>( nameValuePlug->valuePlug() );
-
-					plug->setValue( newValue );
-					nameValuePlug->enabledPlug()->setValue( true );
-				}
-			}
-
-			return true;
 		}
 
 	private :

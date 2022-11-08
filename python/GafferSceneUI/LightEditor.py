@@ -313,7 +313,7 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 		return False
 
-	def __editSelectedCells( self, pathListing ) :
+	def __editSelectedCells( self, pathListing, quickBoolean = True ) :
 
 		selection = pathListing.getSelection()
 
@@ -342,12 +342,24 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 			edits = [ i.acquireEdit() for i in inspections ]
 			warnings = "\n".join( [ i.editWarning() for i in inspections if i.editWarning() != "" ] )
 
-			self.__popup = GafferUI.PlugPopup( edits, warning = warnings )
+			performedEdit = False
 
-			if isinstance( self.__popup.plugValueWidget(), GafferUI.TweakPlugValueWidget ) :
-				self.__popup.plugValueWidget().setNameVisible( False )
+			if quickBoolean :
+				soleValue = sole( i.value() for i in inspections )
+				if soleValue is not None :
+					performedEdit = self.__toggleBoolean( edits, not soleValue.value )
+				else :
+					performedEdit = self.__toggleBoolean( edits, True )
 
-			self.__popup.popup()
+			if not performedEdit :
+				# The plugs are either not boolean, boolean with mixed values,
+				# or attributes that don't exist and are not boolean. Show the popup.
+				self.__popup = GafferUI.PlugPopup( edits, warning = warnings )
+
+				if isinstance( self.__popup.plugValueWidget(), GafferUI.TweakPlugValueWidget ) :
+					self.__popup.plugValueWidget().setNameVisible( False )
+
+				self.__popup.popup()
 
 		else :
 
@@ -357,6 +369,30 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 					GafferUI.Label( "<h4>{}</h4>".format( nonEditable[0].nonEditableReason() ) )
 
 			self.__popup.popup()
+
+	def __toggleBoolean( self, plugs, newValue ) :
+
+		# Make sure all the plugs are either a BoolPlug or contain a BoolPlug
+		if not all (
+			(
+				isinstance( p, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) and
+				isinstance( p["value"], Gaffer.BoolPlug )
+			) or isinstance( p, Gaffer.BoolPlug ) for p in plugs
+		) :
+			return False
+
+		for p in plugs :
+			if (
+				isinstance( p, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) and
+				isinstance( p["value"], Gaffer.BoolPlug )
+			) :
+				p["value"].setValue( newValue )
+				p["enabled"].setValue( True )
+
+			elif isinstance( p, Gaffer.BoolPlug ) :
+				p["value"].setValue( newValue )
+
+		return True
 
 	def __buttonPress( self, pathListing, event ) :
 
@@ -438,6 +474,12 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 				"Show History...",
 				{
 					"command" : Gaffer.WeakMethod( self.__showHistory )
+				}
+			)
+			menuDefinition.append(
+				"Edit...",
+				{
+					"command" : functools.partial( self.__editSelectedCells, pathListing, False )
 				}
 			)
 
