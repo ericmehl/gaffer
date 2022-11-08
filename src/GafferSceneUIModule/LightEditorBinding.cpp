@@ -264,11 +264,15 @@ class MuteColumn : public InspectorColumn
 			{
 				if( auto value = runTimeCast<const BoolData>( result.value ) )
 				{
-					result.icon = value->readable() ? m_muteWithSoloIconName : m_unMuteWithSoloIconName;
+					result.icon = value->readable() ? m_muteStrikethroughIconName : m_unMuteStrikethroughIconName;
 				}
 				else
 				{
-					result.icon = m_unMuteWithSoloIconName;
+					auto fullAttributes = scenePath->getScene()->fullAttributes( scenePath->names() );
+					if( auto fullValue = fullAttributes->member<BoolData>( "light:mute" ) )
+					{
+						result.icon = fullValue->readable() ? m_muteFadedStrikethroughIconName : m_unMuteFadedStrikethroughIconName;
+					}
 				}
 			}
 			else
@@ -279,7 +283,11 @@ class MuteColumn : public InspectorColumn
 				}
 				else
 				{
-					result.icon = m_unMuteIconName;
+					auto fullAttributes = scenePath->getScene()->fullAttributes( scenePath->names() );
+					if( auto fullValue = fullAttributes->member<BoolData>( "light:mute" ) )
+					{
+						result.icon = fullValue->readable() ? m_muteFadedIconName : m_unMuteFadedIconName;
+					}
 				}
 			}
 			result.value = nullptr;
@@ -291,15 +299,22 @@ class MuteColumn : public InspectorColumn
 
 		static IECore::StringDataPtr m_muteIconName;
 		static IECore::StringDataPtr m_unMuteIconName;
-		static IECore::StringDataPtr m_muteWithSoloIconName;
-		static IECore::StringDataPtr m_unMuteWithSoloIconName;
-
+		static IECore::StringDataPtr m_muteFadedIconName;
+		static IECore::StringDataPtr m_unMuteFadedIconName;
+		static IECore::StringDataPtr m_muteStrikethroughIconName;
+		static IECore::StringDataPtr m_unMuteStrikethroughIconName;
+		static IECore::StringDataPtr m_muteFadedStrikethroughIconName;
+		static IECore::StringDataPtr m_unMuteFadedStrikethroughIconName;
 };
 
 StringDataPtr MuteColumn::m_muteIconName = new StringData( "muteLight.png" );
 StringDataPtr MuteColumn::m_unMuteIconName = new StringData( "unMuteLight.png" );
-StringDataPtr MuteColumn::m_muteWithSoloIconName = new StringData( "muteLightWithSolo.png" );
-StringDataPtr MuteColumn::m_unMuteWithSoloIconName = new StringData( "unMuteLightWithSolo.png" );
+StringDataPtr MuteColumn::m_muteFadedIconName = new StringData( "muteLightFaded.png" );
+StringDataPtr MuteColumn::m_unMuteFadedIconName = new StringData( "unMuteLightFaded.png" );
+StringDataPtr MuteColumn::m_muteStrikethroughIconName = new StringData( "muteLightStrikethrough.png" );
+StringDataPtr MuteColumn::m_unMuteStrikethroughIconName = new StringData( "unMuteLightStrikethrough.png" );
+StringDataPtr MuteColumn::m_muteFadedStrikethroughIconName = new StringData( "muteLightFadedStrikethrough.png" );
+StringDataPtr MuteColumn::m_unMuteFadedStrikethroughIconName = new StringData( "unMuteLightFadedStrikethrough.png" );
 
 PathColumn::CellData headerDataWrapper( PathColumn &pathColumn, const Canceller *canceller )
 {
