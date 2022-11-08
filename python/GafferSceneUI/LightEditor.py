@@ -313,7 +313,7 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 		return False
 
-	def __editSelectedCells( self, pathListing ) :
+	def __editSelectedCells( self, pathListing, quickBoolean = True ) :
 
 		selection = pathListing.getSelection()
 
@@ -342,12 +342,26 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 			edits = [ i.acquireEdit() for i in inspections ]
 			warnings = "\n".join( [ i.editWarning() for i in inspections if i.editWarning() != "" ] )
 
-			self.__popup = GafferUI.PlugPopup( edits, warning = warnings )
+			soleValue = sole( i.value() for i in inspections )
 
-			if isinstance( self.__popup.plugValueWidget(), GafferUI.TweakPlugValueWidget ) :
-				self.__popup.plugValueWidget().setNameVisible( False )
+			if quickBoolean and isinstance( soleValue, IECore.BoolData ) :
+				newValue = not soleValue.value
+				for e in edits :
+					if isinstance( e, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) :
+						e["value"].setValue( newValue )
+						e["enabled"].setValue( True )
 
-			self.__popup.popup()
+					elif isinstance( e, Gaffer.BoolPlug ) :
+						e.setValue( newValue )
+			else :
+				# The plugs are either not boolean, boolean with mixed values,
+				# or attributes that don't exist and are not boolean. Show the popup.
+				self.__popup = GafferUI.PlugPopup( edits, warning = warnings )
+
+				if isinstance( self.__popup.plugValueWidget(), GafferUI.TweakPlugValueWidget ) :
+					self.__popup.plugValueWidget().setNameVisible( False )
+
+				self.__popup.popup()
 
 		else :
 
@@ -438,6 +452,12 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 				"Show History...",
 				{
 					"command" : Gaffer.WeakMethod( self.__showHistory )
+				}
+			)
+			menuDefinition.append(
+				"Edit...",
+				{
+					"command" : functools.partial( self.__editSelectedCells, pathListing, False )
 				}
 			)
 
