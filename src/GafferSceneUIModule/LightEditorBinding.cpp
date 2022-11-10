@@ -277,18 +277,6 @@ class MuteColumn : public InspectorColumn
 			return result;
 		}
 
-		CellData headerData( const IECore::Canceller *canceller ) const override
-		{
-			CellData result = InspectorColumn::headerData( canceller );
-
-			if( !m_scene->set( g_soloLightsSetName )->readable().isEmpty() )
-			{
-				result.icon = m_soloLightsIconName;
-			}
-
-			return result;
-		}
-
 	private :
 
 		const GafferScene::ScenePlugPtr m_scene;
@@ -297,22 +285,12 @@ class MuteColumn : public InspectorColumn
 		static IECore::StringDataPtr m_unMuteIconName;
 		static IECore::StringDataPtr m_muteFadedIconName;
 		static IECore::StringDataPtr m_unMuteFadedIconName;
-		static IECore::StringDataPtr m_soloLightsIconName;
-		static IECore::StringDataPtr m_muteStrikethroughIconName;
-		static IECore::StringDataPtr m_unMuteStrikethroughIconName;
-		static IECore::StringDataPtr m_muteFadedStrikethroughIconName;
-		static IECore::StringDataPtr m_unMuteFadedStrikethroughIconName;
 };
 
 StringDataPtr MuteColumn::m_muteIconName = new StringData( "muteLight.png" );
 StringDataPtr MuteColumn::m_unMuteIconName = new StringData( "unMuteLight.png" );
 StringDataPtr MuteColumn::m_muteFadedIconName = new StringData( "muteLightFaded.png" );
 StringDataPtr MuteColumn::m_unMuteFadedIconName = new StringData( "unMuteLightFaded.png" );
-StringDataPtr MuteColumn::m_soloLightsIconName = new StringData( "soloLights.png" );
-StringDataPtr MuteColumn::m_muteStrikethroughIconName = new StringData( "muteLightStrikethrough.png" );
-StringDataPtr MuteColumn::m_unMuteStrikethroughIconName = new StringData( "unMuteLightStrikethrough.png" );
-StringDataPtr MuteColumn::m_muteFadedStrikethroughIconName = new StringData( "muteLightFadedStrikethrough.png" );
-StringDataPtr MuteColumn::m_unMuteFadedStrikethroughIconName = new StringData( "unMuteLightFadedStrikethrough.png" );
 
 class SoloColumn : public PathColumn
 {
@@ -320,30 +298,10 @@ class SoloColumn : public PathColumn
 	public :
 		IE_CORE_DECLAREMEMBERPTR( SoloColumn )
 
-		SoloColumn(
-			GafferSceneUI::Private::InspectorPtr addInspector,
-			GafferSceneUI::Private::InspectorPtr removeInspector,
-			const ScenePlugPtr scene )
-			: 
-				m_addInspector( addInspector ),
-				m_removeInspector( removeInspector ),
-				m_headerValue( headerValue( "Solo" ) )
+		SoloColumn( const GafferScene::ScenePlugPtr &scene, const Gaffer::PlugPtr &editScope )
+			: m_scene( scene ), m_editScope( editScope )
 		{
-			m_addInspector->dirtiedSignal().connect( boost::bind( &SoloColumn::inspectorDirtied, this ) );
-			m_removeInspector->dirtiedSignal().connect( boost::bind( &SoloColumn::inspectorDirtied, this ) );
-
-			buttonPressSignal().connect( boost::bind( &SoloColumn::buttonPress, this, ::_1, ::_2, ::_3 ) );
-			buttonReleaseSignal().connect( boost::bind( &SoloColumn::buttonRelease, this, ::_1, ::_2, ::_3 ) );
-		}
-
-		GafferSceneUI::Private::Inspector *addInspector()
-		{
-			return m_addInspector.get();
-		}
-
-		GafferSceneUI::Private::Inspector *removeInspector()
-		{
-			return m_removeInspector.get();
+			m_scene->node()->plugDirtiedSignal().connect( boost::bind( &SoloColumn::sceneDirtied, this, ::_1 ) );
 		}
 
 		CellData cellData( const Gaffer::Path &path, const IECore::Canceller *canceller ) const override
@@ -357,11 +315,7 @@ class SoloColumn : public PathColumn
 		
 			if( soloLights.match( scenePath->names() ) & ( PathMatcher::ExactMatch | PathMatcher::AncestorMatch ) )
 			{
-				result.icon = m_soloIconName;
-			}
-			else
-			{
-				result.icon = m_soloDisabledIconName;
+				result.icon = m_soloLightsIconName;
 			}
 
 			return result;
@@ -369,59 +323,30 @@ class SoloColumn : public PathColumn
 
 		CellData headerData( const IECore::Canceller *canceller ) const override
 		{
-			return CellData( m_headerValue );
-		}
+			CellData result = CellData( new StringData( "Solo" ) );
 
-		bool buttonPress( Gaffer::Path &path, GafferUI::PathListingWidget &widget, const GafferUI::ButtonEvent &event )
-		{
-			// We do our work on release, but we need to accept the press too, to
-			// block the default PathListingWidget selection behaviour.
-			return true;
-		}
-		bool buttonRelease( Gaffer::Path &path, PathListingWidget &widget, const GafferUI::ButtonEvent &event )
-		{
-			// Determine if the path is soloed currently
-			// if soloed
-			//   look in the `addInspector` path list and remove the path
-			//   add the path to the `removeInspector`
-			// if not soloed
-			//   look in the `removeInspector` path list and remove the path
-			//   add the path to the `addInspector`
+			result.icon = !m_scene->set( g_soloLightsSetName )->readable().isEmpty() ? m_soloLightsIconName : nullptr;
 
-			return true;
+			return result;
 		}
 
 	private :
 
-		void inspectorDirtied()
+		void sceneDirtied( Gaffer::Plug *plug )
 		{
-			changedSignal()( this );
-		}
-
-		static IECore::ConstStringDataPtr headerValue( const std::string &inspectorName )
-		{
-			std::string name = inspectorName;
-			// Convert from snake case and/or camel case to UI case.
-			if( name.find( '_' ) != std::string::npos )
+			if( plug == m_scene->setPlug() )
 			{
-				std::replace( name.begin(), name.end(), '_', ' ' );
-				name = CamelCase::fromSpaced( name );
+				changedSignal()( this );
 			}
-			return new StringData( CamelCase::toSpaced( name ) );
 		}
 
-		const InspectorPtr m_addInspector;
-		const InspectorPtr m_removeInspector;
-		const ConstStringDataPtr m_headerValue;
-
-		static IECore::StringDataPtr m_soloIconName;
-		static IECore::StringDataPtr m_soloDisabledIconName;;
+		static IECore::StringDataPtr m_soloLightsIconName;
 
 		const ScenePlugPtr m_scene;
+		const PlugPtr m_editScope;
 };
 
-StringDataPtr SoloColumn::m_soloIconName = new StringData( "lightSolo.png" );
-StringDataPtr SoloColumn::m_soloDisabledIconName = new StringData( "lightSoloDisabled.png" );
+StringDataPtr SoloColumn::m_soloLightsIconName = new StringData( "soloLights.png" );
 
 PathColumn::CellData headerDataWrapper( PathColumn &pathColumn, const Canceller *canceller )
 {
@@ -464,16 +389,13 @@ void GafferSceneUIModule::bindLightEditor()
 		.def( "headerData", &headerDataWrapper, ( arg_( "canceller" ) = object() ) )
 	;
 
-	IECorePython::RefCountedClass<SoloColumn, InspectorColumn>( "_LightEditorSoloColumn" )
-		.def( init<GafferSceneUI::Private::InspectorPtr, const ScenePlugPtr>(
+	IECorePython::RefCountedClass<SoloColumn, PathColumn>( "_LightEditorSoloColumn" )
+		.def( init<const GafferScene::ScenePlugPtr &, const Gaffer::PlugPtr &>(
 			(
-				arg_( "inspector" ),
-				arg_( "scene" )
+				arg_( "scene" ),
+				arg_( "editScope" )
 			)
 		) )
-		.def( "addInspector", &SoloColumn::addInspector, return_value_policy<IECorePython::CastToIntrusivePtr>() )
-		.def( "removeInspector", &SoloColumn::removeInspector, return_value_policy<IECorePython::CastToIntrusivePtr>() )
-		.def( "headerData", &headerDataWrapper, ( arg_( "canceller" ) = object() ) )
 	;
 
 }
