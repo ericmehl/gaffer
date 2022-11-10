@@ -245,7 +245,7 @@ class MuteColumn : public InspectorColumn
 		IE_CORE_DECLAREMEMBERPTR( MuteColumn )
 
 		MuteColumn( const GafferScene::ScenePlugPtr &scene, const Gaffer::PlugPtr &editScope )
-			: InspectorColumn( new GafferSceneUI::Private::AttributeInspector( scene, editScope, "light:mute" ), "Mute" )
+			: InspectorColumn( new GafferSceneUI::Private::AttributeInspector( scene, editScope, "light:mute" ), "Mute" ), m_scene( scene )
 		{
 
 		}
@@ -260,34 +260,16 @@ class MuteColumn : public InspectorColumn
 				return result;
 			}
 
-			if( !scenePath->getScene()->set( g_soloLightsSetName )->readable().isEmpty() )
+			if( auto value = runTimeCast<const BoolData>( result.value ) )
 			{
-				if( auto value = runTimeCast<const BoolData>( result.value ) )
-				{
-					result.icon = value->readable() ? m_muteStrikethroughIconName : m_unMuteStrikethroughIconName;
-				}
-				else
-				{
-					auto fullAttributes = scenePath->getScene()->fullAttributes( scenePath->names() );
-					if( auto fullValue = fullAttributes->member<BoolData>( "light:mute" ) )
-					{
-						result.icon = fullValue->readable() ? m_muteFadedStrikethroughIconName : m_unMuteFadedStrikethroughIconName;
-					}
-				}
+				result.icon = value->readable() ? m_muteIconName : m_unMuteIconName;
 			}
 			else
 			{
-				if( auto value = runTimeCast<const BoolData>( result.value ) )
+				auto fullAttributes = scenePath->getScene()->fullAttributes( scenePath->names() );
+				if( auto fullValue = fullAttributes->member<BoolData>( "light:mute" ) )
 				{
-					result.icon = value->readable() ? m_muteIconName : m_unMuteIconName;
-				}
-				else
-				{
-					auto fullAttributes = scenePath->getScene()->fullAttributes( scenePath->names() );
-					if( auto fullValue = fullAttributes->member<BoolData>( "light:mute" ) )
-					{
-						result.icon = fullValue->readable() ? m_muteFadedIconName : m_unMuteFadedIconName;
-					}
+					result.icon = fullValue->readable() ? m_muteFadedIconName : m_unMuteFadedIconName;
 				}
 			}
 			result.value = nullptr;
@@ -295,12 +277,27 @@ class MuteColumn : public InspectorColumn
 			return result;
 		}
 
+		CellData headerData( const IECore::Canceller *canceller ) const override
+		{
+			CellData result = InspectorColumn::headerData( canceller );
+
+			if( !m_scene->set( g_soloLightsSetName )->readable().isEmpty() )
+			{
+				result.icon = m_soloLightsIconName;
+			}
+
+			return result;
+		}
+
 	private :
+
+		const GafferScene::ScenePlugPtr m_scene;
 
 		static IECore::StringDataPtr m_muteIconName;
 		static IECore::StringDataPtr m_unMuteIconName;
 		static IECore::StringDataPtr m_muteFadedIconName;
 		static IECore::StringDataPtr m_unMuteFadedIconName;
+		static IECore::StringDataPtr m_soloLightsIconName;
 		static IECore::StringDataPtr m_muteStrikethroughIconName;
 		static IECore::StringDataPtr m_unMuteStrikethroughIconName;
 		static IECore::StringDataPtr m_muteFadedStrikethroughIconName;
@@ -311,6 +308,7 @@ StringDataPtr MuteColumn::m_muteIconName = new StringData( "muteLight.png" );
 StringDataPtr MuteColumn::m_unMuteIconName = new StringData( "unMuteLight.png" );
 StringDataPtr MuteColumn::m_muteFadedIconName = new StringData( "muteLightFaded.png" );
 StringDataPtr MuteColumn::m_unMuteFadedIconName = new StringData( "unMuteLightFaded.png" );
+StringDataPtr MuteColumn::m_soloLightsIconName = new StringData( "soloLights.png" );
 StringDataPtr MuteColumn::m_muteStrikethroughIconName = new StringData( "muteLightStrikethrough.png" );
 StringDataPtr MuteColumn::m_unMuteStrikethroughIconName = new StringData( "unMuteLightStrikethrough.png" );
 StringDataPtr MuteColumn::m_muteFadedStrikethroughIconName = new StringData( "muteLightFadedStrikethrough.png" );

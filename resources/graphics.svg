@@ -293,15 +293,6 @@
        gradientUnits="userSpaceOnUse" />
     <linearGradient
        inkscape:collect="always"
-       xlink:href="#greyedOut"
-       id="linearGradient3510"
-       x1="344"
-       y1="2604.3623"
-       x2="354"
-       y2="2604.3623"
-       gradientUnits="userSpaceOnUse" />
-    <linearGradient
-       inkscape:collect="always"
        xlink:href="#backgroundLight"
        id="linearGradient3604"
        x1="254"
@@ -354,15 +345,15 @@
      inkscape:bbox-paths="false"
      inkscape:bbox-nodes="true"
      showgrid="true"
-     inkscape:zoom="20.04"
-     inkscape:cx="294.6152"
-     inkscape:cy="-1555.2146"
+     inkscape:zoom="28.34084"
+     inkscape:cx="329.44546"
+     inkscape:cy="-1560.4937"
      inkscape:window-width="5024"
      inkscape:window-height="2752"
      inkscape:window-x="96"
      inkscape:window-y="54"
      inkscape:window-maximized="1"
-     inkscape:current-layer="LightEditor">
+     inkscape:current-layer="layer4">
     <inkscape:grid
        type="xygrid"
        id="grid3598"
@@ -2739,13 +2730,13 @@
          style="display:inline;opacity:0.11100003;fill:none;fill-opacity:0.99215686;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
          inkscape:label="muteLightFaded" />
       <rect
-         id="unMuteLightGray"
+         id="soloLights"
          y="-2560"
          x="343"
          height="16"
          width="16"
-         style="display:inline;opacity:0.11100003;fill:none;fill-opacity:0.99215686;fill-rule:nonzero;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
-         inkscape:label="unMuteLightGray"
+         style="display:inline;opacity:0.11100003;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.59761435;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173225;stroke-opacity:1;paint-order:markers stroke fill"
+         inkscape:label="soloLights"
          transform="scale(1,-1)" />
       <rect
          inkscape:label="muteLightGray"
@@ -8562,11 +8553,11 @@
          cx="330"
          cy="2604.3623" />
       <circle
-         r="4.5"
-         cy="2604.3623"
-         cx="349"
+         cy="2604.3621"
+         cx="351"
          id="circle3502"
-         style="opacity:1;vector-effect:none;fill:url(#linearGradient3510);fill-opacity:1;fill-rule:nonzero;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal" />
+         style="opacity:1;vector-effect:none;fill:#449645;fill-opacity:1;fill-rule:nonzero;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+         r="6.5" />
       <circle
          r="4.5"
          style="opacity:0.3;vector-effect:none;fill:url(#linearGradient2172);fill-opacity:1;fill-rule:nonzero;stroke:#3c3c3c;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"

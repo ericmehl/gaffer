@@ -351,6 +351,7 @@
 				"unMuteLight",
 				"muteLightFaded",
 				"unMuteLightFaded",
+				"soloLights",
 				"muteLightStrikethrough",
 				"unMuteLightStrikethrough",
 				"muteLightFadedStrikethrough",
