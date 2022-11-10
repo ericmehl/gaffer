@@ -342,18 +342,17 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 			edits = [ i.acquireEdit() for i in inspections ]
 			warnings = "\n".join( [ i.editWarning() for i in inspections if i.editWarning() != "" ] )
 
-			soleValue = sole( i.value() for i in inspections )
+			valueEdited = False
 
-			if quickBoolean and isinstance( soleValue, IECore.BoolData ) :
-				newValue = not soleValue.value
-				for e in edits :
-					if isinstance( e, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) :
-						e["value"].setValue( newValue )
-						e["enabled"].setValue( True )
+			if quickBoolean :
+				soleValue = sole( i.value() for i in inspections )
 
-					elif isinstance( e, Gaffer.BoolPlug ) :
-						e.setValue( newValue )
-			else :
+				if soleValue is not None :
+					valueEdited = self.__togglePlugs( edits, not soleValue.value )
+				else :
+					valueEdited = self.__togglePlugs( edits, True )
+
+			if not valueEdited :
 				# The plugs are either not boolean, boolean with mixed values,
 				# or attributes that don't exist and are not boolean. Show the popup.
 				self.__popup = GafferUI.PlugPopup( edits, warning = warnings )
@@ -371,6 +370,19 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 					GafferUI.Label( "<h4>{}</h4>".format( nonEditable[0].nonEditableReason() ) )
 
 			self.__popup.popup()
+
+	def __togglePlugs( self, plugs, newValue ) :
+
+		for p in plugs :
+			if isinstance( p, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) and isinstance( p["value"], Gaffer.BoolPlug ) :
+				p["enabled"].setValue( True )
+				p["value"].setValue( newValue )
+				return True
+			elif isinstance( p, Gaffer.BoolPlug ) :
+				p.setValue( newValue )
+				return True
+
+		return False
 
 	def __buttonPress( self, pathListing, event ) :
 
