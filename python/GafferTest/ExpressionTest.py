@@ -1563,7 +1563,7 @@ class ExpressionTest( GafferTest.TestCase ) :
 		env["GAFFERTEST_SCRIPT_FILENAME"] = script["fileName"].getValue()
 		try :
 			subprocess.check_output(
-				[ "gaffer", "test", "GafferTest.ExpressionTest.checkReferenceOutputs" ],
+				[ self.gafferExecutable(), "test", "GafferTest.ExpressionTest.checkReferenceOutputs" ],
 				env = env, stderr = subprocess.STDOUT
 			)
 		except subprocess.CalledProcessError as e :
