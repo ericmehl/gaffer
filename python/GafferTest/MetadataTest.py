@@ -36,7 +36,7 @@
 
 import unittest
 import subprocess
-import os
+import pathlib
 import imath
 
 import IECore
@@ -1051,7 +1051,7 @@ class MetadataTest( GafferTest.TestCase ) :
 	@staticmethod
 	def testPythonUnload() :
 
-		subprocess.check_call( [ GafferTest.TestCase.gafferExecutable(), "python", os.path.join( os.path.dirname( __file__ ), "pythonScripts", "unloadExceptionScript.py" ) ] )
+		subprocess.check_call( [ GafferTest.TestCase.gafferExecutable(), "python", pathlib.Path( __file__ ).parent.joinpath( "pythonScripts", "unloadExceptionScript.py" ).as_posix() ] )
 
 	def testWildcardsAndDot( self ) :
 
