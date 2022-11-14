@@ -106,7 +106,13 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 			self.__pathListing = GafferUI.PathListingWidget(
 				Gaffer.DictPath( {}, "/" ), # Temp till we make a ScenePath
-				columns = [ _GafferSceneUI._LightEditorLocationNameColumn() ],
+				columns = [
+					_GafferSceneUI._LightEditorLocationNameColumn(),
+					_GafferSceneUI._LightEditorMuteColumn(
+						self.__settingsNode["in"],
+						self.__settingsNode["editScope"]
+					),
+				],
 				selectionMode = GafferUI.PathListingWidget.SelectionMode.Cells,
 				displayMode = GafferUI.PathListingWidget.DisplayMode.Tree,
 				horizontalScrollMode = GafferUI.ScrollMode.Automatic
@@ -241,10 +247,7 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 				sectionColumns += [ c( self.__settingsNode["in"], self.__settingsNode["editScope"] ) for c in section.values() ]
 
 		nameColumn = self.__pathListing.getColumns()[0]
-		muteColumn = _GafferSceneUI._LightEditorMuteColumn(
-			self.__settingsNode["in"],
-			self.__settingsNode["editScope"]
-		)
+		muteColumn = self.__pathListing.getColumns()[1]
 		self.__pathListing.setColumns( [ nameColumn, muteColumn ] + sectionColumns )
 
 	def __settingsPlugSet( self, plug ) :
