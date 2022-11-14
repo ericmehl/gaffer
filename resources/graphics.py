@@ -351,6 +351,11 @@
 				"unMuteLight",
 				"muteLightFaded",
 				"unMuteLightFaded",
+				"muteLightHighlighted",
+				"unMuteLightHighlighted",
+				"muteLightFadedHighlighted",
+				"unMuteLightFadedHighlighted",
+				"muteLightUndefined",
 			]
 		},
 

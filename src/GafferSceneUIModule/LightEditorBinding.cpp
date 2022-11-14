@@ -259,14 +259,28 @@ class MuteColumn : public InspectorColumn
 
 			if( auto value = runTimeCast<const BoolData>( result.value ) )
 			{
-				result.icon = value->readable() ? m_muteIconName : m_unMuteIconName;
+				result.icon = value->readable() ? m_muteIconData : m_unMuteIconData;
 			}
 			else
 			{
 				auto fullAttributes = scenePath->getScene()->fullAttributes( scenePath->names() );
 				if( auto fullValue = fullAttributes->member<BoolData>( "light:mute" ) )
 				{
-					result.icon = fullValue->readable() ? m_muteFadedIconName : m_unMuteFadedIconName;
+					result.icon = fullValue->readable() ? m_muteFadedIconData : m_unMuteFadedIconData;
+				}
+				else
+				{
+					// Use a transparent icon to reserve space in the UI. Without this,
+					// the top row will resize when setting the mute value, causing a full
+					// table resize.
+					if( path.isEmpty() )
+					{
+						result.icon = m_muteBlankIconName;
+					}
+					else
+					{
+						result.icon = m_muteUndefinedIconData;
+					}
 				}
 			}
 
@@ -279,16 +293,46 @@ class MuteColumn : public InspectorColumn
 
 		const GafferScene::ScenePlugPtr m_scene;
 
-		static IECore::StringDataPtr m_muteIconName;
-		static IECore::StringDataPtr m_unMuteIconName;
-		static IECore::StringDataPtr m_muteFadedIconName;
-		static IECore::StringDataPtr m_unMuteFadedIconName;
+		static IECore::CompoundDataPtr m_muteIconData;
+		static IECore::CompoundDataPtr m_unMuteIconData;
+		static IECore::CompoundDataPtr m_muteFadedIconData;
+		static IECore::CompoundDataPtr m_unMuteFadedIconData;
+		static IECore::CompoundDataPtr m_muteUndefinedIconData;
+		static IECore::StringDataPtr m_muteBlankIconName;
 };
 
-StringDataPtr MuteColumn::m_muteIconName = new StringData( "muteLight.png" );
-StringDataPtr MuteColumn::m_unMuteIconName = new StringData( "unMuteLight.png" );
-StringDataPtr MuteColumn::m_muteFadedIconName = new StringData( "muteLightFaded.png" );
-StringDataPtr MuteColumn::m_unMuteFadedIconName = new StringData( "unMuteLightFaded.png" );
+CompoundDataPtr MuteColumn::m_muteIconData = new CompoundData(
+	{
+		{ InternedString( "state:normal" ), new StringData( "muteLight.png" ) },
+		{ InternedString( "state:highlighted" ), new StringData( "muteLightHighlighted.png" ) }
+	}
+);
+CompoundDataPtr MuteColumn::m_unMuteIconData = new CompoundData(
+	{
+		{ InternedString( "state:normal" ), new StringData( "unMuteLight.png" ) },
+		{ InternedString( "state:highlighted" ), new StringData( "unMuteLightHighlighted.png" ) }
+	}
+);
+CompoundDataPtr MuteColumn::m_muteFadedIconData = new CompoundData(
+	{
+		{ InternedString( "state:normal" ), new StringData( "muteLightFaded.png" ) },
+		{ InternedString( "state:highlighted" ), new StringData( "muteLightFadedHighlighted.png" ) }
+	}
+);
+CompoundDataPtr MuteColumn::m_unMuteFadedIconData = new CompoundData(
+	{
+		{ InternedString( "state:normal" ), new StringData( "unMuteLightFaded.png" ) },
+		{ InternedString( "state:highlighted" ), new StringData( "unMuteLightFadedHighlighted.png" ) }
+	}
+);
+CompoundDataPtr MuteColumn::m_muteUndefinedIconData = new CompoundData(
+	{
+		{ InternedString( "state:normal" ), new StringData( "muteLightUndefined.png" ) },
+		{ InternedString( "state:highlighted" ), new StringData( "muteLightFadedHighlighted.png" ) }
+	}
+);
+
+StringDataPtr MuteColumn::m_muteBlankIconName = new StringData( "muteLightUndefined.png" );
 
 PathColumn::CellData headerDataWrapper( PathColumn &pathColumn, const Canceller *canceller )
 {
