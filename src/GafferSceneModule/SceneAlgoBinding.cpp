@@ -183,6 +183,12 @@ SceneAlgo::History::Ptr historyWrapper( const ValuePlug &scenePlugChild, const S
 	return SceneAlgo::history( &scenePlugChild, path );
 }
 
+SceneAlgo::History::Ptr historyWrapper2( const ValuePlug &scenePlugChild )
+{
+	IECorePython::ScopedGILRelease r;
+	return SceneAlgo::history( &scenePlugChild );
+}
+
 std::string attributeHistoryGetAttributeName( const SceneAlgo::AttributeHistory &h )
 {
 	return h.attributeName.string();
@@ -209,6 +215,17 @@ SceneAlgo::AttributeHistory::Ptr attributeHistoryWrapper( const SceneAlgo::Histo
 {
 	IECorePython::ScopedGILRelease r;
 	return SceneAlgo::attributeHistory( &attributesHistory, attributeName );
+}
+
+ScenePlug::ScenePath setHistoryGetPathValue( const SceneAlgo::SetHistory &h )
+{
+	return h.path;
+}
+
+SceneAlgo::SetHistory::Ptr setHistoryWrapper( const SceneAlgo::History &setHistory, const ScenePlug::ScenePath &path )
+{
+	IECorePython::ScopedGILRelease r;
+	return SceneAlgo::setHistory( &setHistory, path );
 }
 
 ScenePlugPtr sourceWrapper( const ScenePlug &scene, const ScenePlug::ScenePath &path )
@@ -348,6 +365,7 @@ void bindSceneAlgo()
 	}
 
 	def( "history", &historyWrapper );
+	def( "history", &historyWrapper2 );
 
 	IECorePython::RefCountedClass<SceneAlgo::AttributeHistory, SceneAlgo::History>( "AttributeHistory" )
 		.add_property( "attributeName", &attributeHistoryGetAttributeName, &attributeHistorySetAttributeName )
@@ -355,6 +373,11 @@ void bindSceneAlgo()
 	;
 
 	def( "attributeHistory", &attributeHistoryWrapper );
+
+	IECorePython::RefCountedClass<SceneAlgo::SetHistory, SceneAlgo::History>( "SetHistory" )
+		.add_property( "path", &setHistoryGetPathValue )
+	;
+	def( "setHistory", &setHistoryWrapper );
 
 	def( "source", &sourceWrapper );
 	def( "objectTweaks", &objectTweaksWrapper );

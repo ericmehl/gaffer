@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_SCENEALGO_H
 #define GAFFERSCENE_SCENEALGO_H
 
+#include "GafferScene/EditScopeAlgo.h"
 #include "GafferScene/Filter.h"
 #include "GafferScene/ScenePlug.h"
 
@@ -182,6 +183,8 @@ struct History : public IECore::RefCounted
 };
 
 GAFFERSCENE_API History::Ptr history( const Gaffer::ValuePlug *scenePlugChild, const ScenePlug::ScenePath &path );
+/// Returns the history for `scenePlugChild` in the current context.
+GAFFERSCENE_API History::Ptr history( const Gaffer::ValuePlug *scenePlugChild );
 
 /// Extends History to provide information on the history of a specific attribute.
 /// Attributes may be renamed by ShuffleAttributes nodes and this is reflected
@@ -202,6 +205,24 @@ struct AttributeHistory : public History
 /// `history( scene->attributesPlug(), path )`. If the attribute doesn't exist then
 /// null is returned.
 GAFFERSCENE_API AttributeHistory::Ptr attributeHistory( const History *attributesHistory, const IECore::InternedString &attribute );
+
+/// Extends History to provide information on the history of a set and scene location.
+struct SetHistory : public History
+{
+	IE_CORE_DECLAREMEMBERPTR( SetHistory )
+	SetHistory(
+		const ScenePlugPtr &scene,
+		const Gaffer::ContextPtr &context,
+		const ScenePlug::ScenePath &path
+	) : History( scene, context ), path( path ) {}
+	const ScenePlug::ScenePath path;
+};
+
+/// Filters `setHistory` and returns a history for a scene path. The 
+/// `setHistory` should have been obtained from a previous call to
+/// `history( scene->setPlug() )` with the `scene:setName` context variable set.
+/// If path is not in the set, null is returned.
+GAFFERSCENE_API SetHistory::Ptr setHistory( const History * setHistory, const ScenePlug::ScenePath &path );
 
 /// Returns the upstream scene originally responsible for generating the specified location.
 GAFFERSCENE_API ScenePlug *source( const ScenePlug *scene, const ScenePlug::ScenePath &path );

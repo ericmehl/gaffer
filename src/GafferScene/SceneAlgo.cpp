@@ -63,6 +63,7 @@
 
 #include "IECore/MessageHandler.h"
 #include "IECore/NullObject.h"
+#include "IECore/PathMatcher.h"
 
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/unordered_map.hpp"
@@ -714,6 +715,12 @@ ShaderTweaks *shaderTweaksWalk( const SceneAlgo::AttributeHistory *h )
 
 SceneAlgo::History::Ptr SceneAlgo::history( const Gaffer::ValuePlug *scenePlugChild, const ScenePlug::ScenePath &path )
 {
+	ScenePlug::PathScope pathScope( Context::current(), &path );
+	return history( scenePlugChild );
+}
+
+SceneAlgo::History::Ptr SceneAlgo::history( const Gaffer::ValuePlug *scenePlugChild )
+{
 	if( !scenePlugChild->parent<ScenePlug>() )
 	{
 		throw IECore::Exception( boost::str(
@@ -723,14 +730,13 @@ SceneAlgo::History::Ptr SceneAlgo::history( const Gaffer::ValuePlug *scenePlugCh
 
 	CapturingMonitorPtr monitor = new CapturingMonitor( scenePlugChild->getName() );
 	{
-		ScenePlug::PathScope pathScope( Context::current(), &path );
 		Monitor::Scope monitorScope( monitor );
 		scenePlugChild->hash();
 	}
 
 	if( monitor->rootProcesses().size() == 0 )
 	{
-		return new History(
+		return new SceneAlgo::History(
 			const_cast<ScenePlug *>( scenePlugChild->parent<ScenePlug>() ),
 			new Context( *Context::current(), /* omitCanceller = */ true )
 		);
@@ -798,6 +804,45 @@ SceneAlgo::AttributeHistory::Ptr SceneAlgo::attributeHistory( const SceneAlgo::H
 	else
 	{
 		addGenericAttributePredecessors( attributesHistory->predecessors, result.get() );
+	}
+
+	return result;
+}
+
+void addGenericSetPredecessors( const SceneAlgo::History::Predecessors &source, SceneAlgo::SetHistory *destination )
+{
+	for( auto &h : source )
+	{
+		if( auto sh = SceneAlgo::setHistory( h.get(), destination->path ) )
+		{
+			destination->predecessors.push_back( sh );
+		}
+	}
+}
+
+SceneAlgo::SetHistory::Ptr SceneAlgo::setHistory( const SceneAlgo::History *setHistory, const ScenePlug::ScenePath &path )
+{
+	ConstPathMatcherDataPtr setMemberData = setHistory->scene->set( setHistory->context->get<InternedString>( ScenePlug::setNameContextName ) );
+
+	if( setMemberData->readable().match( path ) != (PathMatcher::ExactMatch | PathMatcher::AncestorMatch) )
+	{
+		return nullptr;
+	}
+
+	SceneAlgo::SetHistory::Ptr result = new SceneAlgo::SetHistory(
+		setHistory->scene,
+		setHistory->context,
+		path
+	);
+
+	auto node = runTimeCast<const SceneNode>( setHistory->scene->node() );
+	if( node && node->enabledPlug()->getValue() && setHistory->scene == node->outPlug() )
+	{
+		/// Special case handling goes here
+	}
+	else
+	{
+		addGenericSetPredecessors( setHistory->predecessors, result.get() );
 	}
 
 	return result;

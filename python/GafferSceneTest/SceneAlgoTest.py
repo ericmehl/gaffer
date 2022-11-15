@@ -1559,6 +1559,64 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 		assertNoCanceller( history )
 
+	def testSetHistory( self ) :
+
+		# Graph
+		# -----
+		#
+		#       plane           sphere
+		#         |                |
+		#      planeSet        sphereSet
+		#         |                |
+		#         -------   --------
+		#               |   |
+		#               group
+		#
+
+		plane = GafferScene.Plane()
+
+		planeFilter = GafferScene.PathFilter()
+		planeFilter["paths"].setValue( IECore.StringVectorData( ["/plane"] ) )
+
+		sphere = GafferScene.Sphere()
+
+		sphereFilter = GafferScene.PathFilter()
+		sphereFilter["paths"].setValue( IECore.StringVectorData( ["/sphere"] ) )
+
+		planeSet = GafferScene.Set()
+		planeSet["in"].setInput( plane["out"] )
+		planeSet["name"].setValue( "set" )
+		planeSet["filter"].setInput( planeFilter["out"] )
+
+		sphereSet = GafferScene.Set()
+		sphereSet["in"].setInput( sphere["out"] )
+		sphereSet["name"].setValue( "set" )
+		sphereSet["filter"].setInput( sphereFilter["out"] )
+
+		group = GafferScene.Group()
+		group["in"][0].setInput( planeSet["out"] )
+		group["in"][1].setInput( sphereSet["out"] )
+
+		with Gaffer.Context() as context :
+			context["scene:setName"] = IECore.InternedStringData( "set" )
+			history = GafferScene.SceneAlgo.history( group["out"]["set"] )
+
+		setHistory = GafferScene.SceneAlgo.setHistory( history, "/group/plane" )
+
+		def predecessorScenes( h ) :
+			
+			return [ p.scene for p in h.predecessors ]
+
+		# Sanity check `history()`
+
+		self.assertEqual( predecessorScenes( history ), [ group["in"][0], group["in"][1] ] )
+		self.assertEqual( predecessorScenes( self.__predecessor( history, [ 0 ] ) ), [ planeSet["out"] ] )
+		self.assertEqual( predecessorScenes( self.__predecessor( history, [ 1 ] ) ), [ sphereSet["out"] ] )
+		self.assertEqual( predecessorScenes( self.__predecessor( history, [ 0, 0 ] ) ), [ planeSet["in"] ] )
+		self.assertEqual( predecessorScenes( self.__predecessor( history, [ 1, 0 ] ) ), [ sphereSet["in"] ] )
+		self.assertEqual( predecessorScenes( self.__predecessor( history, [ 0, 0, 0 ] ) ), [ plane["out"] ] )
+		self.assertEqual( predecessorScenes( self.__predecessor( history, [ 1, 0, 0 ] ) ), [ sphere["out"] ] )
+
 	def testLinkingQueries( self ) :
 
 		# Everything linked to `defaultLights` via the default value for the attribute.
