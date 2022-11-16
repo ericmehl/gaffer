@@ -322,6 +322,8 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 		columns = pathListing.getColumns()
 
+		# A list of tuples of GafferSceneUI.Inspector for the result, GafferSceneUI.Inspector.Result
+		# for the scene location and its parent inspector result if it exists, otherwise `None`.
 		inspections = []
 
 		with Gaffer.Context( self.getContext() ) as context :
@@ -334,27 +336,43 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 					inspection = column.inspector().inspect()
 
 					if inspection is not None :
-						inspections.append( inspection )
+						parentInspection = None
+						while len( context["scene:path"] ) > 0 and parentInspection is None :
+							# Find the first parent with an opinion, if any
+							context["scene:path"] = context["scene:path"][:-1]
+							parentInspection = column.inspector().inspect()
+							if parentInspection is not None :
+								edit = parentInspection.source()
+								if (
+									edit is None or
+									isinstance( edit, Gaffer.TweakPlug ) and
+									(
+										edit["mode"].getValue() == edit.Mode.Remove or
+										not edit["enabled"].getValue()
+									)
+								) :
+									# An edit can't be made, it has an opinion but the opinion
+									# is "I have no opinion", or that opinion is disabled.
+									# Keep looking.
+									parentInspection = None
+
+						inspections.append( ( column.inspector(), inspection, parentInspection ) )
 
 		if len( inspections ) == 0 :
 			return
 
-		nonEditable = [ i for i in inspections if not i.editable() ]
+		nonEditable = [ i[1] for i in inspections if not i[1].editable() ]
 
 		if len( nonEditable ) == 0 :
-			edits = [ i.acquireEdit() for i in inspections ]
-			warnings = "\n".join( [ i.editWarning() for i in inspections if i.editWarning() != "" ] )
-
+			
 			performedEdit = False
 
 			if quickBoolean :
-				soleValue = sole( i.value() for i in inspections )
-				if soleValue is not None :
-					performedEdit = self.__toggleBoolean( edits, not soleValue.value )
-				else :
-					performedEdit = self.__toggleBoolean( edits, True )
+				performedEdit = self.__toggleBoolean( inspections )
 
 			if not performedEdit :
+				edits = [ i[1].acquireEdit() for i in inspections ]
+				warnings = "\n".join( [ i[1].editWarning() for i in inspections if i[1].editWarning() != "" ] )
 				# The plugs are either not boolean, boolean with mixed values,
 				# or attributes that don't exist and are not boolean. Show the popup.
 				self.__popup = GafferUI.PlugPopup( edits, warning = warnings )
@@ -373,8 +391,10 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 			self.__popup.popup()
 
-	def __toggleBoolean( self, plugs, newValue ) :
+	def __toggleBoolean( self, inspections ) :
 
+		plugs = [ i[1].acquireEdit() for i in inspections ]
+		values = [ i[1].value() for i in inspections ]
 		# Make sure all the plugs are either a BoolPlug or contain a BoolPlug
 		if not all (
 			(
@@ -384,16 +404,30 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 		) :
 			return False
 
-		for p in plugs :
-			if (
-				isinstance( p, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) and
-				isinstance( p["value"], Gaffer.BoolPlug )
-			) :
-				p["value"].setValue( newValue )
-				p["enabled"].setValue( True )
+		soleValue = sole( values )
+		if soleValue is None and not all( v is None for v in values ) :
+			# No single value to use
+			return False
 
-			elif isinstance( p, Gaffer.BoolPlug ) :
-				p["value"].setValue( newValue )
+		for i in range( 0, len( inspections ) ) :
+			plug = plugs[i]
+
+			pParent = inspections[i][2].value().value if (
+				inspections[i][2] is not None and
+				inspections[i][2].value() is not None
+			) else None
+
+			newValue = not soleValue.value if soleValue is not None else not pParent
+			if isinstance( inspections[i][0], GafferSceneUI.Private.AttributeInspector ) :
+				enabled = False if newValue == pParent or ( not newValue and pParent is None ) else True
+			else :
+				enabled = True
+
+			if isinstance( plug, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) :
+				plug["value"].setValue( newValue )
+				plug["enabled"].setValue( enabled )
+			else :
+				plug.setValue( newValue )
 
 		return True
 
