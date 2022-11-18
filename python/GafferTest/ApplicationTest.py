@@ -37,6 +37,7 @@
 import os
 import time
 import subprocess
+import unittest
 
 import IECore
 import Gaffer
@@ -59,50 +60,17 @@ class ApplicationTest( GafferTest.TestCase ) :
 			value = subprocess.check_output( [ self.gafferExecutable(), "env", "python", "-c", "import os; print(os.environ['{}'])".format( v ) ], universal_newlines = True )
 			self.assertEqual( value.strip(), os.environ[v] )
 
+	@unittest.skipIf( os.name == "nt", "Process name is not controllable on Windows.")
 	def testProcessName( self ) :
 
-		if os.name == "nt" :
-			process = subprocess.Popen( [ "gaffer.cmd", "env", "ping", "localhost", "-n", "5", ">", "NUL" ] )
+		process = subprocess.Popen( [ "gaffer", "env", "sleep", "100" ] )
+		time.sleep( 1 )
+		command = subprocess.check_output( [ "ps", "-p", str( process.pid ), "-o", "command=" ], universal_newlines = True ).strip()
+		name = subprocess.check_output( [ "ps", "-p", str( process.pid ), "-o", "comm=" ], universal_newlines = True ).strip()
+		process.kill()
 
-			time.sleep( 1 )
-
-			command = subprocess.check_output(
-				[
-					"powershell",
-					"-command",
-					"Get-WmiObject -Query \"SELECT CommandLine FROM Win32_Process WHERE ProcessID={}\" | Format-List -Property CommandLine".format( process.pid )
-				],
-				universal_newlines = True
-			)
-			command = " ".join( [ i.strip() for i in command.strip().split( "\n" ) ] )
-			command = command.replace( "CommandLine : ", "" )
-
-			name = subprocess.check_output(
-				[
-					"powershell",
-					"-command",
-					"Get-WmiObject -Query \"SELECT Name FROM Win32_Process WHERE ProcessID={}\" | Format-List -Property Name".format( process.pid )
-				],
-				universal_newlines = True
-			)
-			name = name.strip().replace( "Name : ", "" )
-
-			subprocess.check_call( [ "TASKKILL", "/F", "/PID", str( process.pid ), "/T" ] )
-
-			self.assertEqual( command, "C:\\Windows\\system32\\cmd.exe /c gaffer.cmd env ping localhost -n 5 > NUL" )
-			self.assertEqual( name, "cmd.exe" )
-
-		else :
-			process = subprocess.Popen( [ "gaffer", "env", "sleep", "100" ] )
-			time.sleep( 1 )
-
-			command = subprocess.check_output( [ "ps", "-p", str( process.pid ), "-o", "command=" ], universal_newlines = True ).strip()
-			name = subprocess.check_output( [ "ps", "-p", str( process.pid ), "-o", "comm=" ], universal_newlines = True ).strip()
-
-			process.kill()
-
-			self.assertEqual( command, "gaffer env sleep 100" )
-			self.assertEqual( name, "gaffer" )
+		self.assertEqual( command, "gaffer env sleep 100" )
+		self.assertEqual( name, "gaffer" )
 
 if __name__ == "__main__":
 	unittest.main()
