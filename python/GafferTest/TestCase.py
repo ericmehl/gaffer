@@ -341,13 +341,13 @@ class TestCase( unittest.TestCase ) :
 
 	def assertModuleDoesNotImportUI( self, moduleName ) :
 
-		script = os.path.join( self.temporaryDirectory(), "test.py" )
+		script = self.temporaryDirectory() / "test.py"
 		with open( script, "w" ) as f :
 			f.write( "import {}\n".format( moduleName ) )
 			f.write( "import sys\n" )
 			f.write( "assert( 'GafferUI' not in sys.modules )\n" )
 
-		subprocess.check_call( [ self.gafferExecutable(), "python", script ] )
+		subprocess.check_call( [ self.gafferExecutable(), "python", script.as_posix() ] )
 
 	def assertFloat32Equal( self, value0, value1 ) :
 

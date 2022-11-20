@@ -56,7 +56,7 @@ class StatsApplicationTest( GafferTest.TestCase ) :
 		script["b"] = Gaffer.Box()
 		script["b"]["n"] = GafferTest.AddNode()
 
-		script["fileName"].setValue( self.temporaryDirectory() + "/script.gfr" )
+		script["fileName"].setValue( ( self.temporaryDirectory() / "script.gfr" ).as_posix() )
 		script.save()
 
 		o = subprocess.check_output( [ self.gafferExecutable(), "stats", script["fileName"].getValue() ], universal_newlines = True )

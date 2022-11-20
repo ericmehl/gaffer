@@ -34,7 +34,7 @@
 #
 ##########################################################################
 
-import os
+import pathlib
 import unittest
 
 import Gaffer
@@ -291,11 +291,11 @@ class FileSequencePathFilterTest( GafferTest.TestCase ) :
 		GafferTest.TestCase.setUp( self )
 
 		self.__dir = self.temporaryDirectory()
-		os.mkdir( os.path.join( self.__dir, "dir" ) )
+		( pathlib.Path( self__dir ) / "dir" ).mkdir()
 
-		self.__dir.joinpath( "dir" ).mkdir()
+		( self.__dir / "dir" ).mkdir()
 		for n in [ "singleFile.txt", "a.001.txt", "a.002.txt", "a.004.txt", "b.003.txt" ] :
-			with open( self.__dir.joinpath( n ), "w" ) as f :
+			with open( self.__dir / n, "w" ) as f :
 				f.write( "AAAA" )
 
 if __name__ == "__main__":

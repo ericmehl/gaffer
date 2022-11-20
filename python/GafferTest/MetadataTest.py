@@ -1051,7 +1051,7 @@ class MetadataTest( GafferTest.TestCase ) :
 	@staticmethod
 	def testPythonUnload() :
 
-		subprocess.check_call( [ GafferTest.TestCase.gafferExecutable(), "python", pathlib.Path( __file__ ).parent.joinpath( "pythonScripts", "unloadExceptionScript.py" ).as_posix() ] )
+		subprocess.check_call( [ GafferTest.TestCase.gafferExecutable(), "python", ( pathlib.Path( __file__ ).parent / "pythonScripts" / "unloadExceptionScript.py" ).as_posix() ] )
 
 	def testWildcardsAndDot( self ) :
 

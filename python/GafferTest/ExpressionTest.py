@@ -1546,7 +1546,7 @@ class ExpressionTest( GafferTest.TestCase ) :
 		script = Gaffer.ScriptNode()
 
 		script["reference"] = Gaffer.Reference()
-		script["reference"].load( pathlib.Path( __file__ ).parent.joinpath( "references", "multipleOutputExpression.grf" ).as_posix() )
+		script["reference"].load( ( pathlib.Path( __file__ ).parent / "references" / "multipleOutputExpression.grf" ).as_posix() )
 
 		# Check all is well.
 
@@ -1557,7 +1557,7 @@ class ExpressionTest( GafferTest.TestCase ) :
 		# iteration order of Python sets, which is non-deterministic since
 		# Python 3 (see `PYTHONHASHSEED`).
 
-		script["fileName"].setValue( self.temporaryDirectory().joinpath( "test.gfr" ).as_posix() )
+		script["fileName"].setValue( ( self.temporaryDirectory() / "test.gfr" ).as_posix() )
 		script.save()
 
 		env = os.environ.copy()

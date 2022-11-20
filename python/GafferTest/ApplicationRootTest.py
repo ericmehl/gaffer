@@ -76,11 +76,11 @@ class ApplicationRootTest( GafferTest.TestCase ) :
 		applicationRoot.savePreferences()
 		self.assertTrue( self.__defaultPreferencesFile.exists() )
 
-		fileName = self.temporaryDirectory() / "testPreferences.gfr"
+		preferencesFile = self.temporaryDirectory() / "testPreferences.gfr"
 
-		self.assertFalse( fileName.exists() )
-		applicationRoot.savePreferences( fileName.as_posix() )
-		self.assertTrue( fileName.exists() )
+		self.assertFalse( preferencesFile.exists() )
+		applicationRoot.savePreferences( preferencesFile.as_posix() )
+		self.assertTrue( preferencesFile.exists() )
 
 		p["category1"]["i"].setValue( 1 )
 		p["category2"]["s"].setValue( "beef" )
@@ -88,7 +88,7 @@ class ApplicationRootTest( GafferTest.TestCase ) :
 
 		executionContext = { "application" : application }
 		exec(
-			compile( open( fileName ).read(), fileName, "exec" ),
+			compile( open( preferencesFile ).read(), preferencesFile, "exec" ),
 			executionContext, executionContext
 		)
 
@@ -100,11 +100,11 @@ class ApplicationRootTest( GafferTest.TestCase ) :
 
 		a = Gaffer.ApplicationRoot( "testApp" )
 
-		fileName = self.temporaryDirectory() / "testPreferences.gfr"
-		a.savePreferences( fileName.as_posix() )
-		fileName.chmod( 0 )
-		self.assertRaises( RuntimeError, a.savePreferences, fileName.as_posix() )
-		fileName.chmod( stat.S_IWRITE )
+		preferencesFile = self.temporaryDirectory() / "testPreferences.gfr"
+		a.savePreferences( preferencesFile.as_posix() )
+		preferencesFile.chmod( 0 )
+		self.assertRaises( RuntimeError, a.savePreferences, preferencesFile.as_posix() )
+		preferencesFile.chmod( stat.S_IWRITE )
 
 	def testPreferencesLocation( self ) :
 

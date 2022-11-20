@@ -45,12 +45,12 @@ class PythonApplicationTest( GafferTest.TestCase ) :
 
 	def testVariableScope( self ) :
 
-		subprocess.check_call( [ self.gafferExecutable(), "python", pathlib.Path( __file__ ).parent.joinpath( "pythonScripts", "variableScope.py" ).as_posix() ] )
+		subprocess.check_call( [ self.gafferExecutable(), "python", ( pathlib.Path( __file__ ).parent / "pythonScripts" / "variableScope.py" ).as_posix() ] )
 
 	def testErrorReturnStatus( self ) :
 
 		p = subprocess.Popen(
-			[ self.gafferExecutable(), "python", pathlib.Path( __file__ ).parent.joinpath( "pythonScripts", "exception.py" ).as_posix() ],
+			[ self.gafferExecutable(), "python", ( pathlib.Path( __file__ ).parent / "pythonScripts" / "exception.py" ).as_posix() ],
 			stderr = subprocess.PIPE,
 			universal_newlines = True,
 		)
@@ -61,11 +61,11 @@ class PythonApplicationTest( GafferTest.TestCase ) :
 
 	def testFlagArguments( self ) :
 
-		subprocess.check_call( [ self.gafferExecutable(), "python", pathlib.Path( __file__ ).parent.joinpath( "pythonScripts", "flagArguments.py" ).as_posix(), "-arguments", "-flag1", "-flag2" ] )
+		subprocess.check_call( [ self.gafferExecutable(), "python", ( pathlib.Path( __file__ ).parent / "pythonScripts" / "flagArguments.py" ).as_posix(), "-arguments", "-flag1", "-flag2" ] )
 
 	def testName( self ) :
 
-		subprocess.check_call( [ self.gafferExecutable(), "python", pathlib.Path( __file__ ).parent.joinpath( "pythonScripts", "name.py" ).as_posix() ] )
+		subprocess.check_call( [ self.gafferExecutable(), "python", ( pathlib.Path( __file__ ).parent / "pythonScripts" / "name.py" ).as_posix() ] )
 
 if __name__ == "__main__":
 	unittest.main()
