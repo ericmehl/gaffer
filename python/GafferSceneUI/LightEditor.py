@@ -373,7 +373,7 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 		nonEditable = [ i[1] for i in inspections if not i[1].editable() ]
 
 		if len( nonEditable ) == 0 :
-			
+
 			performedEdit = False
 
 			if quickBoolean :
