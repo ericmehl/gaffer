@@ -19,7 +19,9 @@ Features
   - The Inclusions column adds locations to the Visible Set, so that they and their descendants are rendered in the Viewer without needing to be expanded in the HierarchyView.
   - The Exclusions column excludes locations from the Visible Set, so that they and their descendants are never rendered in the Viewer, regardless of any other expansions or inclusions.
   - Locations can have their Visible Set inclusion or exclusion toggled by clicking within the appropriate column. <kbd>Shift</kbd>-clicking will remove the location and any of its descendants from the Visible Set. When multiple locations are selected, edits to any of the selected locations will affect all selected locations.
-- Light Editor : Added a column for toggling a light's mute attribute on and off.
+- Light Editor
+  - Added a column for toggling a light's mute attribute on and off.
+  - Added a "Remove Edit" command to the right-click menu to easily disable tweaks in Edit Scopes.
 
 Improvements
 ------------

@@ -440,6 +440,37 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 		return True
 
+	def __activeInspectionTweaks( self, pathListing ) :
+
+		selection = pathListing.getSelection()
+
+		columns = pathListing.getColumns()
+
+		tweaks = []
+
+		with Gaffer.Context( self.getContext() ) as context :
+			for i in range( 0, len( columns ) ) :
+				column = columns[ i ]
+				if not isinstance( column, _GafferSceneUI._LightEditorInspectorColumn ) :
+					continue
+				for path in selection[i].paths() :
+					context["scene:path"] = GafferScene.ScenePlug.stringToPath( path )
+					inspection = column.inspector().inspect()
+					if inspection is not None :
+						edit = inspection.acquireEdit()
+						if isinstance( edit, Gaffer.TweakPlug ) and edit["enabled"].getValue() :
+							tweaks.append( edit )
+
+		return tweaks
+
+	def __removeEdits( self, pathListing ) :
+
+		tweaks = self.__activeInspectionTweaks( pathListing )
+
+		for tweak in tweaks :
+			tweak["enabled"].setValue( False )
+
+
 	def __buttonPress( self, pathListing, event ) :
 
 		if event.button != event.Buttons.Right or event.modifiers != event.Modifiers.None_ :
@@ -526,6 +557,13 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 				"Edit...",
 				{
 					"command" : functools.partial( self.__editSelectedCells, pathListing, False )
+				}
+			)
+			menuDefinition.append(
+				"Remove Edit",
+				{
+					"command" : functools.partial( self.__removeEdits, pathListing ),
+					"active" : lambda : len( self.__activeInspectionTweaks( pathListing ) ) > 0,
 				}
 			)
 
