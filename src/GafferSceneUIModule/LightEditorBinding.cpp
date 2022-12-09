@@ -274,12 +274,24 @@ class MuteColumn : public InspectorColumn
 			}
 			else
 			{
-				auto fullAttributes = scenePath->getScene()->fullAttributes( scenePath->names() );
-				if( auto fullValue = fullAttributes->member<BoolData>( "light:mute" ) )
+				ScenePlug::PathScope pathScope( Context::current() );
+				ScenePlug::ScenePath currentPath( scenePath->names() );
+				while( !currentPath.empty() )
 				{
-					result.icon = fullValue->readable() ? m_muteFadedIconData : m_unMuteFadedIconData;
+					pathScope.setPath( &currentPath );
+					auto a = scenePath->getScene()->attributesPlug()->getValue();
+					if( auto fullValue = a->member<BoolData>( "light:mute" ) )
+					{
+						result.icon = fullValue->readable() ? m_muteFadedIconData : m_unMuteFadedIconData;
+						result.toolTip = new StringData(
+							"Inherited from : " + ScenePlug::pathToString( currentPath ) + "\n" 
+							"Double-click to toggle"
+						);
+						break;
+					}
+					currentPath.pop_back();
 				}
-				else
+				if( !result.icon )
 				{
 					// Use a transparent icon to reserve space in the UI. Without this,
 					// the top row will resize when setting the mute value, causing a full
