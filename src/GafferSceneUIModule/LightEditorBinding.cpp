@@ -253,7 +253,7 @@ class MuteColumn : public InspectorColumn
 		IE_CORE_DECLAREMEMBERPTR( MuteColumn )
 
 		MuteColumn( const GafferScene::ScenePlugPtr &scene, const Gaffer::PlugPtr &editScope )
-			: InspectorColumn( new GafferSceneUI::Private::AttributeInspector( scene, editScope, "light:mute" ), "Mute" ), m_scene( scene )
+			: InspectorColumn( new GafferSceneUI::Private::AttributeInspector( scene, editScope, "light:mute" ), "Mute" )
 		{
 
 		}
@@ -313,8 +313,6 @@ class MuteColumn : public InspectorColumn
 		}
 
 	private :
-
-		const GafferScene::ScenePlugPtr m_scene;
 
 		static IECore::CompoundDataPtr m_muteIconData;
 		static IECore::CompoundDataPtr m_unMuteIconData;
