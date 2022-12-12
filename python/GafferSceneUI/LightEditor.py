@@ -322,8 +322,8 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 		columns = pathListing.getColumns()
 
-		# A list of tuples of GafferSceneUI.Inspector for the result, GafferSceneUI.Inspector.Result
-		# for the scene location and its parent inspector result if it exists, otherwise `None`.
+		# A dictionary of the form { inspector : [ list of paths to inspect ], ... }
+		inspectors = {}
 		inspections = []
 
 		with Gaffer.Context( self.getContext() ) as context :
@@ -331,34 +331,16 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 				column = columns[ i ]
 				if not isinstance( column, _GafferSceneUI._LightEditorInspectorColumn ) :
 					continue
-				for path in selection[i].paths() :
-					context["scene:path"] = GafferScene.ScenePlug.stringToPath( path )
+				for pathString in selection[i].paths() :
+					path = GafferScene.ScenePlug.stringToPath( pathString )
+					context["scene:path"] = path
 					inspection = column.inspector().inspect()
 
 					if inspection is not None :
-						parentInspection = None
-						while len( context["scene:path"] ) > 0 and parentInspection is None :
-							# Find the first parent with an opinion, if any
-							context["scene:path"] = context["scene:path"][:-1]
-							parentInspection = column.inspector().inspect()
-							if parentInspection is not None :
-								edit = parentInspection.source()
-								if (
-									edit is None or
-									isinstance( edit, Gaffer.TweakPlug ) and
-									(
-										edit["mode"].getValue() == edit.Mode.Remove or
-										not edit["enabled"].getValue()
-									)
-								) :
-									# An edit can't be made, it has an opinion but the opinion
-									# is "I have no opinion", or that opinion is disabled.
-									# Keep looking.
-									parentInspection = None
+						inspectors.setdefault( column.inspector(), [] ).append( path )
+						inspections.append( inspection )
 
-						inspections.append( ( column.inspector(), inspection, parentInspection ) )
-
-		if len( inspections ) == 0 :
+		if len( inspectors ) == 0 :
 			# \todo Add a way to identify columns that inspect attributes so this warning
 			# can be applied to all appropriate columns.
 			if all( isinstance( columns[i], _GafferSceneUI._LightEditorMuteColumn ) for i in range( 0, len( columns ) ) if not selection[i].isEmpty() ) :
@@ -370,13 +352,13 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 				self.__popup.popup()
 			return
 
-		nonEditable = [ i[1] for i in inspections if not i[1].editable() ]
+		nonEditable = [ i for i in inspections if not i.editable() ]
 
 		if len( nonEditable ) == 0 :
 
-			if not quickBoolean or not self.__toggleBoolean( inspections ) :
-				edits = [ i[1].acquireEdit() for i in inspections ]
-				warnings = "\n".join( [ i[1].editWarning() for i in inspections if i[1].editWarning() != "" ] )
+			if not quickBoolean or not self.__toggleBoolean( inspectors, inspections ) :
+				edits = [ i.acquireEdit() for i in inspections ]
+				warnings = "\n".join( [ i.editWarning() for i in inspections if i.editWarning() != "" ] )
 				# The plugs are either not boolean, boolean with mixed values,
 				# or attributes that don't exist and are not boolean. Show the popup.
 				self.__popup = GafferUI.PlugPopup( edits, warning = warnings )
@@ -395,10 +377,9 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 			self.__popup.popup()
 
-	def __toggleBoolean( self, inspections ) :
+	def __toggleBoolean( self, inspectors, inspections ) :
 
-		plugs = [ i[1].acquireEdit() for i in inspections ]
-		values = [ i[1].value() for i in inspections ]
+		plugs = [ i.acquireEdit() for i in inspections ]
 		# Make sure all the plugs are either a BoolPlug or contain a BoolPlug
 		if not all (
 			(
@@ -408,27 +389,35 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 		) :
 			return False
 
-		soleValue = sole( values )
+		valueData = [ i.value() for i in inspections ]
+		soleValue = sole( v.value if v is not None else False for v in valueData )
 
-		for i in range( 0, len( inspections ) ) :
-			plug = plugs[i]
+		for inspector, paths in inspectors.items() :
+			with Gaffer.Context( self.getContext() ) as context :
+				for path in paths :
+					context["scene:path"] = path
 
-			pParent = inspections[i][2].value().value if (
-				inspections[i][2] is not None and
-				inspections[i][2].value() is not None
-			) else None
+					inspection = inspector.inspect()
+					currentValue = inspection.value().value if inspection.value() is not None else None
 
-			newValue = not soleValue.value if soleValue is not None else not pParent
-			if isinstance( inspections[i][0], GafferSceneUI.Private.AttributeInspector ) :
-				enabled = False if newValue == pParent or ( not newValue and pParent is None ) else True
-			else :
-				enabled = True
+					if isinstance( inspector, GafferSceneUI.Private.AttributeInspector ) :
 
-			if isinstance( plug, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) :
-				plug["value"].setValue( newValue )
-				plug["enabled"].setValue( enabled )
-			else :
-				plug.setValue( newValue )
+						fullAttributes = self.__settingsNode["in"].fullAttributes( path[:-1] )
+						parentValueData = fullAttributes.get( "light:mute", None )
+						parentValue = parentValueData.value if parentValueData is not None else None
+
+						newValue = not currentValue if currentValue is not None else not parentValue
+						enabled = newValue != ( parentValue or False )
+					else :
+						newValue = not soleValue
+						enabled = True
+
+					plug = inspection.acquireEdit()
+					if isinstance( plug, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) :
+						plug["value"].setValue( newValue )
+						plug["enabled"].setValue( enabled )
+					else :
+						plug.setValue( newValue )
 
 		return True
 
