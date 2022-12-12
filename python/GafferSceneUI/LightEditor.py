@@ -374,12 +374,7 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 		if len( nonEditable ) == 0 :
 
-			performedEdit = False
-
-			if quickBoolean :
-				performedEdit = self.__toggleBoolean( inspections )
-
-			if not performedEdit :
+			if not quickBoolean or not self.__toggleBoolean( inspections ) :
 				edits = [ i[1].acquireEdit() for i in inspections ]
 				warnings = "\n".join( [ i[1].editWarning() for i in inspections if i[1].editWarning() != "" ] )
 				# The plugs are either not boolean, boolean with mixed values,
