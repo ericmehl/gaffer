@@ -446,10 +446,11 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 	def __removeEdits( self, pathListing ) :
 
-		tweaks = self.__activeInspectionTweaks( pathListing )
+		with Gaffer.UndoScope( self.__settingsNode["in"].getInput().ancestor( Gaffer.ScriptNode ) ) :
+			tweaks = self.__activeInspectionTweaks( pathListing )
 
-		for tweak in tweaks :
-			tweak["enabled"].setValue( False )
+			for tweak in tweaks :
+				tweak["enabled"].setValue( False )
 
 
 	def __buttonPress( self, pathListing, event ) :
