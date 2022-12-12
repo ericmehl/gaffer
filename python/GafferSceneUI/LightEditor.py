@@ -414,9 +414,6 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 			return False
 
 		soleValue = sole( values )
-		if soleValue is None and not all( v is None for v in values ) :
-			# No single value to use
-			return False
 
 		for i in range( 0, len( inspections ) ) :
 			plug = plugs[i]
