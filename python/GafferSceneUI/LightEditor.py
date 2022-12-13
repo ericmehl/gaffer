@@ -318,20 +318,15 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 	def __editSelectedCells( self, pathListing, quickBoolean = True ) :
 
-		selection = pathListing.getSelection()
-
-		columns = pathListing.getColumns()
-
 		# A dictionary of the form { inspector : [ list of paths to inspect ], ... }
 		inspectors = {}
 		inspections = []
 
 		with Gaffer.Context( self.getContext() ) as context :
-			for i in range( 0, len( columns ) ) :
-				column = columns[ i ]
+			for selection, column in zip( pathListing.getSelection(), pathListing.getColumns() ) :
 				if not isinstance( column, _GafferSceneUI._LightEditorInspectorColumn ) :
 					continue
-				for pathString in selection[i].paths() :
+				for pathString in selection.paths() :
 					path = GafferScene.ScenePlug.stringToPath( pathString )
 					context["scene:path"] = path
 					inspection = column.inspector().inspect()
@@ -343,7 +338,15 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 		if len( inspectors ) == 0 :
 			# \todo Add a way to identify columns that inspect attributes so this warning
 			# can be applied to all appropriate columns.
-			if all( isinstance( columns[i], _GafferSceneUI._LightEditorMuteColumn ) for i in range( 0, len( columns ) ) if not selection[i].isEmpty() ) :
+			if all(
+				isinstance(
+					column,
+					_GafferSceneUI._LightEditorMuteColumn
+				) for selection, column in zip(
+					pathListing.getSelection(),
+					pathListing.getColumns()
+				) if not selection.isEmpty()
+			) :
 				with GafferUI.PopupWindow() as self.__popup :
 					with GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, spacing = 4 ) :
 						GafferUI.Image( "warningSmall.png" )
@@ -423,18 +426,13 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 	def __activeInspectionTweaks( self, pathListing ) :
 
-		selection = pathListing.getSelection()
-
-		columns = pathListing.getColumns()
-
 		tweaks = []
 
 		with Gaffer.Context( self.getContext() ) as context :
-			for i in range( 0, len( columns ) ) :
-				column = columns[ i ]
+			for columnSelection, column in zip( pathListing.getSelection(), pathListing.getColumns() ) :
 				if not isinstance( column, _GafferSceneUI._LightEditorInspectorColumn ) :
 					continue
-				for path in selection[i].paths() :
+				for path in columnSelection.paths() :
 					context["scene:path"] = GafferScene.ScenePlug.stringToPath( path )
 					inspection = column.inspector().inspect()
 					if inspection is not None :
