@@ -40,8 +40,7 @@ import imath
 import IECore
 
 import Gaffer
-import GafferUI
-from GafferUI import _GafferUI
+from GafferSceneUI import _GafferSceneUI
 import GafferScene
 import GafferSceneUI
 import GafferSceneTest
@@ -142,7 +141,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 
 		# Tests against a given state, which is a dictionary of the form :
 		# { "sceneLocation" : ( attributesMuteValue, fullAttributesMuteValue ), ... }
-		def testLightMuteAttribute( clickCount, toggleLocation, newStates ) :
+		def testLightMuteAttribute( toggleCount, toggleLocation, newStates ) :
 
 			for location in [
 				"/groupMute",
@@ -162,13 +161,13 @@ class LightEditorTest( GafferUITest.TestCase ) :
 
 				muteAttribute, fullMuteAttribute = newStates[location]
 
-				with self.subTest( f"(attributes) Toggle Click {clickCount} = {toggleLocation}", location = location ) :
+				with self.subTest( f"(attributes) Toggle {toggleCount} = {toggleLocation}", location = location ) :
 					if muteAttribute is not None :
 						self.assertIn( "light:mute", attributes )
 						self.assertEqual( attributes["light:mute"].value, muteAttribute )
 					else :
 						self.assertNotIn( "light:mute", attributes )
-				with self.subTest( f"(fullAttributes) Toggle Click {clickCount} = {toggleLocation}", location = location ) :
+				with self.subTest( f"(fullAttributes) Toggle {toggleCount} = {toggleLocation}", location = location ) :
 					if fullMuteAttribute is not None :
 						self.assertIn( "light:mute", fullAttributes )
 						self.assertEqual( fullAttributes["light:mute"].value, fullMuteAttribute)
@@ -194,16 +193,14 @@ class LightEditorTest( GafferUITest.TestCase ) :
 
 		# dictionary of the form :
 		# {
-		#     "toggleLocation" : (
-		#         clickPoint,
-		#         firstClickMuteState,
-		#         secondClickMuteState
+		#     ( "toggleLocation0", "toggleLocation1", ... ) : (
+		#         firstToggleMuteState,
+		#         secondToggleMuteState
 		#     ),
 		#     ...
 		# }
 		toggles = {
-			"/groupMute" : (
-				imath.V3f(105, 25, 1),
+			( "/groupMute", ) : (
 				{
 					"/groupMute" : ( None, None ),
 					"/groupMute/Mute" : ( True, True ),
@@ -231,8 +228,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : ( None, None ),
 				}
 			),
-			"/groupMute/Mute" : (
-				imath.V3f(105, 45, 1),
+			( "/groupMute/Mute", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( False, False ),
@@ -260,8 +256,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/groupMute/UnMute" : (
-				imath.V3f(105, 65, 1),
+			( "/groupMute/UnMute", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -289,8 +284,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/groupMute/None" : (
-				imath.V3f(105, 90, 1),
+			( "/groupMute/None", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -318,8 +312,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/groupUnMute" : (
-				imath.V3f(105, 110, 1),
+			( "/groupUnMute", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -347,8 +340,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/groupUnMute/Mute" : (
-				imath.V3f(105, 135, 1),
+			( "/groupUnMute/Mute", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -376,8 +368,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/groupUnMute/UnMute" : (
-				imath.V3f(105, 155, 1),
+			( "/groupUnMute/UnMute", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -405,8 +396,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/groupUnMute/None" : (
-				imath.V3f(105, 175, 1),
+			( "/groupUnMute/None", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -434,8 +424,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/Mute" : (
-				imath.V3f(105, 200, 1),
+			( "/Mute", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -463,8 +452,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/UnMute" : (
-				imath.V3f(105, 220, 1),
+			( "/UnMute", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -492,8 +480,7 @@ class LightEditorTest( GafferUITest.TestCase ) :
 					"/None" : (None, None ),
 				}
 			),
-			"/None" : (
-				imath.V3f(105, 250, 1),
+			( "/None", ) : (
 				{
 					"/groupMute" : ( True, True ),
 					"/groupMute/Mute" : ( True, True ),
@@ -523,41 +510,37 @@ class LightEditorTest( GafferUITest.TestCase ) :
 			),
 		}
 
-		event = GafferUI.ButtonEvent(
-			GafferUI.ButtonEvent.Buttons.Left,
-			GafferUI.ButtonEvent.Buttons.Left
-		)
+		muteIndex = None
 
-		for togglePath, toggleData in toggles.items() :
+		for togglePaths, toggleData in toggles.items() :
 
-			clickPoint, firstNewStates, secondNewStates = toggleData
-			event.line.p0 = clickPoint
+			firstNewStates, secondNewStates = toggleData
 
-			with GafferUI.Window() as w :
-				resetEditScope()
-				editor = GafferSceneUI.LightEditor( script )
-
-			w.setVisible( True )
-
+			resetEditScope()
+			editor = GafferSceneUI.LightEditor( script )
 			editor._LightEditor__settingsNode["editScope"].setInput( script["editScope"]["out"] )
 
 			widget = editor._LightEditor__pathListing
+			columns = widget.getColumns()
 
-			_GafferUI._pathModelWaitForPendingUpdates(
-				GafferUI._qtAddress( widget._qtWidget().model() )
-			)
-			widget.setExpansion( IECore.PathMatcher( [ "/groupMute", "/groupUnMute" ] ) )
-			self.waitForIdle( 10000 )
+			if muteIndex is None :
+				for i, c in zip( range( 0, len( columns ) ), columns ) :
+					if isinstance( c, _GafferSceneUI._LightEditorInspectorColumn ) :
+						muteIndex = i
 
-			self.assertEqual( str( widget.pathAt( event.line.p0 ) ), togglePath )
+			self.assertIsNotNone( muteIndex )
 
-			widget.buttonPressSignal()( widget, event )
+			selection = [IECore.PathMatcher()] * len( columns )
+			for path in togglePaths :
+				selection[muteIndex].addPath( path )
 
-			widget.buttonDoubleClickSignal()( widget, event )
-			testLightMuteAttribute( 1, togglePath, firstNewStates )
+			widget.setSelection( selection )
 
-			widget.buttonDoubleClickSignal()( widget, event )
-			testLightMuteAttribute( 2, togglePath, secondNewStates )
+			editor._LightEditor__editSelectedCells( widget )
+			testLightMuteAttribute( 1, togglePaths, firstNewStates )
+
+			editor._LightEditor__editSelectedCells( widget )
+			testLightMuteAttribute( 2, togglePaths, secondNewStates )
 
 			del widget, editor
 
