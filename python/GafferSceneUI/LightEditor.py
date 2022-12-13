@@ -435,7 +435,11 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 				for path in columnSelection.paths() :
 					context["scene:path"] = GafferScene.ScenePlug.stringToPath( path )
 					inspection = column.inspector().inspect()
-					if inspection is not None :
+					if (
+						inspection is not None and
+						inspection.editable() and
+						inspection.sourceType() == GafferSceneUI.Private.Inspector.Result.SourceType.EditScope
+					) :
 						edit = inspection.acquireEdit()
 						if isinstance( edit, Gaffer.TweakPlug ) and edit["enabled"].getValue() :
 							tweaks.append( edit )
