@@ -206,7 +206,7 @@ class InspectorColumn : public PathColumn
 
 			if( runTimeCast<const IECore::BoolData>( result.value ) )
 			{
-				toolTip += !toolTip.empty() ? "\nDouble-click to toggle" : "Double-click to toggle";
+				toolTip += !toolTip.empty() ? "\n\nDouble-click to toggle" : "Double-click to toggle";
 			}
 
 			if( !toolTip.empty() )
@@ -284,7 +284,7 @@ class MuteColumn : public InspectorColumn
 					{
 						result.icon = fullValue->readable() ? m_muteFadedIconData : m_unMuteFadedIconData;
 						result.toolTip = new StringData(
-							"Inherited from : " + ScenePlug::pathToString( currentPath ) + "\n" 
+							"Inherited from : " + ScenePlug::pathToString( currentPath ) + "\n\n"
 							"Double-click to toggle"
 						);
 						break;
