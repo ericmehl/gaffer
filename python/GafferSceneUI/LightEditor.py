@@ -318,7 +318,8 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 
 	def __editSelectedCells( self, pathListing, quickBoolean = True ) :
 
-		# A dictionary of the form { inspector : [ list of paths to inspect ], ... }
+		# A dictionary of the form :
+		# { inspector : { path1 : inspection, path2 : inspection, ... }, ... }
 		inspectors = {}
 		inspections = []
 
@@ -332,7 +333,7 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 					inspection = column.inspector().inspect()
 
 					if inspection is not None :
-						inspectors.setdefault( column.inspector(), [] ).append( path )
+						inspectors.setdefault( column.inspector(), {} )[path] = inspection
 						inspections.append( inspection )
 
 		if len( inspectors ) == 0 :
@@ -392,35 +393,48 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 		) :
 			return False
 
-		valueData = [ i.value() for i in inspections ]
-		soleValue = sole( v.value if v is not None else False for v in valueData )
+		currentValues = []
 
-		for inspector, paths in inspectors.items() :
-			with Gaffer.Context( self.getContext() ) as context :
-				for path in paths :
-					context["scene:path"] = path
+		# Use a single new value for all plugs.
+		# First we need to find out what the new value would be for each plug in isolation.
+		for inspector, pathInspections in inspectors.items() :
+			for path, inspection in pathInspections.items() :
+				currentValue = inspection.value().value if inspection.value() is not None else None
 
-					inspection = inspector.inspect()
-					currentValue = inspection.value().value if inspection.value() is not None else None
+				if isinstance( inspector, GafferSceneUI.Private.AttributeInspector ) :
+					fullAttributes = self.__settingsNode["in"].fullAttributes( path[:-1] )
+					parentValueData = fullAttributes.get( "light:mute", None )
+					parentValue = parentValueData.value if parentValueData is not None else False
 
+					currentValues.append( currentValue if currentValue is not None else parentValue )
+				else :
+					currentValues.append( currentValue )
+					enabled = True
+
+		# Now set the value for all plugs, defaulting to `True` if they are not
+		# currently all the same. We iterate through the paths in order of shortest
+		# to longest so we change the value of parents before children. This ensures
+		# the "enabled" value is correct.
+		newValue = not sole( currentValues )
+
+		for inspector, pathInspections in inspectors.items() :
+			for path, inspection in sorted( pathInspections.items(), key = lambda i : len( i[0] ) ) :
+				plug = inspection.acquireEdit()
+
+				if isinstance( plug, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) :
 					if isinstance( inspector, GafferSceneUI.Private.AttributeInspector ) :
-
 						fullAttributes = self.__settingsNode["in"].fullAttributes( path[:-1] )
 						parentValueData = fullAttributes.get( "light:mute", None )
-						parentValue = parentValueData.value if parentValueData is not None else None
+						parentValue = parentValueData.value if parentValueData is not None else False
 
-						newValue = not currentValue if currentValue is not None else not parentValue
-						enabled = newValue != ( parentValue or False )
+						enabled = newValue != parentValue
 					else :
-						newValue = not soleValue
 						enabled = True
 
-					plug = inspection.acquireEdit()
-					if isinstance( plug, ( Gaffer.TweakPlug, Gaffer.NameValuePlug ) ) :
-						plug["value"].setValue( newValue )
-						plug["enabled"].setValue( enabled )
-					else :
-						plug.setValue( newValue )
+					plug["value"].setValue( newValue )
+					plug["enabled"].setValue( enabled )
+				else :
+					plug.setValue( newValue )
 
 		return True
 
