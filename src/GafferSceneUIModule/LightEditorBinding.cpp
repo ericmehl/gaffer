@@ -274,7 +274,7 @@ class MuteColumn : public InspectorColumn
 			}
 			else
 			{
-				ScenePlug::PathScope pathScope( Context::current() );
+				ScenePlug::PathScope pathScope( scenePath->getContext() );
 				ScenePlug::ScenePath currentPath( scenePath->names() );
 				while( !currentPath.empty() )
 				{
