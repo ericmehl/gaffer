@@ -337,23 +337,13 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 						inspections.append( inspection )
 
 		if len( inspectors ) == 0 :
-			# \todo Add a way to identify columns that inspect attributes so this warning
-			# can be applied to all appropriate columns.
-			if all(
-				isinstance(
-					column,
-					_GafferSceneUI._LightEditorMuteColumn
-				) for selection, column in zip(
-					pathListing.getSelection(),
-					pathListing.getColumns()
-				) if not selection.isEmpty()
-			) :
-				with GafferUI.PopupWindow() as self.__popup :
-					with GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, spacing = 4 ) :
-						GafferUI.Image( "warningSmall.png" )
-						GafferUI.Label( "<h4>The selected cells cannot be edited in the current Edit Scope</h4>" )
+			with GafferUI.PopupWindow() as self.__popup :
+				with GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, spacing = 4 ) :
+					GafferUI.Image( "warningSmall.png" )
+					GafferUI.Label( "<h4>The selected cells cannot be edited in the current Edit Scope</h4>" )
 
-				self.__popup.popup()
+			self.__popup.popup()
+
 			return
 
 		nonEditable = [ i for i in inspections if not i.editable() ]
