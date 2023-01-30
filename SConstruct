@@ -755,6 +755,7 @@ baseLibEnv.Append(
 		"Imath$OPENEXR_LIB_SUFFIX",
 		"IlmImf$OPENEXR_LIB_SUFFIX",
 		"IECore$CORTEX_LIB_SUFFIX",
+		"fmt"
 	],
 
 )
@@ -1013,7 +1014,7 @@ libraries = {
 
 	"GafferScene" : {
 		"envAppends" : {
-			"LIBS" : [ "Gaffer", "Iex$OPENEXR_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX", "IECoreImage$CORTEX_LIB_SUFFIX",  "IECoreScene$CORTEX_LIB_SUFFIX", "GafferImage", "GafferDispatch", "Half", "fmt" ],
+			"LIBS" : [ "Gaffer", "Iex$OPENEXR_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX", "IECoreImage$CORTEX_LIB_SUFFIX",  "IECoreScene$CORTEX_LIB_SUFFIX", "GafferImage", "GafferDispatch", "Half" ],
 		},
 		"pythonEnvAppends" : {
 			"LIBS" : [ "GafferBindings", "GafferScene", "GafferDispatch", "GafferImage", "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX" ],

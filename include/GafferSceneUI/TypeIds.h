@@ -56,6 +56,7 @@ enum TypeId
 	UVViewTypeId = 110662,
 	UVSceneTypeId = 110663,
 	HistoryPathTypeId = 110664,
+	SpotLightToolTypeId = 110665,
 
 	LastTypeId = 110700
 };

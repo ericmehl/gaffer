@@ -1,6 +1,6 @@
 ##########################################################################
 #
-#  Copyright (c) 2013, Image Engine Design Inc. All rights reserved.
+#  Copyright (c) 2023, Cinesite VFX Ltd. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are
@@ -34,30 +34,21 @@
 #
 ##########################################################################
 
-from .SceneViewTest import SceneViewTest
-from .ShaderAssignmentUITest import ShaderAssignmentUITest
-from .StandardGraphLayoutTest import StandardGraphLayoutTest
-from .SceneGadgetTest import SceneGadgetTest
-from .SceneInspectorTest import SceneInspectorTest
-from .HierarchyViewTest import HierarchyViewTest
-from .DocumentationTest import DocumentationTest
-from .ShaderViewTest import ShaderViewTest
-from .ShaderUITest import ShaderUITest
-from .TranslateToolTest import TranslateToolTest
-from .ScaleToolTest import ScaleToolTest
-from .RotateToolTest import RotateToolTest
-from .ContextAlgoTest import ContextAlgoTest
-from .CameraToolTest import CameraToolTest
-from .VisualiserTest import VisualiserTest
-from .TransformToolTest import TransformToolTest
-from .CropWindowToolTest import CropWindowToolTest
-from .NodeUITest import NodeUITest
-from .ParameterInspectorTest import ParameterInspectorTest
-from .AttributeInspectorTest import AttributeInspectorTest
-from .HistoryPathTest import HistoryPathTest
-from .LightEditorTest import LightEditorTest
-from .SetMembershipInspectorTest import SetMembershipInspectorTest
-from .SpotLightToolTest import SpotLightToolTest
+import os
 
-if __name__ == "__main__":
-	unittest.main()
+import IECore
+
+import GafferSceneUI
+
+with IECore.IgnoredExceptions( ImportError ) :
+
+    import GafferArnold
+    import GafferArnoldUI
+
+    GafferSceneUI.SpotLightTool.registerSpotLight( IECore.InternedString( "ai:light" ), "spot_light", "cone_angle" )
+
+if os.environ.get( "CYCLES_ROOT" ) and os.environ.get( "GAFFERCYCLES_HIDE_UI", "" ) != "1" :
+
+    GafferSceneUI.SpotLightTool.registerSpotLight( IECore.InternedString( "cycles:light" ), "spot_light", "spot_angle" )
+
+GafferSceneUI.SpotLightTool.registerSpotLight( IECore.InternedString( "light" ), "shaping", "shaping:cone:angle" )

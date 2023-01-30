@@ -42,6 +42,7 @@
 #include "GafferSceneUI/ScaleTool.h"
 #include "GafferSceneUI/SceneView.h"
 #include "GafferSceneUI/SelectionTool.h"
+#include "GafferSceneUI/SpotLightTool.h"
 #include "GafferSceneUI/TransformTool.h"
 #include "GafferSceneUI/TranslateTool.h"
 
@@ -107,19 +108,38 @@ boost::python::list selection( const TransformTool &tool )
 	return result;
 }
 
-bool selectionEditable( const TransformTool &tool )
+boost::python::list spotLightSelection( const SpotLightTool &tool )
+{
+	SpotLightTool::Selection selection;
+	{
+		IECorePython::ScopedGILRelease gilRelease;
+		selection = tool.selection();
+	}
+
+	boost::python::list result;
+	for( const auto &[path, inspection] : selection )
+	{
+		const std::string p = ScenePlug::pathToString( path );
+		result.append( boost::python::make_tuple( p, inspection ) );
+	}
+	return result;
+}
+
+template<typename T>
+bool selectionEditable( const T &tool )
 {
 	IECorePython::ScopedGILRelease gilRelease;
 	return tool.selectionEditable();
 }
 
+template<typename T>
 struct SelectionChangedSlotCaller
 {
-	void operator()( boost::python::object slot, TransformTool &t )
+	void operator()( boost::python::object slot, T &t )
 	{
 		try
 		{
-			slot( TransformToolPtr( &t ) );
+			slot( T::Ptr( &t ) );
 		}
 		catch( const error_already_set &e )
 		{
@@ -196,7 +216,7 @@ void GafferSceneUIModule::bindTools()
 	{
 		scope s = GafferBindings::NodeClass<TransformTool>( nullptr, no_init )
 			.def( "selection", &selection )
-			.def( "selectionEditable", &selectionEditable )
+			.def( "selectionEditable", &selectionEditable<TransformTool> )
 			.def( "selectionChangedSignal", &TransformTool::selectionChangedSignal, return_internal_reference<1>() )
 			.def( "handlesTransform", &TransformTool::handlesTransform )
 		;
@@ -228,7 +248,7 @@ void GafferSceneUIModule::bindTools()
 			.value( "World", TransformTool::World )
 		;
 
-		GafferBindings::SignalClass<TransformTool::SelectionChangedSignal, GafferBindings::DefaultSignalCaller<TransformTool::SelectionChangedSignal>, SelectionChangedSlotCaller>( "SelectionChangedSignal" );
+		GafferBindings::SignalClass<TransformTool::SelectionChangedSignal, GafferBindings::DefaultSignalCaller<TransformTool::SelectionChangedSignal>, SelectionChangedSlotCaller<TransformTool>>( "SelectionChangedSignal" );
 	}
 
 	GafferBindings::NodeClass<TranslateTool>( nullptr, no_init )
@@ -249,5 +269,24 @@ void GafferSceneUIModule::bindTools()
 	GafferBindings::NodeClass<CameraTool>( nullptr, no_init )
 		.def( init<SceneView *>() )
 	;
+
+	{
+		scope s = GafferBindings::NodeClass<SpotLightTool>( nullptr, no_init )
+			.def( init<SceneView *>() )
+			.def( "selection", &spotLightSelection )
+			.def ("selectionEditable", &selectionEditable<SpotLightTool> )
+			.def( "selectionChangedSignal", &SpotLightTool::selectionChangedSignal, return_internal_reference<1>() )
+			.def( "handleTransform", &SpotLightTool::handleTransform )
+			.def( "setAngle", &SpotLightTool::setAngle )
+			.def( "registerSpotLight", &SpotLightTool::registerSpotLight ).staticmethod( "registerSpotLight" )
+		;
+
+		// class_<SpotLightTool::Selection>( "Selection", no_init )
+		// 	.def( "path", &spotLightSelectionPath )
+		// 	.def( "inspection", &spotLightSelectionInspection )
+		// ;
+
+		GafferBindings::SignalClass<SpotLightTool::SelectionChangedSignal, GafferBindings::DefaultSignalCaller<SpotLightTool::SelectionChangedSignal>, SelectionChangedSlotCaller<SpotLightTool>>( "SelectionChangedSignal" );
+	}
 
 }
