@@ -677,6 +677,21 @@ if not haveInkscape and env["INKSCAPE"] != "disableGraphics" :
 	sys.stderr.write( "ERROR : Inkscape not found. Check INKSCAPE build variable.\n" )
 	Exit( 1 )
 
+inkscapeVersion = subprocess.check_output( [ env["INKSCAPE"], "--version" ], universal_newlines=True )
+if not inkscapeVersion :
+	env["INKSCAPE_MAJOR_VERSION"] = 0
+	env["INKSCAPE_MINOR_VERSION"] = 92
+	env["INKSCAPE_PATCH_VERSION"] = 5
+else :
+	inkscapeVersionMatch = re.search( r"Inkscape\s*([0-9]*)\.([0-9]*)\.([0-9]*)\s*\(.*\)", inkscapeVersion )
+	if len( inkscapeVersionMatch.groups() ) != 3 :
+		sys.stderr.write( "ERROR : Could not determine Inkscape version." )
+		Exit( 1 )
+	env["INKSCAPE_MAJOR_VERSION"] = int( inkscapeVersionMatch[ 1 ] )
+	env["INKSCAPE_MINOR_VERSION"] = int( inkscapeVersionMatch[ 2 ] )
+	env["INKSCAPE_PATCH_VERSION"] = int( inkscapeVersionMatch[ 3 ] )
+
+
 haveSphinx = conf.checkSphinx()
 
 if not conf.checkQtVersion() :
@@ -1739,13 +1754,22 @@ def buildImageCommand( source, target, env ) :
 		os.makedirs( outputDirectory )
 
 	args = [
-		"--export-png={}".format( os.path.abspath( filename ) ),
 		"--export-id={}".format( substitutions["id"] ),
 		"--export-width={:d}".format( substitutions["width"] ),
 		"--export-height={:d}".format( substitutions["height"] ),
 		"--export-background-opacity=0",
 		os.path.abspath( svgFilename )
 	]
+	if env["INKSCAPE_MAJOR_VERSION"] < 1 :
+		args = [
+			"--export-png={}".format( os.path.abspath( filename ) ),
+		]
+	else :
+		args = [
+			"--export-filename={}".format( os.path.abspath( filename ) ),
+			"--export-overwrite",
+		]
+	args.append( os.path.abspath( svgFilename ) )
 	subprocess.check_call( [ env["INKSCAPE"] ] + args )
 
 def validateAndFlattenImageOptions( imageOptions, svg ) :
