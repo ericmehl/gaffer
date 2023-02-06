@@ -1739,7 +1739,8 @@ def buildImageCommand( source, target, env ) :
 		os.makedirs( outputDirectory )
 
 	args = [
-		"--export-png={}".format( os.path.abspath( filename ) ),
+		"--export-filename={}".format( os.path.abspath( filename ) ),
+		"--export-overwrite",
 		"--export-id={}".format( substitutions["id"] ),
 		"--export-width={:d}".format( substitutions["width"] ),
 		"--export-height={:d}".format( substitutions["height"] ),
