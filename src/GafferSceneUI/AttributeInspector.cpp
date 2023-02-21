@@ -228,7 +228,7 @@ GafferScene::SceneAlgo::History::ConstPtr AttributeInspector::history() const
 		return nullptr;
 	}
 
-	return g_attributeHistoryCache.get( AttributeHistoryCacheKey( m_scene.get(), m_attribute ), Context::current()->canceller() );
+	return g_attributeHistoryCache.get( AttributeHistoryCacheKey( m_scene.get(), attributeToQuery( m_scene.get() ) ), Context::current()->canceller() );
 }
 
 IECore::ConstObjectPtr AttributeInspector::value( const GafferScene::SceneAlgo::History *history ) const
@@ -249,18 +249,20 @@ Gaffer::ValuePlugPtr AttributeInspector::source( const GafferScene::SceneAlgo::H
 		return nullptr;
 	}
 
+	InternedString attributeName = attributeToQuery( history->scene.get() );
+
 	if( auto light = runTimeCast<Light>( sceneNode ) )
 	{
-		if( m_attribute == g_lightMuteAttributeName )
+		if( attributeName == g_lightMuteAttributeName )
 		{
 			return light->mutePlug();
 		}
-		return attributePlug( light->visualiserAttributesPlug(), m_attribute );
+		return attributePlug( light->visualiserAttributesPlug(), attributeName );
 	}
 
 	else if( auto camera = runTimeCast<GafferScene::Camera>( sceneNode ) )
 	{
-		return attributePlug( camera->visualiserAttributesPlug(), m_attribute );
+		return attributePlug( camera->visualiserAttributesPlug(), attributeName );
 	}
 
 	else if( auto attributes = runTimeCast<GafferScene::Attributes>( sceneNode ) )
@@ -273,7 +275,7 @@ Gaffer::ValuePlugPtr AttributeInspector::source( const GafferScene::SceneAlgo::H
 		for( const auto &plug : NameValuePlug::Range( *attributes->attributesPlug() ) )
 		{
 			if(
-				plug->namePlug()->getValue() == m_attribute.string() &&
+				plug->namePlug()->getValue() == attributeName.string() &&
 				plug->enabledPlug()->getValue()
 			)
 			{
@@ -282,7 +284,7 @@ Gaffer::ValuePlugPtr AttributeInspector::source( const GafferScene::SceneAlgo::H
 				/// the rest of the scene).
 				editWarning = boost::str(
 					boost::format( "Edits to \"%s\" may affect other locations in the scene." )
-						% m_attribute.string()
+						% attributeName.string()
 				);
 				return plug;
 			}
@@ -299,7 +301,7 @@ Gaffer::ValuePlugPtr AttributeInspector::source( const GafferScene::SceneAlgo::H
 		for( const auto &tweak : TweakPlug::Range( *attributeTweaks->tweaksPlug() ) )
 		{
 			if(
-				tweak->namePlug()->getValue() == m_attribute.string() &&
+				tweak->namePlug()->getValue() == attributeName.string() &&
 				tweak->enabledPlug()->getValue()
 			)
 			{
@@ -313,7 +315,7 @@ Gaffer::ValuePlugPtr AttributeInspector::source( const GafferScene::SceneAlgo::H
 
 Inspector::EditFunctionOrFailure AttributeInspector::editFunction( Gaffer::EditScope *editScope, const GafferScene::SceneAlgo::History *history ) const
 {
-	InternedString attributeName = m_attribute;
+	InternedString attributeName = attributeToQuery( history->scene.get() );
 	if( auto attributeHistory = dynamic_cast<const SceneAlgo::AttributeHistory *>( history ) )
 	{
 		attributeName = attributeHistory->attributeName;
@@ -407,6 +409,11 @@ bool AttributeInspector::attributeExists() const
 	}
 
 	ConstCompoundObjectPtr attributes = m_scene->attributesPlug()->getValue();
-	return attributes->member<Object>( m_attribute );
+	return attributes->member<Object>( attributeToQuery( m_scene.get() ) );
 
+}
+
+InternedString AttributeInspector::attributeToQuery( const ScenePlug *scene ) const
+{
+	return m_attribute;
 }

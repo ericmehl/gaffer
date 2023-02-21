@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (c) 2022, Cinesite VFX Ltd. All rights reserved.
+//  Copyright (c) 2023, Cinesite VFX Ltd. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions are
@@ -34,11 +34,12 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef PRIVATE_METADATAVALUEPARAMETERINSPECTOR_H
+#define PRIVATE_METADATAVALUEPARAMETERINSPECTOR_H
 
 #include "GafferSceneUI/Export.h"
 
-#include "GafferSceneUI/Private/Inspector.h"
+#include "GafferSceneUI/Private/ParameterInspector.h"
 
 namespace GafferSceneUI
 {
@@ -46,51 +47,40 @@ namespace GafferSceneUI
 namespace Private
 {
 
-class GAFFERSCENEUI_API AttributeInspector : public Inspector
+/// Inspects a parameter whose name is given by looking up the value of `metadataKey`.
+/// The shader this parameter is inspected from is the first shader whose attribute
+/// name matches `attributePattern`. Gaffer's standard pattern matching is used to
+/// match attribute names to `attributePattern`.
+
+class GAFFERSCENEUI_API MetadataValueParameterInspector : public ParameterInspector
 {
 
 	public :
-
-		AttributeInspector(
+		MetadataValueParameterInspector(
 			const GafferScene::ScenePlugPtr &scene,
 			const Gaffer::PlugPtr &editScope,
-			IECore::InternedString attribute,
-			const std::string &name = "",
-			const std::string &type = "attribute"
+			const std::string &attributePattern,
+			const IECore::InternedString &metadataKey
 		);
 
-		IE_CORE_DECLAREMEMBERPTR( AttributeInspector );
+		IE_CORE_DECLAREMEMBERPTR( MetadataValueParameterInspector );
 
 	protected :
 
-		GafferScene::SceneAlgo::History::ConstPtr history() const override;
-		IECore::ConstObjectPtr value( const GafferScene::SceneAlgo::History *history) const override;
-		Gaffer::ValuePlugPtr source( const GafferScene::SceneAlgo::History *history, std::string &editWarning ) const override;
-		EditFunctionOrFailure editFunction( Gaffer::EditScope *scope, const GafferScene::SceneAlgo::History *history) const override;
-
-		/// \todo Should this take a `ScenePlug *` as an argument as well? As-is it uses
-		/// `m_scene` to check for attributes, which could fail if querying attributes
-		/// at a different point in the history.
-		bool attributeExists() const;
-
-		/// Returns the attribute to use for `history()` and related queries.
-		/// The default implementation returns `m_attribute`. Derived classes can override
-		/// this method to return a different attribute for queries.
-		virtual IECore::InternedString attributeToQuery( const GafferScene::ScenePlug *scene ) const;
+		IECore::InternedString attributeToQuery( const GafferScene::ScenePlug *scene ) const override;
+		const IECoreScene::ShaderNetwork::Parameter parameterToQuery( const GafferScene::ScenePlug *scene ) const override;
 
 	private :
 
-		void plugDirtied( Gaffer::Plug *plug );
-		void plugMetadataChanged( IECore::InternedString key, const Gaffer::Plug *plug );
-		void nodeMetadataChanged( IECore::InternedString key, const Gaffer::Node *node );
-
-		const GafferScene::ScenePlugPtr m_scene;
-		const IECore::InternedString m_attribute;
+		const std::string m_attributePattern;
+		const IECore::InternedString m_metadataKey;
 
 };
 
-IE_CORE_DECLAREPTR( AttributeInspector )
+IE_CORE_DECLAREPTR( MetadataValueParameterInspector );
 
 }  // namespace Private
 
 }  // namespace GafferSceneUI
+
+#endif // PRIVATE_METADATAVALUEPARAMETERINSPECTOR_H

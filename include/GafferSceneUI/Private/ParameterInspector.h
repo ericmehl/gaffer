@@ -64,6 +64,11 @@ class GAFFERSCENEUI_API ParameterInspector : public AttributeInspector
 
 		GafferScene::SceneAlgo::History::ConstPtr history() const override;
 
+		/// Returns the parameter to use for `history()` and related queries.
+		/// The default implementation returns `m_parameter`. Derived classes can override
+		/// this method to return a different parameter for queries.
+		virtual const IECoreScene::ShaderNetwork::Parameter parameterToQuery( const GafferScene::ScenePlug *scene ) const;
+
 	private :
 
 		IECore::ConstObjectPtr value( const GafferScene::SceneAlgo::History *history ) const override;

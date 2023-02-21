@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (c) 2013, Image Engine Design Inc. All rights reserved.
+//  Copyright (c) 2023, Cinesite VFX Ltd. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions are
@@ -34,41 +34,59 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "GafferSceneUI/Private/MetadataValueParameterInspector.h"
 
-#include "GafferSceneTest/Export.h"
-#include "GafferSceneTest/TypeIds.h"
+#include "Gaffer/Metadata.h"
 
-#include "GafferScene/Light.h"
+#include "IECore/StringAlgo.h"
 
-namespace GafferSceneTest
+using namespace IECore;
+using namespace IECoreScene;
+using namespace Gaffer;
+using namespace GafferScene;
+using namespace GafferSceneUI::Private;
+
+MetadataValueParameterInspector::MetadataValueParameterInspector(
+	const ScenePlugPtr &scene,
+	const PlugPtr &editScope,
+	const std::string &attributePattern,
+	const InternedString &metadataKey
+) :
+	ParameterInspector( scene, editScope, "", ShaderNetwork::Parameter() ),
+	m_attributePattern( attributePattern ),
+	m_metadataKey( metadataKey )
 {
 
-class GAFFERSCENETEST_API TestLight : public GafferScene::Light
+}
+
+InternedString MetadataValueParameterInspector::attributeToQuery( const ScenePlug *scene ) const
 {
+	auto attributes = scene->attributesPlug()->getValue();
 
-	public :
-
-		enum class LightType
+	for( const auto &[attributeName, value] : attributes->members() )
+	{
+		if( StringAlgo::match( attributeName, m_attributePattern ) && value->typeId() == ShaderNetworkTypeId )
 		{
-			Generic,
-			Spot
-		};
+			return attributeName;
+		}
+	}
 
-		TestLight( const std::string &name=defaultName<TestLight>(), LightType type = LightType::Generic );
-		~TestLight() override;
+	return "";
+}
 
-		GAFFER_NODE_DECLARE_TYPE( GafferSceneTest::TestLight, TestLightTypeId, GafferScene::Light );
+const ShaderNetwork::Parameter MetadataValueParameterInspector::parameterToQuery( const ScenePlug *scene ) const
+{
+	auto attributes = scene->attributesPlug()->getValue();
+	if( auto shaderNetwork = attributes->member<ShaderNetwork>( attributeToQuery( scene ) ) )
+	{
+		const IECoreScene::Shader *shader = shaderNetwork->outputShader();
+		InternedString metadataTarget = shader->getType() + ":" + shader->getName();
 
-	protected :
+		if( auto parameterData = Metadata::value<StringData>( metadataTarget, m_metadataKey ) )
+		{
+			return ShaderNetwork::Parameter( "", parameterData->readable() );
+		}
+	}
 
-		void hashLight( const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
-		IECoreScene::ConstShaderNetworkPtr computeLight( const Gaffer::Context *context ) const override;
-
-	private :
-
-		const LightType m_type;
-
-};
-
-} // namespace GafferSceneTest
+	return ShaderNetwork::Parameter();
+}

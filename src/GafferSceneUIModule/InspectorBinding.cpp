@@ -40,6 +40,7 @@
 
 #include "GafferSceneUI/Private/Inspector.h"
 #include "GafferSceneUI/Private/AttributeInspector.h"
+#include "GafferSceneUI/Private/MetadataValueParameterInspector.h"
 #include "GafferSceneUI/Private/ParameterInspector.h"
 #include "GafferSceneUI/Private/SetMembershipInspector.h"
 
@@ -146,7 +147,15 @@ void GafferSceneUIModule::bindInspector()
 	RefCountedClass<ParameterInspector, Inspector>( "ParameterInspector" )
 		.def(
 			init<const ScenePlugPtr &, const PlugPtr &, IECore::InternedString, const ShaderNetwork::Parameter &>(
-				( arg( "scene" ), arg( "attribute" ), arg( "parameter" ) )
+				( arg( "scene" ), arg( "editScope" ), arg( "attribute" ), arg( "parameter" ) )
+			)
+		)
+	;
+
+	RefCountedClass<MetadataValueParameterInspector, ParameterInspector>( "MetadataValueParameterInspector" )
+		.def(
+			init<const ScenePlugPtr &, const PlugPtr &, const std::string &, const IECore::InternedString &>(
+				( arg( "scene" ), arg( "editScope"), arg( "attributePattern" ), arg( "metadataKey" ) )
 			)
 		)
 	;

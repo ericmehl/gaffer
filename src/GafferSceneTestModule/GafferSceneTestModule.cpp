@@ -67,8 +67,25 @@ BOOST_PYTHON_MODULE( _GafferSceneTest )
 
 	GafferBindings::DependencyNodeClass<CompoundObjectSource>();
 	GafferBindings::NodeClass<TestShader>();
-	GafferBindings::NodeClass<TestLight>();
 	GafferBindings::NodeClass<TestLightFilter>();
+
+	GafferBindings::NodeClass<TestLight> testLightClass;
+	{
+		scope s = testLightClass;
+
+		enum_<GafferSceneTest::TestLight::LightType>( "LightType" )
+			.value( "Generic", GafferSceneTest::TestLight::LightType::Generic )
+			.value( "Spot", GafferSceneTest::TestLight::LightType::Spot )
+		;
+	}
+	testLightClass
+		.def(
+			init<const std::string &, GafferSceneTest::TestLight::LightType>( (
+				boost::python::arg_( "name" ) = Gaffer::GraphComponent::defaultName<TestLight>(),
+				boost::python::arg_( "type" ) = GafferSceneTest::TestLight::LightType::Generic
+			) )
+		)
+	;
 
 	def( "traverseScene", &traverseSceneWrapper );
 	def( "connectTraverseSceneToPlugDirtiedSignal", &connectTraverseSceneToPlugDirtiedSignal );

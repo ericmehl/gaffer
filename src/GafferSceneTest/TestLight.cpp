@@ -45,12 +45,18 @@ using namespace GafferSceneTest;
 
 GAFFER_NODE_DEFINE_TYPE( TestLight )
 
-TestLight::TestLight( const std::string &name )
-	:	Light( name )
+TestLight::TestLight( const std::string &name, LightType type )
+	:	Light( name ), m_type( type )
 {
 	parametersPlug()->addChild( new Color3fPlug( "intensity" ) );
 	parametersPlug()->addChild( new FloatPlug( "exposure" ) );
 	parametersPlug()->addChild( new BoolPlug( "areaLight" ) );
+
+	if( type == LightType::Spot )
+	{
+		parametersPlug()->addChild( new FloatPlug( "coneAngle" ) );
+		parametersPlug()->addChild( new FloatPlug( "penumbraAngle" ) );
+	}
 }
 
 TestLight::~TestLight()
@@ -70,6 +76,13 @@ IECoreScene::ConstShaderNetworkPtr TestLight::computeLight( const Gaffer::Contex
 	IECoreScene::ShaderPtr shader = new IECoreScene::Shader( "testLight", "light" );
 	shader->parameters()["intensity"] = new IECore::Color3fData( parametersPlug()->getChild<Color3fPlug>( "intensity" )->getValue() );
 	shader->parameters()["exposure"] = new IECore::FloatData( parametersPlug()->getChild<FloatPlug>( "exposure" )->getValue() );
+
+	if( m_type == LightType::Spot )
+	{
+		shader->parameters()["coneAngle"] = new IECore::FloatData( parametersPlug()->getChild<FloatPlug>( "coneAngle" )->getValue() );
+		shader->parameters()["penumbraAngle"] = new IECore::FloatData( parametersPlug()->getChild<FloatPlug>( "penumbraAngle" )->getValue() );
+	}
+
 	shader->parameters()["__areaLight"] = new IECore::BoolData( parametersPlug()->getChild<BoolPlug>( "areaLight" )->getValue() );
 
 	IECoreScene::ShaderNetworkPtr network = new IECoreScene::ShaderNetwork();

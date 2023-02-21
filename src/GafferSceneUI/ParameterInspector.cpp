@@ -77,6 +77,11 @@ GafferScene::SceneAlgo::History::ConstPtr ParameterInspector::history() const
 	return AttributeInspector::history();
 }
 
+const IECoreScene::ShaderNetwork::Parameter ParameterInspector::parameterToQuery( const ScenePlug *scene ) const
+{
+	return m_parameter;
+}
+
 IECore::ConstObjectPtr ParameterInspector::value( const GafferScene::SceneAlgo::History *history ) const
 {
 	auto attribute = AttributeInspector::value( history );
@@ -86,13 +91,14 @@ IECore::ConstObjectPtr ParameterInspector::value( const GafferScene::SceneAlgo::
 		return nullptr;
 	}
 
-	const IECoreScene::Shader *shader = m_parameter.shader.string().empty() ? shaderNetwork->outputShader() : shaderNetwork->getShader( m_parameter.shader );
+	const ShaderNetwork::Parameter parameter = parameterToQuery( history->scene.get() );
+	const IECoreScene::Shader *shader = parameter.shader.string().empty() ? shaderNetwork->outputShader() : shaderNetwork->getShader( parameter.shader );
 	if( !shader )
 	{
 		return nullptr;
 	}
 
-	return shader->parametersData()->member( m_parameter.name );
+	return shader->parametersData()->member( parameter.name );
 }
 
 Gaffer::ValuePlugPtr ParameterInspector::source( const GafferScene::SceneAlgo::History *history, std::string &editWarning ) const
@@ -103,13 +109,15 @@ Gaffer::ValuePlugPtr ParameterInspector::source( const GafferScene::SceneAlgo::H
 		return nullptr;
 	}
 
+	const ShaderNetwork::Parameter parameter = parameterToQuery( history->scene.get() );
+
 	if( auto light = runTimeCast<Light>( sceneNode ) )
 	{
-		return light->parametersPlug()->getChild<ValuePlug>( m_parameter.name );
+		return light->parametersPlug()->getChild<ValuePlug>( parameter.name );
 	}
 	else if( auto lightFilter = runTimeCast<LightFilter>( sceneNode ) )
 	{
-		return lightFilter->parametersPlug()->getChild<ValuePlug>( m_parameter.name );
+		return lightFilter->parametersPlug()->getChild<ValuePlug>( parameter.name );
 	}
 	else if( auto shaderAssignment = runTimeCast<ShaderAssignment>( sceneNode ) )
 	{
@@ -128,7 +136,7 @@ Gaffer::ValuePlugPtr ParameterInspector::source( const GafferScene::SceneAlgo::H
 
 		if( auto shader = runTimeCast<GafferScene::Shader>( node ) )
 		{
-			if( auto parameterPlug = shader->parametersPlug()->getChild<ValuePlug>( m_parameter.name ) )
+			if( auto parameterPlug = shader->parametersPlug()->getChild<ValuePlug>( parameter.name ) )
 			{
 				/// \todo This is overly conservative. We should test to see if there is more than
 				/// one filter match (but make sure to early-out once two are found, rather than test
@@ -151,7 +159,7 @@ Gaffer::ValuePlugPtr ParameterInspector::source( const GafferScene::SceneAlgo::H
 		for( const auto &tweak : TweakPlug::Range( *shaderTweaks->tweaksPlug() ) )
 		{
 			/// \todo Consider shader as well as name
-			if( tweak->namePlug()->getValue() == m_parameter.name.string() && tweak->enabledPlug()->getValue() )
+			if( tweak->namePlug()->getValue() == parameter.name.string() && tweak->enabledPlug()->getValue() )
 			{
 				return tweak;
 			}
@@ -165,11 +173,13 @@ Inspector::EditFunctionOrFailure ParameterInspector::editFunction( Gaffer::EditS
 {
 	auto attributeHistory = static_cast<const SceneAlgo::AttributeHistory *>( history );
 
+	const ShaderNetwork::Parameter parameter = parameterToQuery( history->scene.get() );
+
 	const GraphComponent *readOnlyReason = EditScopeAlgo::parameterEditReadOnlyReason(
 		editScope,
 		history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName ),
 		attributeHistory->attributeName,
-		m_parameter
+		parameter
 	);
 
 	if( readOnlyReason )
@@ -188,7 +198,7 @@ Inspector::EditFunctionOrFailure ParameterInspector::editFunction( Gaffer::EditS
 			editScope = EditScopePtr( editScope ),
 			attributeName = attributeHistory->attributeName,
 			context = attributeHistory->context,
-			parameter = m_parameter
+			parameter = parameter
 		] () {
 				Context::Scope scope( context.get() );
 				return EditScopeAlgo::acquireParameterEdit(
