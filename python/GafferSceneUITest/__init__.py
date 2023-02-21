@@ -58,6 +58,7 @@ from .HistoryPathTest import HistoryPathTest
 from .LightEditorTest import LightEditorTest
 from .SetMembershipInspectorTest import SetMembershipInspectorTest
 from .SetEditorTest import SetEditorTest
+from .LightToolTest import LightToolTest
 
 if __name__ == "__main__":
 	unittest.main()

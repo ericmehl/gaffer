@@ -65,7 +65,7 @@ InternedString MetadataValueParameterInspector::attributeToQuery( const ScenePlu
 
 	for( const auto &[attributeName, value] : attributes->members() )
 	{
-		if( StringAlgo::match( attributeName, m_attributePattern ) && value->typeId() == ShaderNetworkTypeId )
+		if( StringAlgo::match( attributeName, m_attributePattern ) && value->typeId() == (IECore::TypeId)ShaderNetworkTypeId )
 		{
 			return attributeName;
 		}
