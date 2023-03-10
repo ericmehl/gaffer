@@ -368,132 +368,97 @@ class SpotLightHandle : public LightToolHandle
 				return true;
 			}
 
-			// Similar to the `ScaleHandle`, approach zero scale asymptotically for better control
-			/// \todo Is this really desireable? It prevents, for example, making the penumbra
-			/// angle all the way to 0.
-			const float newValueScale = scaleFactor( m_drag.updatedPosition( event ) - m_drag.startPosition() );
+			float newValueScale = scaleFactor( m_drag.updatedPosition( event ) - m_drag.startPosition() );
 
 			// Check all the selected lights to see if they can take on the new value that would result
 			// from `newValueScale`. If a light can't take on the new value, adjust `newValueScale` so
 			// that it can. If we only conditionally set the value, the ability to actually hit the
 			// min and max allowable values would unintuitively depend on how fast the user drags.
 
-			// for( auto &[coneInspection, originalConeAngle, penumbraInspection, originalPenumbraAngle] : m_inspections )
-			// {
-			// 	const float newStartConeAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
-			// 	const float newConeAngle = newStartConeAngle * newScaleValue
-			// 	if( m_handleType == HandleType::Inner )
-			// 	{
-			// 		const float newStartValue = originalConeAngle != 0 ? originalConeAngle : 1.f;
-			// 		const float newValue = newStartValue * newValueScale;
+			for( auto &[coneInspection, originalConeAngle, penumbraInspection, originalPenumbraAngle] : m_inspections )
+			{
+				auto [coneAngle, penumbraAngle] = scaledAngles(
+					originalConeAngle,
+					penumbraInspection ? std::optional<float>( originalPenumbraAngle ) : std::nullopt,
+					newValueScale
+				);
 
-			// 		if( penumbraInspection && m_penumbraType == "inset" && newValue * 0.5 - originalPenumbraAngle < 0 )
-			// 		{
-			// 			newValueScale = std::max( newValueScale, originalPenumbraAngle / ( 0.5f * newStartValue ) );
-			// 		}
+				const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+				const float newPenumbraStartAngle = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
 
-			// 		if( newValue > 180.f )
-			// 		{
-			// 			newValueScale = std::min( newValueScale, 180.f / newStartValue );
-			// 		}
-			// 	}
-			// 	else
-			// 	{
-			// 		const float newStartValue = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
-			// 		const float newValue = newStartValue * newValueScale;
+				if(
+					(
+						!m_penumbraType ||
+						m_penumbraType == "inset" ||
+						m_penumbraType == "absolute" ||
+						!penumbraInspection
+					) && coneAngle && coneAngle.value() > 180.f )
+				{
+					newValueScale = std::min( newValueScale, 180.f / newConeStartAngle );
+				}
+				else if(
+					m_penumbraType == "outset" &&
+					penumbraAngle &&
+					originalConeAngle + penumbraAngle.value() * 2.f > 180.f
+				)
+				{
+					newValueScale = std::min( newValueScale, 180.f / ( originalConeAngle + newPenumbraStartAngle * 2.f ) );
+				}
 
-			// 		if( m_penumbraType == "inset" && originalConeAngle * 0.5 - newValue < 0 )
-			// 		{
-			// 			newValueScale = std::min( newValueScale, 0.5f * originalConeAngle / newStartValue );
-			// 		}
-			// 		// if( m_penumbraType == "outset" && newValue * 2.f + originalConeAngle > 180.f )
-			// 		// {
-			// 		// 	canApply = false;
-			// 		// }
-			// 	}
-			// }
+				// if( m_handleType == HandleType::Inner )
+				// {
+				// 	if( penumbraInspection && m_penumbraType == "inset" && coneAngle * 0.5 - originalPenumbraAngle < 0 )
+				// 	{
+				// 		newValueScale = std::max( newValueScale, originalPenumbraAngle / ( 0.5f * newStartValue ) );
+				// 	}
+
+				// 	if( coneAngle && coneAngle.value() > 180.f )
+				// 	{
+				// 		newValueScale = std::min( newValueScale, 180.f / newStartValue );
+				// 	}
+				// }
+				// else
+				// {
+				// 	const float newStartValue = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
+				// 	const float newValue = newStartValue * newValueScale;
+
+				// 	if( m_penumbraType == "inset" && originalConeAngle * 0.5 - newValue < 0 )
+				// 	{
+				// 		newValueScale = std::min( newValueScale, 0.5f * originalConeAngle / newStartValue );
+				// 	}
+				// 	if( m_penumbraType == "outset" && newValue * 2.f + originalConeAngle > 180.f )
+				// 	{
+				// 		canApply = false;
+				// 	}
+				// }
+			}
 
 			m_valueScale = newValueScale;
 
 			for( auto &[coneInspection, originalConeAngle, penumbraInspection, originalPenumbraAngle] : m_inspections )
 			{
-				auto conePlug = coneInspection->acquireEdit();
-				auto coneFloatPlug = runTimeCast<FloatPlug>( activeValuePlug( conePlug.get() ) );
-				assert( coneFloatPlug );
+				auto [coneAngle, penumbraAngle] = scaledAngles(
+					originalConeAngle,
+					penumbraInspection ? std::optional<float>( originalPenumbraAngle ) : std::nullopt,
+					newValueScale
+				);
 
-				if( m_handleType == HandleType::Inner )
+				if( coneAngle )
 				{
-					if( penumbraInspection )
-					{
-						auto penumbraPlug = penumbraInspection->acquireEdit();
-						auto penumbraFloatPlug = runTimeCast<FloatPlug>( activeValuePlug( penumbraPlug.get() ) );
-						assert( penumbraFloatPlug );
+					auto conePlug = coneInspection->acquireEdit();
+					auto coneFloatPlug = runTimeCast<FloatPlug>( activeValuePlug( conePlug.get() ) );
+					assert( coneFloatPlug );
 
-						if( !m_penumbraType || m_penumbraType == "inset" )
-						{
-							if( originalPenumbraAngle == 0 )
-							{
-								const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
-								coneFloatPlug->setValue( newConeStartAngle * m_valueScale );
-							}
-							else
-							{
-								const float newPenumbraStartAngle = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
-								// Smaller `m_valueScale` needs to result in larger penumbra
-								// values, so we invert `m_valueScale`.
-								const float inverse = -( m_valueScale - 1.f ) * rasterScaleFactor().x;
-								penumbraFloatPlug->setValue(
-									newPenumbraStartAngle * inverseScaleFactor( m_valueScale )
-								);
-							}
-						}
-						else if( m_penumbraType == "outset" )
-						{
-							const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
-							const float newConeAngle = newConeStartAngle * m_valueScale;
-							coneFloatPlug->setValue( newConeAngle );
-							if( originalPenumbraAngle != 0 )
-							{
-								penumbraFloatPlug->setValue(
-									originalConeAngle * 0.5f + originalPenumbraAngle - newConeAngle * 0.5f
-								);
-							}
-						}
-						else if( m_penumbraType == "absolute" )
-						{
-
-						}
-
-					}
-					else
-					{
-						const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
-						coneFloatPlug->setValue( newConeStartAngle * m_valueScale );
-					}
+					coneFloatPlug->setValue( coneAngle.value() );
 				}
-				else
+
+				if( penumbraAngle )
 				{
 					auto penumbraPlug = penumbraInspection->acquireEdit();
 					auto penumbraFloatPlug = runTimeCast<FloatPlug>( activeValuePlug( penumbraPlug.get() ) );
 					assert( penumbraFloatPlug );
 
-					if( !m_penumbraType || m_penumbraType == "inset" )
-					{
-						const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
-						const float newConeAngle = newConeStartAngle * m_valueScale;
-
-						coneFloatPlug->setValue( newConeAngle );
-						penumbraFloatPlug->setValue( newConeAngle * 0.5f - originalConeAngle * 0.5f + originalPenumbraAngle  );
-					}
-					else if( m_penumbraType == "outset" )
-					{
-						const float newPenumbraStartAngle = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
-						penumbraFloatPlug->setValue( newPenumbraStartAngle * m_valueScale );
-					}
-					else if( m_penumbraType == "absolute" )
-					{
-
-					}
+					penumbraFloatPlug->setValue( penumbraAngle.value() );
 				}
 			}
 
@@ -716,6 +681,74 @@ class SpotLightHandle : public LightToolHandle
 			}
 
 			return angle;
+		}
+
+		std::pair<std::optional<float>, std::optional<float>> scaledAngles(
+			const float originalConeAngle,
+			const std::optional<float> originalPenumbraAngle,
+			const float valueScale
+		) const
+		{
+			std::optional<float> coneAngle = std::nullopt;
+			std::optional<float> penumbraAngle = std::nullopt;
+
+			if( m_handleType == HandleType::Inner )
+			{
+				if( originalPenumbraAngle && m_penumbraType != "absolute" )
+				{
+					if( !m_penumbraType || m_penumbraType == "inset" )
+					{
+						if( originalPenumbraAngle.value() == 0 )
+						{
+							const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+							penumbraAngle = newConeStartAngle * valueScale;
+						}
+						else
+						{
+							const float newPenumbraStartAngle = originalPenumbraAngle.value() != 0 ? originalPenumbraAngle.value() : 1.f;
+							// Smaller `valueScale` needs to result in larger penumbra
+							// values, so we invert `valueScale`.
+							const float inverse = -( valueScale - 1.f ) * rasterScaleFactor().x;
+							penumbraAngle = newPenumbraStartAngle * inverseScaleFactor( valueScale );
+						}
+					}
+					else if( m_penumbraType == "outset" )
+					{
+						const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+						const float newConeAngle = newConeStartAngle * valueScale;
+						coneAngle = newConeAngle;
+						if( originalPenumbraAngle != 0 )
+						{
+							penumbraAngle = originalConeAngle * 0.5f + originalPenumbraAngle.value() - newConeAngle * 0.5f;
+						}
+					}
+				}
+				else
+				{
+					const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+					coneAngle = newConeStartAngle * valueScale;
+				}
+			}
+			else
+			{
+				assert( originalPenumbraAngle );
+
+				if( !m_penumbraType || m_penumbraType == "inset" )
+				{
+					const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+					const float newConeAngle = newConeStartAngle * valueScale;
+
+					coneAngle = newConeAngle;
+					penumbraAngle = newConeAngle * 0.5f - originalConeAngle * 0.5f + originalPenumbraAngle.value();
+				}
+				else if( m_penumbraType == "outset" || m_penumbraType == "absolute" )
+				{
+					const float newPenumbraStartAngle = originalPenumbraAngle.value() != 0 ? originalPenumbraAngle.value() : 1.f;
+					penumbraAngle = newPenumbraStartAngle * valueScale;
+				}
+			}
+
+			return {coneAngle, penumbraAngle};
 		}
 
 		const float scaleFactor( const float delta ) const
