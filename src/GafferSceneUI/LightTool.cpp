@@ -63,6 +63,8 @@
 
 #include "IECoreScene/MeshPrimitive.h"
 
+#include "IECore/AngleConversion.h"
+
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/bind/bind.hpp"
 
@@ -184,6 +186,8 @@ class LightToolHandle : public Handle
 
 	public :
 
+		/// \todo SpotLightTool is not using `metadataKey` because it knows what keys it needs.
+		/// If that is going to be the case for other tools, we should remove it.
 		LightToolHandle(
 			const std::string &attributePattern,
 			const InternedString &metadataKey,
@@ -200,23 +204,12 @@ class LightToolHandle : public Handle
 
 		}
 
-		// Update `m_inspector` so its `dirtiedSignal()` triggers correctly. Derived classes
-		// should call this parent method first, then implement custom logic.
+		// Update inspectors and other data needed to display and interact with the tool.
+		// Derived classes should call this parent method first, then implement custom logic.
 		virtual void update( ScenePathPtr scenePath, const PlugPtr &editScope )
 		{
 			m_handleScenePath = scenePath;
-
-			m_inspector = new MetadataValueParameterInspector(
-				m_handleScenePath->getScene(),
-				m_editScope,
-				m_attributePattern,
-				m_metadataKey
-			);
-		}
-
-		MetadataValueParameterInspector *inspector() const
-		{
-			return m_inspector.get();
+			m_editScope = editScope;
 		}
 
 		const std::string attributePattern() const
@@ -245,9 +238,10 @@ class LightToolHandle : public Handle
 		// to the light.
 		virtual void updateTransform() = 0;
 
-	private :
+		// Must be implemented by derived classes to return all of the inspectors the handle uses.
+		virtual std::vector<GafferSceneUI::Private::InspectorPtr> inspectors() const = 0;
 
-		MetadataValueParameterInspectorPtr m_inspector;
+	private :
 
 		ScenePathPtr m_handleScenePath;
 
@@ -264,8 +258,8 @@ class SpotLightHandle : public LightToolHandle
 
 		enum class HandleType
 		{
-			Cone,
-			Penumbra
+			Inner,
+			Outer
 		};
 
 		SpotLightHandle(
@@ -291,11 +285,11 @@ class SpotLightHandle : public LightToolHandle
 		{
 			LightToolHandle::update( scenePath, editScope );
 
-			m_otherInspector = new MetadataValueParameterInspector(
+			m_coneAngleInspector = new MetadataValueParameterInspector(
 				handleScenePath()->getScene(),
 				this->editScope(),
 				attributePattern(),
-				m_handleType == HandleType::Cone ? "penumbraAngleParameter" : "coneAngleParameter"
+				"coneAngleParameter"
 			);
 
 			auto attributes = handleScenePath()->getScene()->attributes( handleScenePath()->names() );
@@ -323,14 +317,27 @@ class SpotLightHandle : public LightToolHandle
 							m_lensRadius = lensRadiusData->readable();
 						}
 					}
+
+					m_penumbraAngleInspector = nullptr;
+					if( auto penumbraParameterName = Metadata::value<StringData>( shaderAttribute, "penumbraAngleParameter" ) )
+					{
+						m_penumbraAngleInspector = new MetadataValueParameterInspector(
+							handleScenePath()->getScene(),
+							this->editScope(),
+							attributePattern(),
+							"penumbraAngleParameter"
+						);
+					}
+
+					break;
 				}
 			}
 		}
 
 		void addDragInspection() override
 		{
-			auto coneAngleInspection = m_handleType == HandleType::Cone ? inspector()->inspect() : m_otherInspector->inspect();
-			auto penumbraAngleInspection = m_handleType == HandleType::Cone ? m_otherInspector->inspect() : inspector()->inspect();
+			auto coneAngleInspection = m_coneAngleInspector->inspect();
+			auto penumbraAngleInspection = m_penumbraAngleInspector ? m_penumbraAngleInspector->inspect() : nullptr;
 
 			ConstFloatDataPtr originalConeAngleData = runTimeCast<const IECore::FloatData>( coneAngleInspection->value() );
 			assert( originalConeAngleData );  // Handle visibility and enabled state should ensure this is valid
@@ -364,80 +371,129 @@ class SpotLightHandle : public LightToolHandle
 			// Similar to the `ScaleHandle`, approach zero scale asymptotically for better control
 			/// \todo Is this really desireable? It prevents, for example, making the penumbra
 			/// angle all the way to 0.
-			float delta = (
-				m_penumbraType == "inset" && m_handleType == HandleType::Penumbra
-			) ? ( m_drag.startPosition() - m_drag.updatedPosition( event ) ) : ( m_drag.updatedPosition( event ) - m_drag.startPosition() );
-
-			float newValueScale =  delta / rasterScaleFactor().x;
-			if( newValueScale < 0 )
-			{
-				newValueScale = ( 1.f / ( 1.f - newValueScale ) ) - 1.f;
-			}
-			newValueScale += 1.f;
+			const float newValueScale = scaleFactor( m_drag.updatedPosition( event ) - m_drag.startPosition() );
 
 			// Check all the selected lights to see if they can take on the new value that would result
 			// from `newValueScale`. If a light can't take on the new value, adjust `newValueScale` so
 			// that it can. If we only conditionally set the value, the ability to actually hit the
-			// min and max allowable values would depend on how fast the user drags, which is not intuitive.
+			// min and max allowable values would unintuitively depend on how fast the user drags.
 
-			for( auto &[coneInspection, originalConeAngle, penumbraInspection, originalPenumbraAngle] : m_inspections )
-			{
-				if( m_handleType == HandleType::Cone )
-				{
-					const float newStartValue = originalConeAngle != 0 ? originalConeAngle : 1.f;
-					const float newValue = newStartValue * newValueScale;
+			// for( auto &[coneInspection, originalConeAngle, penumbraInspection, originalPenumbraAngle] : m_inspections )
+			// {
+			// 	const float newStartConeAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+			// 	const float newConeAngle = newStartConeAngle * newScaleValue
+			// 	if( m_handleType == HandleType::Inner )
+			// 	{
+			// 		const float newStartValue = originalConeAngle != 0 ? originalConeAngle : 1.f;
+			// 		const float newValue = newStartValue * newValueScale;
 
-					if( penumbraInspection && m_penumbraType == "inset" && newValue * 0.5 - originalPenumbraAngle < 0 )
-					{
-						newValueScale = std::max( newValueScale, originalPenumbraAngle / ( 0.5f * newStartValue ) );
-					}
+			// 		if( penumbraInspection && m_penumbraType == "inset" && newValue * 0.5 - originalPenumbraAngle < 0 )
+			// 		{
+			// 			newValueScale = std::max( newValueScale, originalPenumbraAngle / ( 0.5f * newStartValue ) );
+			// 		}
 
-					if( newValue > 180.f )
-					{
-						newValueScale = std::min( newValueScale, 180.f / newStartValue );
-					}
-				}
-				else
-				{
-					const float newStartValue = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
-					const float newValue = newStartValue * newValueScale;
+			// 		if( newValue > 180.f )
+			// 		{
+			// 			newValueScale = std::min( newValueScale, 180.f / newStartValue );
+			// 		}
+			// 	}
+			// 	else
+			// 	{
+			// 		const float newStartValue = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
+			// 		const float newValue = newStartValue * newValueScale;
 
-					if( m_penumbraType == "inset" && originalConeAngle * 0.5 - newValue < 0 )
-					{
-						newValueScale = std::min( newValueScale, 0.5f * originalConeAngle / newStartValue );
-					}
-					// if( m_penumbraType == "outset" && newValue * 2.f + originalConeAngle > 180.f )
-					// {
-					// 	canApply = false;
-					// }
-				}
-			}
+			// 		if( m_penumbraType == "inset" && originalConeAngle * 0.5 - newValue < 0 )
+			// 		{
+			// 			newValueScale = std::min( newValueScale, 0.5f * originalConeAngle / newStartValue );
+			// 		}
+			// 		// if( m_penumbraType == "outset" && newValue * 2.f + originalConeAngle > 180.f )
+			// 		// {
+			// 		// 	canApply = false;
+			// 		// }
+			// 	}
+			// }
 
 			m_valueScale = newValueScale;
 
 			for( auto &[coneInspection, originalConeAngle, penumbraInspection, originalPenumbraAngle] : m_inspections )
 			{
-				if( m_handleType == HandleType::Cone )
+				auto conePlug = coneInspection->acquireEdit();
+				auto coneFloatPlug = runTimeCast<FloatPlug>( activeValuePlug( conePlug.get() ) );
+				assert( coneFloatPlug );
+
+				if( m_handleType == HandleType::Inner )
 				{
-					float newValue = originalConeAngle != 0 ? originalConeAngle : 1.f;
-					newValue *= newValueScale;
+					if( penumbraInspection )
+					{
+						auto penumbraPlug = penumbraInspection->acquireEdit();
+						auto penumbraFloatPlug = runTimeCast<FloatPlug>( activeValuePlug( penumbraPlug.get() ) );
+						assert( penumbraFloatPlug );
 
-					auto plug = coneInspection->acquireEdit();
-					auto floatPlug = runTimeCast<FloatPlug>( activeValuePlug( plug.get() ) );
-					assert( floatPlug );
+						if( !m_penumbraType || m_penumbraType == "inset" )
+						{
+							if( originalPenumbraAngle == 0 )
+							{
+								const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+								coneFloatPlug->setValue( newConeStartAngle * m_valueScale );
+							}
+							else
+							{
+								const float newPenumbraStartAngle = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
+								// Smaller `m_valueScale` needs to result in larger penumbra
+								// values, so we invert `m_valueScale`.
+								const float inverse = -( m_valueScale - 1.f ) * rasterScaleFactor().x;
+								penumbraFloatPlug->setValue(
+									newPenumbraStartAngle * inverseScaleFactor( m_valueScale )
+								);
+							}
+						}
+						else if( m_penumbraType == "outset" )
+						{
+							const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+							const float newConeAngle = newConeStartAngle * m_valueScale;
+							coneFloatPlug->setValue( newConeAngle );
+							if( originalPenumbraAngle != 0 )
+							{
+								penumbraFloatPlug->setValue(
+									originalConeAngle * 0.5f + originalPenumbraAngle - newConeAngle * 0.5f
+								);
+							}
+						}
+						else if( m_penumbraType == "absolute" )
+						{
 
-					floatPlug->setValue( newValue );
+						}
+
+					}
+					else
+					{
+						const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+						coneFloatPlug->setValue( newConeStartAngle * m_valueScale );
+					}
 				}
 				else
 				{
-					float newValue = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
-					newValue *= m_valueScale;
+					auto penumbraPlug = penumbraInspection->acquireEdit();
+					auto penumbraFloatPlug = runTimeCast<FloatPlug>( activeValuePlug( penumbraPlug.get() ) );
+					assert( penumbraFloatPlug );
 
-					auto plug = penumbraInspection->acquireEdit();
-					auto floatPlug = runTimeCast<FloatPlug>( activeValuePlug( plug.get() ) );
-					assert( floatPlug );
+					if( !m_penumbraType || m_penumbraType == "inset" )
+					{
+						const float newConeStartAngle = originalConeAngle != 0 ? originalConeAngle : 1.f;
+						const float newConeAngle = newConeStartAngle * m_valueScale;
 
-					floatPlug->setValue( newValue );
+						coneFloatPlug->setValue( newConeAngle );
+						penumbraFloatPlug->setValue( newConeAngle * 0.5f - originalConeAngle * 0.5f + originalPenumbraAngle  );
+					}
+					else if( m_penumbraType == "outset" )
+					{
+						const float newPenumbraStartAngle = originalPenumbraAngle != 0 ? originalPenumbraAngle : 1.f;
+						penumbraFloatPlug->setValue( newPenumbraStartAngle * m_valueScale );
+					}
+					else if( m_penumbraType == "absolute" )
+					{
+
+					}
 				}
 			}
 
@@ -454,46 +510,33 @@ class SpotLightHandle : public LightToolHandle
 
 		void updateTransform() override
 		{
-			ScenePlug::PathScope pathScope( handleScenePath()->getContext() );
-			pathScope.setPath( &handleScenePath()->names() );
-
-			auto inspection = inspector()->inspect();
-			auto angleData = runTimeCast<const FloatData>( inspection->value() );
-			assert( angleData );
-			float angle = angleData->readable();
-
-			if( m_penumbraType != "absolute" )
-			{
-				if( auto otherInspection = m_otherInspector->inspect() )
-				{
-					auto otherAngleData = runTimeCast<const FloatData>( otherInspection->value() );
-					assert( otherAngleData );
-
-					if( m_handleType == HandleType::Penumbra && ( !m_penumbraType || m_penumbraType == "inset" ) )
-					{
-						angle = otherAngleData->readable() - 2.f * angle;
-					}
-					else if( m_handleType == HandleType::Penumbra && m_penumbraType == "outset" )
-					{
-						angle = otherAngleData->readable() + 2.f * angle;
-					}
-				}
-			}
-
-			const float halfAngle = 0.5 * M_PI * angle / 180.f;
+			auto [coneAngle, penumbraAngle] = spotLightAngles();
+			const float angle = penumbraAngle ?
+				degreesToRadians( handleAngle( m_handleType, coneAngle, penumbraAngle.value() ) ) :
+				degreesToRadians( coneAngle * 0.5f )
+			;
 
 			// Multiply by 10 to match `StandardLightVisualiser::visualiser()`
 			M44f transform = M44f().translate( V3f( 0, 0, -10.f * m_frustumScale ) ) *
-				M44f().rotate( V3f( 0, -halfAngle, 0 ) ) *
+				M44f().rotate( V3f( 0, -angle, 0 ) ) *
 				M44f().translate( V3f( m_lensRadius, 0, 0 ) )
 			;
 
-			if( m_handleType == HandleType::Penumbra )
+			if( m_handleType == HandleType::Outer )
 			{
-				transform *= M44f().rotate(  V3f( 0, 0, M_PI * 0.25f ) );
+				transform *= M44f().rotate(  V3f( 0, 0, degreesToRadians( 45.f ) ) );
 			}
 
 			setTransform( transform );
+		}
+
+		std::vector<GafferSceneUI::Private::InspectorPtr> inspectors() const
+		{
+			if( m_handleType == HandleType::Inner )
+			{
+				return {m_coneAngleInspector};
+			}
+			return {m_coneAngleInspector, m_penumbraAngleInspector};
 		}
 
 	protected :
@@ -534,84 +577,77 @@ class SpotLightHandle : public LightToolHandle
 
 			if( state == Style::State::HighlightedState )
 			{
-				ScenePlug::PathScope pathScope( handleScenePath()->getContext() );
-				pathScope.setPath( &handleScenePath()->names() );
+				auto [coneAngle, penumbraAngle] = spotLightAngles();
 
-				if( auto inspection = inspector()->inspect() )
+				const float startAngle = m_handleType == HandleType::Inner ?
+					m_innerStartAngle :
+					m_outerStartAngle - m_innerStartAngle
+				;
+
+				float angle;
+
+				if( penumbraAngle )
 				{
-					auto angleData = runTimeCast<const FloatData>( inspection->value() );
-					assert( angleData );
-					const float angle = angleData->readable();
+					const float innerAngle = handleAngle( HandleType::Inner, coneAngle, penumbraAngle.value() );
+					const float outerAngle = handleAngle( HandleType::Outer, coneAngle, penumbraAngle.value() );
 
-					float currentFraction = 0;
-					float previousFraction = 0;
-
-					const float divisor = 
-						m_handleType == HandleType::Cone ? 720.f :  // cone = 1/2 of 1 / 360
-							m_penumbraType == "outset" ? 360.f :  // outset penumbra = 1 / 360
-							m_penumbraType == "absolute" ? 720.f :   // absolute penumbra = 1/2 of  1 / 360
-							-360.f  // inset penumbra = - 1 / 360, negative value accounts for inset flipping
-					;
-					currentFraction = angle / divisor;
-					previousFraction = !m_inspections.empty() ? ( angle / m_valueScale ) / divisor : currentFraction;
-
-					const float radius = 10.f * m_frustumScale / rasterScaleFactor().x;
-					IECoreScene::MeshPrimitivePtr previousSolidAngle = nullptr;
-					IECoreScene::MeshPrimitivePtr currentSolidAngle = nullptr;
-
-					Color3f previousColor = highlightColor3 * g_highlightMultiplier;
-					Color3f currentColor = highlightColor3;
-
-					if(
-						( m_handleType == HandleType::Cone && currentFraction > previousFraction ) ||
-						( m_handleType == HandleType::Penumbra && m_penumbraType == "outset" && currentFraction > previousFraction ) ||
-						( m_handleType == HandleType::Penumbra && m_penumbraType == "inset" && currentFraction < previousFraction )
-					)
-					{
-						currentSolidAngle = solidAngle( radius, 0, currentFraction - previousFraction, currentColor );
-						previousSolidAngle = solidAngle( radius, currentFraction - previousFraction, currentFraction, previousColor );
-					}
-					else if(
-						( m_handleType == HandleType::Cone && currentFraction < previousFraction ) ||
-						( m_handleType == HandleType::Penumbra && m_penumbraType == "outset" && currentFraction < previousFraction ) ||
-						( m_handleType == HandleType::Penumbra && m_penumbraType == "inset" && currentFraction > previousFraction )
-					)
-					{
-						currentSolidAngle = solidAngle( radius, 0, currentFraction, currentColor );
-						previousSolidAngle = solidAngle( radius, 0, currentFraction - previousFraction, previousColor );
-					}
-					else
-					{
-						currentSolidAngle = solidAngle( radius, 0, currentFraction, previousColor );
-					}
-
-					IECoreGL::GroupPtr solidAngleGroup = new IECoreGL::Group;
-					solidAngleGroup->getState()->add(
-						new IECoreGL::ShaderStateComponent(
-							ShaderLoader::defaultShaderLoader(),
-							TextureLoader::defaultTextureLoader(),
-							"",  // vertexSource
-							"",  // geometrySource
-							translucentConstantFragSource(),
-							new CompoundObject
-						)
-					);
-
-					if( currentSolidAngle )
-					{
-						ToGLMeshConverterPtr meshConverter = new ToGLMeshConverter( currentSolidAngle );
-						solidAngleGroup->addChild( runTimeCast<IECoreGL::Renderable>( meshConverter->convert() ) );
-					}
-					if( previousSolidAngle )
-					{
-						ToGLMeshConverterPtr meshConverter = new ToGLMeshConverter( previousSolidAngle );
-						solidAngleGroup->addChild( runTimeCast<IECoreGL::Renderable>( meshConverter->convert() ) );
-					}
-
-					group->addChild( solidAngleGroup );
+					angle = m_handleType == HandleType::Inner ? innerAngle : outerAngle - innerAngle;
 				}
-			}
+				else
+				{
+					angle = coneAngle * 0.5f;
+				}
 
+				float currentFraction = angle / 360.f;
+				float previousFraction = !m_inspections.empty() ? startAngle / 360.f : currentFraction;
+
+				const float radius = 10.f * m_frustumScale / rasterScaleFactor().x;
+				IECoreScene::MeshPrimitivePtr previousSolidAngle = nullptr;
+				IECoreScene::MeshPrimitivePtr currentSolidAngle = nullptr;
+
+				Color3f previousColor = highlightColor3 * g_highlightMultiplier;
+				Color3f currentColor = highlightColor3;
+
+				if( currentFraction > previousFraction )
+				{
+					currentSolidAngle = solidAngle( radius, 0, currentFraction - previousFraction, currentColor );
+					previousSolidAngle = solidAngle( radius, currentFraction - previousFraction, currentFraction, previousColor );
+				}
+				else if( currentFraction < previousFraction )
+				{
+					currentSolidAngle = solidAngle( radius, 0, currentFraction, currentColor );
+					previousSolidAngle = solidAngle( radius, 0, currentFraction - previousFraction, previousColor );
+				}
+				else
+				{
+					currentSolidAngle = solidAngle( radius, 0, currentFraction, previousColor );
+				}
+
+				IECoreGL::GroupPtr solidAngleGroup = new IECoreGL::Group;
+				solidAngleGroup->getState()->add(
+					new IECoreGL::ShaderStateComponent(
+						ShaderLoader::defaultShaderLoader(),
+						TextureLoader::defaultTextureLoader(),
+						"",  // vertexSource
+						"",  // geometrySource
+						translucentConstantFragSource(),
+						new CompoundObject
+					)
+				);
+
+				if( currentSolidAngle )
+				{
+					ToGLMeshConverterPtr meshConverter = new ToGLMeshConverter( currentSolidAngle );
+					solidAngleGroup->addChild( runTimeCast<IECoreGL::Renderable>( meshConverter->convert() ) );
+				}
+				if( previousSolidAngle )
+				{
+					ToGLMeshConverterPtr meshConverter = new ToGLMeshConverter( previousSolidAngle );
+					solidAngleGroup->addChild( runTimeCast<IECoreGL::Renderable>( meshConverter->convert() ) );
+				}
+
+				group->addChild( solidAngleGroup );
+			}
 			group->render( glState );
 		}
 
@@ -619,8 +655,81 @@ class SpotLightHandle : public LightToolHandle
 
 		void dragBegin( const DragDropEvent &event ) override
 		{
+			auto [coneAngle, penumbraAngle] = spotLightAngles();
+
+			m_innerStartAngle = penumbraAngle ? handleAngle( HandleType::Inner, coneAngle, penumbraAngle.value() ) : coneAngle * 0.5f;
+			m_outerStartAngle = penumbraAngle ? handleAngle( HandleType::Outer, coneAngle, penumbraAngle.value() ) : coneAngle * 0.5f;
+
 			m_drag = LinearDrag( this, LineSegment3f( V3f( 0 ), V3f( 1, 0, 0 ) ), event );
 		}
+
+		std::pair<float, std::optional<float>> spotLightAngles() const
+		{
+			ScenePlug::PathScope pathScope( handleScenePath()->getContext() );
+			pathScope.setPath( &handleScenePath()->names() );
+
+			auto coneInspection = m_coneAngleInspector->inspect();
+			auto coneAngleData = runTimeCast<const FloatData>( coneInspection->value() );
+			assert( coneAngleData );
+			const float coneAngle = coneAngleData->readable();
+
+			std::optional<float> penumbraAngle = std::nullopt;
+
+			if( auto penumbraInspection = m_penumbraAngleInspector ? m_penumbraAngleInspector->inspect() : nullptr )
+			{
+				auto penumbraAngleData = runTimeCast<const FloatData>( penumbraInspection->value() );
+				assert( penumbraAngleData );
+				penumbraAngle = penumbraAngleData->readable();
+			}
+
+			return {coneAngle, penumbraAngle};
+		}
+
+		// Returns the angle between the centerline and the requested handle
+		//                    <------outer------>
+		//                    <-inner->
+		// \        \        |        /        /
+		//   \       \       |       /       /
+		//     \      \      |      /      /
+		//       \     \     |     /     /
+		//         \    \    |    /    /
+		//           \   \   |   /   /
+		//             \  \  |  /  /
+		//               \ \ | / /
+		//                  \|/
+		//
+
+		const float handleAngle(HandleType handleType, const float coneAngle, const float penumbraAngle ) const
+		{
+			float angle;
+			if( !m_penumbraType || m_penumbraType == "inset" )
+			{
+				angle = handleType == HandleType::Inner ? coneAngle * 0.5 - penumbraAngle : coneAngle * 0.5;
+			}
+			else if( m_penumbraType == "outset" )
+			{
+				angle = handleType == HandleType::Inner ? coneAngle * 0.5 : coneAngle * 0.5 + penumbraAngle;
+			}
+			else if( m_penumbraType == "absolute" )
+			{
+				angle = handleType == HandleType::Inner ? coneAngle * 0.5 : penumbraAngle * 0.5;
+			}
+
+			return angle;
+		}
+
+		const float scaleFactor( const float delta ) const
+		{
+			return delta / rasterScaleFactor().x + 1.f;
+		}
+
+		const float inverseScaleFactor( const float scale ) const
+		{
+			return scaleFactor( -( scale - 1 ) * rasterScaleFactor().x );
+		}
+
+		MetadataValueParameterInspectorPtr m_coneAngleInspector;
+		MetadataValueParameterInspectorPtr m_penumbraAngleInspector;
 
 		struct ConePenumbraInspection
 		{
@@ -637,11 +746,12 @@ class SpotLightHandle : public LightToolHandle
 		HandleType m_handleType;
 		std::optional<std::string> m_penumbraType;
 
-		MetadataValueParameterInspectorPtr m_otherInspector;
-
 		float m_frustumScale;
 		float m_lensRadius;
 		float m_valueScale;
+
+		float m_innerStartAngle;
+		float m_outerStartAngle;
 };
 
 class HandlesGadget : public Gadget
@@ -719,8 +829,8 @@ LightTool::LightTool( SceneView *view, const std::string &name ) :
 	view->viewportGadget()->addChild( m_handles );
 	m_handles->setVisible( false );
 
-	m_handles->addChild( new SpotLightHandle( "*:light", "coneAngleParameter", SpotLightHandle::HandleType::Cone ) );
-	m_handles->addChild( new SpotLightHandle( "*:light", "penumbraAngleParameter", SpotLightHandle::HandleType::Penumbra ) );
+	m_handles->addChild( new SpotLightHandle( "*:light", "coneAngleParameter", SpotLightHandle::HandleType::Inner ) );
+	m_handles->addChild( new SpotLightHandle( "*:light", "penumbraAngleParameter", SpotLightHandle::HandleType::Outer ) );
 
 	for( auto c : m_handles->children() )
 	{
@@ -829,26 +939,33 @@ void LightTool::updateHandleInspections()
 			new ScenePath( scene, view()->getContext(), lastSelectedPath ),
 			view()->editScopePlug()
 		);
-		auto inspector = handle->inspector();
-
-		/// \todo I think this is unneccessary because we are handling attribute and transform dirty signals?
-		/// Or should this stay in and the attribute dirty handling goes away? That may be more targeted
-		/// at the right attribute.
-		m_inspectorsDirtiedConnection.push_back(
-			inspector->dirtiedSignal().connect( boost::bind( &LightTool::dirtyHandleTransforms, this ) )
-		);
 
 		bool handleVisible = true;
 		bool handleEnabled = true;
 
-		for( PathMatcher::Iterator it = selection.begin(), eIt = selection.end(); it != eIt; ++it )
+		auto inspectors = handle->inspectors();
+		for( auto &inspector : inspectors )
 		{
-			pathScope.setPath( &(*it) );
+			handleVisible &= (bool)inspector;
 
-			auto inspection = inspector->inspect();
+			if( inspector )
+			{
+				for( PathMatcher::Iterator it = selection.begin(), eIt = selection.end(); it != eIt; ++it )
+				{
+					pathScope.setPath( &(*it) );
+					auto inspection = inspector->inspect();
 
-			handleVisible &= (bool)inspection;
-			handleEnabled &= inspection ? inspection->editable() : false;
+					handleVisible &= (bool)inspection;
+					handleEnabled &= inspection ? inspection->editable() : false;
+				}
+
+				if( handleVisible )
+				{
+					m_inspectorsDirtiedConnection.push_back(
+						inspector->dirtiedSignal().connect( boost::bind( &LightTool::dirtyHandleTransforms, this ) )
+					);
+				}
+			}
 		}
 
 		handle->setEnabled( handleEnabled );
@@ -879,8 +996,12 @@ void LightTool::updateHandleTransforms( float rasterScale )
 		auto handle = runTimeCast<LightToolHandle>( c );
 		assert( handle );
 
-		handle->updateTransform();
-		handle->setRasterScale( rasterScale );
+		if( handle->getVisible() )
+		{
+			handle->updateTransform();
+			handle->setRasterScale( rasterScale );
+		}
+
 	}
 }
 
@@ -921,9 +1042,7 @@ void LightTool::plugDirtied( const Plug *plug )
 		}
 	}
 
-	if(
-		plug == scenePlug()->transformPlug()
-	)
+	if( plug == scenePlug()->transformPlug() )
 	{
 		m_handleTransformsDirty = true;
 	}
