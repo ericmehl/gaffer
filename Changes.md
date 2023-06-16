@@ -13,6 +13,7 @@ Improvements
 - SceneReader :
   - Fixed `I/O Exception` errors triggered by closing and reopening the same USD file.
   - Increased the default limit for the number of open files to 2000 (or 25% of the file handle limit, whichever is lowest).
+- 3Delight : Primitive variables named `uv` are now automatically renamed `st` for compatibility with the `uvCoord` shader's expectation.
 
 Fixes
 -----
