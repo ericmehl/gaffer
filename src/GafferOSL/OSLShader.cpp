@@ -929,7 +929,14 @@ Plug *loadShaderParameter( const OSLQuery &query, const OSLQuery::Parameter *par
 			{
 				if( parameter->type.basetype == TypeDesc::FLOAT )
 				{
-					result = loadNumericArrayParameter<FloatVectorDataPlug>( parameter, name, parent, metadata );
+					if( parameter->type.arraylen == 2 )
+					{
+						result = loadCompoundNumericParameter<V2fPlug>( parameter, name, parent, metadata );
+					}
+					else
+					{
+						result = loadNumericArrayParameter<FloatVectorDataPlug>( parameter, name, parent, metadata );
+					}
 				}
 				else
 				{
