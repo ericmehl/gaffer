@@ -267,10 +267,20 @@ class Reference::PlugEdits : public Signals::Trackable
 			// (the latter for RowsPlug with a default row). So it is quicker to
 			// reverse the test and search for plug in the range `[0,
 			// sizeAfterLoad)`.
-			return !std::any_of(
+			bool val = !std::any_of(
 				parent->children().begin(), parent->children().begin() + edit->sizeAfterLoad,
 				[plug]( const GraphComponentPtr &child ) { return child == plug; }
 			);
+
+			if(val && plug->getName() == "value" && parent->getName() == "m1")
+			{
+				std::cerr << "True!" << "\n";
+			}
+			else if(!val && plug->getName() == "value" && parent->getName() == "m1")
+			{
+				std::cerr << "False" << "\n";
+			}
+			return val;
 		}
 
 		void transferEdits( Plug *oldPlug, Plug *newPlug ) const
@@ -350,6 +360,10 @@ class Reference::PlugEdits : public Signals::Trackable
 
 		void plugValueChanged( const Gaffer::Plug *plug, IECore::InternedString key, Metadata::ValueChangedReason reason )
 		{
+			if(plug->getName() == "value")
+			{
+				std::cerr << "valueChanged" << "\n";
+			}
 			if(
 				reason == Metadata::ValueChangedReason::StaticRegistration ||
 				reason == Metadata::ValueChangedReason::StaticDeregistration
