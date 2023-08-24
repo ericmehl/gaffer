@@ -104,6 +104,8 @@ using namespace GafferSceneUI::Private;
 namespace
 {
 
+const std::string g_lightAttributePattern = "*light";
+
 const Color3f g_lightToolHandleColor = Color3f( 0.825, 0.720f, 0.230f );
 
 // Color from `StandardLightVisualiser`
@@ -703,11 +705,11 @@ class LightToolHandle : public Handle
 	public :
 
 		LightToolHandle(
-			const std::string &attributePattern,
+			const std::string &lightTypePattern,
 			const std::string &name
 		) :
 			Handle( name ),
-			m_attributePattern( attributePattern ),
+			m_lightTypePattern( lightTypePattern ),
 			m_lookThroughLight( false )
 		{
 
@@ -726,9 +728,16 @@ class LightToolHandle : public Handle
 			m_editScope = editScope;
 		}
 
-		const std::string attributePattern() const
+		bool isLightType( const std::string &shaderAttribute ) const
 		{
-			return m_attributePattern;
+			auto lightType = Metadata::value<StringData>( shaderAttribute, "type" );
+
+			if( !lightType || !StringAlgo::matchMultiple( lightType->readable(), m_lightTypePattern ) )
+			{
+				return false;
+			}
+
+			return true;
 		}
 
 		ScenePath *handleScenePath() const
@@ -778,7 +787,7 @@ class LightToolHandle : public Handle
 
 		ScenePathPtr m_handleScenePath;
 
-		const std::string m_attributePattern;
+		const std::string m_lightTypePattern;
 
 		Gaffer::PlugPtr m_editScope;
 
@@ -815,13 +824,13 @@ class SpotLightHandle : public LightToolHandle
 		};
 
 		SpotLightHandle(
-			const std::string &attributePattern,
+			const std::string &lightType,
 			HandleType handleType,
 			const SceneView *view,
 			const float zRotation,
 			const std::string &name = "SpotLightHandle"
 		) :
-			LightToolHandle( attributePattern, name ),
+			LightToolHandle( lightType, name ),
 			m_view( view ),
 			m_zRotation( zRotation ),
 			m_handleType( handleType ),
@@ -875,12 +884,17 @@ class SpotLightHandle : public LightToolHandle
 			for( const auto &[attributeName, value] : attributes->members() )
 			{
 				if(
-					StringAlgo::match( attributeName, attributePattern() ) &&
+					StringAlgo::match( attributeName, g_lightAttributePattern ) &&
 					value->typeId() == (IECore::TypeId)ShaderNetworkTypeId
 				)
 				{
 					const auto shader = attributes->member<ShaderNetwork>( attributeName )->outputShader();
 					std::string shaderAttribute = shader->getType() + ":" + shader->getName();
+
+					if( !isLightType( shaderAttribute ) )
+					{
+						continue;
+					}
 
 					auto coneParameterName = Metadata::value<StringData>( shaderAttribute, "coneAngleParameter" );
 					if( !coneParameterName )
@@ -1670,7 +1684,7 @@ class WidthHeightHandle : public LightToolHandle
 		};
 
 		WidthHeightHandle(
-			const std::string &attributePattern,
+			const std::string &lightType,
 			unsigned handleType,
 			const SceneView *view,
 			const InternedString widthParameter,
@@ -1679,7 +1693,7 @@ class WidthHeightHandle : public LightToolHandle
 			const float ySign,
 			const std::string &name = "WidthHeightHandle"
 		) :
-			LightToolHandle( attributePattern, name ),
+			LightToolHandle( lightType, name ),
 			m_view( view ),
 			m_widthParameter( widthParameter ),
 			m_heightParameter( heightParameter ),
@@ -1718,12 +1732,17 @@ class WidthHeightHandle : public LightToolHandle
 			for( const auto &[attributeName, value ] : attributes->members() )
 			{
 				if(
-					StringAlgo::match( attributeName, attributePattern() ) &&
+					StringAlgo::match( attributeName, g_lightAttributePattern ) &&
 					value->typeId() == (IECore::TypeId)ShaderNetworkTypeId
 				)
 				{
 					const auto shader = attributes->member<ShaderNetwork>( attributeName )->outputShader();
 					std::string shaderAttribute = shader->getType() + ":" + shader->getName();
+
+					if( !isLightType( shaderAttribute ) )
+					{
+						continue;
+					}
 
 					auto widthParameterName = Metadata::value<StringData>( shaderAttribute, m_widthParameter );
 					auto heightParameterName = Metadata::value<StringData>( shaderAttribute, m_heightParameter );
@@ -2360,25 +2379,32 @@ LightTool::LightTool( SceneView *view, const std::string &name ) :
 
 	// Spotlight handles
 
-	m_handles->addChild( new SpotLightHandle( "*light", SpotLightHandle::HandleType::Penumbra, view, 0, "westConeAngleParameter" ) );
-	m_handles->addChild( new SpotLightHandle( "*light", SpotLightHandle::HandleType::Cone, view, 0, "westPenumbraAngleParameter" ) );
-	m_handles->addChild( new SpotLightHandle( "*light", SpotLightHandle::HandleType::Penumbra, view, 90, "southConeAngleParameter" ) );
-	m_handles->addChild( new SpotLightHandle( "*light", SpotLightHandle::HandleType::Cone, view, 90, "southPenumbraAngleParameter" ) );
-	m_handles->addChild( new SpotLightHandle( "*light", SpotLightHandle::HandleType::Penumbra, view, 180, "eastConeAngleParameter" ) );
-	m_handles->addChild( new SpotLightHandle( "*light", SpotLightHandle::HandleType::Cone, view, 180, "eastPenumbraAngleParameter" ) );
-	m_handles->addChild( new SpotLightHandle( "*light", SpotLightHandle::HandleType::Penumbra, view, 270, "northConeAngleParameter" ) );
-	m_handles->addChild( new SpotLightHandle( "*light", SpotLightHandle::HandleType::Cone, view, 270, "northPenumbraAngleParameter" ) );
+	m_handles->addChild( new SpotLightHandle( "spot", SpotLightHandle::HandleType::Penumbra, view, 0, "westConeAngleParameter" ) );
+	m_handles->addChild( new SpotLightHandle( "spot", SpotLightHandle::HandleType::Cone, view, 0, "westPenumbraAngleParameter" ) );
+	m_handles->addChild( new SpotLightHandle( "spot", SpotLightHandle::HandleType::Penumbra, view, 90, "southConeAngleParameter" ) );
+	m_handles->addChild( new SpotLightHandle( "spot", SpotLightHandle::HandleType::Cone, view, 90, "southPenumbraAngleParameter" ) );
+	m_handles->addChild( new SpotLightHandle( "spot", SpotLightHandle::HandleType::Penumbra, view, 180, "eastConeAngleParameter" ) );
+	m_handles->addChild( new SpotLightHandle( "spot", SpotLightHandle::HandleType::Cone, view, 180, "eastPenumbraAngleParameter" ) );
+	m_handles->addChild( new SpotLightHandle( "spot", SpotLightHandle::HandleType::Penumbra, view, 270, "northConeAngleParameter" ) );
+	m_handles->addChild( new SpotLightHandle( "spot", SpotLightHandle::HandleType::Cone, view, 270, "northPenumbraAngleParameter" ) );
 
 	// Quadlight handles
 
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width, view, "widthParameter", "heightParameter", -1.f, 0, "westParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", -1.f, -1.f, "southWestParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 0, -1.f, "southParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 1.f, -1.f, "soutEastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width, view, "widthParameter", "heightParameter", 1.f, 0.f, "eastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 1.f, 1.f, "northEastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 0, 1.f, "northParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", -1.f, 1.f, "northWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, "widthParameter", "heightParameter", -1.f, 0, "westParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", -1.f, -1.f, "southWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 0, -1.f, "southParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 1.f, -1.f, "soutEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, "widthParameter", "heightParameter", 1.f, 0.f, "eastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 1.f, 1.f, "northEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 0, 1.f, "northParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", -1.f, 1.f, "northWestParameter" ) );
+
+	// DiskLight handles
+	m_handles->addChild( new WidthHeightHandle( "disk", WidthHeightHandle::HandleType::Width, view, "radiusParameter", "radiusParameter", 1.f, 0, "diskRadiusParameter" ) );
+
+	// SphereLightHandles
+
+	// CylinderLightHandles
 
 
 	for( const auto &c : m_handles->children() )
