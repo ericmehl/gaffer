@@ -468,6 +468,56 @@ IECoreGL::MeshPrimitivePtr unitCone()
 	return result;
 }
 
+IECoreGL::MeshPrimitivePtr torus( const float majorRadius, const float minorRadius, const Handle *handle )
+{
+	IECoreGL::MeshPrimitivePtr result;
+
+	IECore::IntVectorDataPtr verticesPerFaceData = new IECore::IntVectorData;
+	std::vector<int> &verticesPerFace = verticesPerFaceData->writable();
+
+	IECore::IntVectorDataPtr vertexIdsData = new IECore::IntVectorData;
+	std::vector<int> &vertexIds = vertexIdsData->writable();
+
+	IECore::V3fVectorDataPtr pData = new IECore::V3fVectorData;
+	std::vector<V3f> &p = pData->writable();
+
+	const int numDivisionsI = 60;
+	const int numDivisionsJ = 15;
+	for( int i = 0; i < numDivisionsI; ++i )
+	{
+		const float iAngle = 2 * M_PI * (float)i / (float)( numDivisionsI - 1 );
+		const V3f v( -sin( iAngle ), cos( iAngle ), 0 );  // Face the -Z axis
+		const V3f tubeCenter = v * majorRadius;
+
+		const int ii = i == numDivisionsI - 1 ? 0 : i + 1;
+
+		const float jRadius = minorRadius * rasterScaleFactor( handle, tubeCenter );
+
+		for( int j = 0; j < numDivisionsJ; ++j )
+		{
+			const float jAngle = 2 * M_PI * (float)j / (float)( numDivisionsJ - 1 );
+			p.push_back(
+				tubeCenter + jRadius * ( cos( jAngle ) * v + V3f( 0, 0, sin( jAngle ) ) )
+			);
+
+			const int jj = j == numDivisionsJ - 1 ? 0 : j + 1;
+
+			verticesPerFace.push_back( 4 );
+
+			vertexIds.push_back( i * numDivisionsJ + j );
+			vertexIds.push_back( i * numDivisionsJ + jj );
+			vertexIds.push_back( ii * numDivisionsJ + jj );
+			vertexIds.push_back( ii * numDivisionsJ + j );
+		}
+	}
+
+	IECoreScene::MeshPrimitivePtr mesh = new IECoreScene::MeshPrimitive( verticesPerFaceData, vertexIdsData, "linear", pData );
+	IECoreGL::ToGLMeshConverterPtr converter = new ToGLMeshConverter( mesh );
+	result = runTimeCast<IECoreGL::MeshPrimitive>( converter->convert() );
+
+	return result;
+}
+
 GraphComponent *commonAncestor( std::vector<GraphComponent *> &graphComponents )
 {
 	const size_t gcSize = graphComponents.size();
@@ -1682,10 +1732,18 @@ class WidthHeightHandle : public LightToolHandle
 			Width = 1,
 			Height = 2
 		};
+
+		enum class HandleQuantity
+		{
+			Length,
+			Radius
+		};
+
 		struct HandleProperties
 		{
 			const InternedString metaParameter;  // The name of the metadata entry to lookup to get the parameter name
 			const V3f axis;  // The axis, in gadget space, the handle acts on
+			const float valueToHandleRatio = 1.f;  // The ratio of the plug value to the handle location
 		};
 
 		WidthHeightHandle(
@@ -1694,6 +1752,7 @@ class WidthHeightHandle : public LightToolHandle
 			const SceneView *view,
 			const HandleProperties &widthProperties,
 			const HandleProperties &heightProperties,
+			const HandleQuantity handleQuantity,
 			const std::string &name = "WidthHeightHandle"
 		) :
 			LightToolHandle( lightType, name ),
@@ -1701,6 +1760,7 @@ class WidthHeightHandle : public LightToolHandle
 			m_handleType( handleType ),
 			m_widthProperties( widthProperties ),
 			m_heightProperties( heightProperties ),
+			m_handleQuantity( handleQuantity ),
 			m_dragStartInfo(),
 			m_edgeCursorPoint( V3f( 0 ) ),
 			m_scale( V2f( 1.f ) )
@@ -1806,24 +1866,41 @@ class WidthHeightHandle : public LightToolHandle
 			float nonZeroWidth = m_dragStartInfo.originalWidth == 0 ? 1.f : m_dragStartInfo.originalWidth;
 			float nonZeroHeight = m_dragStartInfo.originalHeight == 0 ? 1.f : m_dragStartInfo.originalHeight;
 
-			if( m_handleType & HandleType::Width && m_handleType & HandleType::Height )
+			if( m_handleQuantity == HandleQuantity::Radius )
+			{
+				auto &drag = std::get<PlanarDrag>( m_drag );
+				const V2f dragPoint = drag.updatedPosition( event );
+				const V2f originalPoint = drag.startPosition();
+				const float dragLength = drag.updatedPosition( event ).length() - drag.startPosition().length();
+				if( m_handleType & HandleType::Width )
+				{
+					xMult = ( dragLength * m_widthProperties.valueToHandleRatio ) / ( nonZeroWidth * m_scale.x ) + 1.f;
+					yMult = xMult;
+				}
+				else if( m_handleType &HandleType::Height )
+				{
+					yMult = ( dragLength * m_heightProperties.valueToHandleRatio ) / ( nonZeroHeight * m_scale.y ) + 1.f;
+					xMult = yMult;
+				}
+			}
+			else if( m_handleType & HandleType::Width && m_handleType & HandleType::Height )
 			{
 				auto &drag = std::get<PlanarDrag>( m_drag );
 				V2f newPosition = drag.updatedPosition( event ) - drag.startPosition();
-				xMult = ( newPosition.x * 2.f ) / ( nonZeroWidth * m_scale.x ) + 1.f;
-				yMult = ( newPosition.y * 2.f ) / ( nonZeroHeight * m_scale.y ) + 1.f;
+				xMult = ( newPosition.x * m_widthProperties.valueToHandleRatio ) / ( nonZeroWidth * m_scale.x ) + 1.f;
+				yMult = ( newPosition.y * m_heightProperties.valueToHandleRatio ) / ( nonZeroHeight * m_scale.y ) + 1.f;
 			}
 			else if( m_handleType & HandleType::Width )
 			{
 				auto &drag = std::get<LinearDrag>( m_drag );
 				float newPosition = drag.updatedPosition( event ) - drag.startPosition();
-				xMult = ( newPosition * 2.f ) / ( nonZeroWidth * m_scale.x ) + 1.f;
+				xMult = ( newPosition * m_widthProperties.valueToHandleRatio ) / ( nonZeroWidth * m_scale.x ) + 1.f;
 			}
 			else if( m_handleType &HandleType::Height )
 			{
 				auto &drag = std::get<LinearDrag>( m_drag );
 				float newPosition = drag.updatedPosition( event ) - drag.startPosition();
-				yMult = ( newPosition * 2.f ) / ( nonZeroHeight * m_scale.y ) + 1.f;
+				yMult = ( newPosition * m_heightProperties.valueToHandleRatio ) / ( nonZeroHeight * m_scale.y ) + 1.f;
 			}
 
 			if(
@@ -1844,6 +1921,8 @@ class WidthHeightHandle : public LightToolHandle
 
 			xMult = std::max( xMult, 0.f );
 			yMult = std::max( yMult, 0.f );
+
+			m_edgeCursorPoint = handleMouseIntersection( m_dragStartInfo.originalWidth * xMult, m_dragStartInfo.originalHeight * yMult, event.line );
 
 			for( auto &[widthInspection, originalWidth, heightInspection, originalHeight] : m_inspections )
 			{
@@ -1889,26 +1968,12 @@ class WidthHeightHandle : public LightToolHandle
 		bool handleDragEnd() override
 		{
 			m_drag = std::monostate{};
+			m_dragStartInfo = {nullptr, 0, nullptr, 0};
 			return false;
 		}
 
 		void updateLocalTransform( const V3f &scale, const V3f & ) override
 		{
-			// Translate the handle to the center of the appropriate edge or corner.
-			const auto &[widthInspection, originalWidth, heightInspection, originalHeight] = handleInspections();
-			m_scale = V2f( scale.x, scale.y );
-
-			M44f transform;
-			if( m_handleType & HandleType::Width )
-			{
-				transform *= M44f().translate( m_widthProperties.axis * originalWidth * 0.5f * m_scale.x );
-			}
-			if( m_handleType & HandleType::Height )
-			{
-				transform *= M44f().translate( m_heightProperties.axis * originalHeight * 0.5f * m_scale.y );
-			}
-
-			setTransform( transform );
 		}
 
 		bool visible() const override
@@ -2013,9 +2078,11 @@ class WidthHeightHandle : public LightToolHandle
 				)
 			);
 
+			const auto &[widthInspection, width, heightInspection, height] = handleInspections();
+
 			if( ( m_handleType & HandleType::Width ) && ( m_handleType & HandleType::Height ) )
 			{
-				// Circles at corners for planar drag
+				// Circles at corners
 
 				IECoreGL::GroupPtr iconGroup = new IECoreGL::Group;
 				iconGroup->getState()->add(
@@ -2029,37 +2096,57 @@ class WidthHeightHandle : public LightToolHandle
 					)
 				);
 				iconGroup->setTransform(
-					M44f().scale( V3f( cornerRadius ) * ::rasterScaleFactor( this, V3f( 0 ) ) )
+					M44f().scale( V3f( cornerRadius ) * ::rasterScaleFactor( this, V3f( 0 ) ) ) *
+					M44f().translate( widthToGadgetSpace( width ) + heightToGadgetSpace( height ) )
 				);
 				iconGroup->addChild( circle() );
 				group->addChild( iconGroup );
 			}
 			else
 			{
-				// Lines and arrows on edges for linear drag
-
-				LineSegment3f edgeSegment = this->edgeSegment( handleInspections() );
-
-				M44f coneTransform;
-				M44f edgeTransform;
-				edgeTransforms( edgeSegment, coneTransform, edgeTransform );
-
 				IECoreGL::GroupPtr coneGroup = new IECoreGL::Group;
-				coneGroup->setTransform( coneTransform * M44f().scale( V3f( coneSize ) ) );
+				M44f coneTransform;
+				this->coneTransform( width, height, coneTransform );
+				coneGroup->setTransform( M44f().scale( V3f( coneSize ) ) * coneTransform );
 				coneGroup->addChild( unitCone() );
 				group->addChild( coneGroup );
 
-				IECoreGL::GroupPtr edgeGroup = new IECoreGL::Group;
-				edgeGroup->addChild(
-					cone(
-						edgeSegment.length(),
-						spokeRadius * ::rasterScaleFactor( this, edgeSegment.p0 ),
-						spokeRadius * ::rasterScaleFactor( this, edgeSegment.p1 )
-					)
-				);
-				edgeGroup->setTransform( edgeTransform );
+				if( m_handleQuantity == HandleQuantity::Length )
+				{
+					// Lines and arrows on edges
+					LineSegment3f edgeSegment = this->edgeSegment( width, height );
 
-				group->addChild( edgeGroup );
+					IECoreGL::GroupPtr edgeGroup = new IECoreGL::Group;
+					edgeGroup->addChild(
+						cone(
+							edgeSegment.length(),
+							spokeRadius * ::rasterScaleFactor( this, edgeSegment.p0 ),
+							spokeRadius * ::rasterScaleFactor( this, edgeSegment.p1 )
+						)
+					);
+					M44f edgeTransform;
+					this->edgeTransform( width, height, edgeSegment, edgeTransform );
+					edgeGroup->setTransform( edgeTransform );
+
+					group->addChild( edgeGroup );
+				}
+				else if(
+					m_handleQuantity == HandleQuantity::Radius &&
+					!(
+						m_handleType & HandleType::Width &&
+						m_handleType & HandleType::Height
+					)
+				)
+				{
+					const auto &[widthInspection, width, heightInspection, height] = handleInspections();
+
+					const float radius = m_handleType & HandleType::Width ? width * m_scale.x : height * m_scale.y;
+
+					IECoreGL::GroupPtr torusGroup = new IECoreGL::Group;
+					torusGroup->addChild( torus( radius, spokeRadius, this ) );
+
+					group->addChild( torusGroup );
+				}
 			}
 
 			group->render( glState );
@@ -2079,13 +2166,20 @@ class WidthHeightHandle : public LightToolHandle
 					}
 				}
 				std::string tipSuffix = "";
-				if( m_handleType & HandleType::Width )
+				if( m_handleQuantity == HandleQuantity::Length )
 				{
-					tipSuffix = "widths";
+					if( m_handleType & HandleType::Width )
+					{
+						tipSuffix = "widths";
+					}
+					if( m_handleType & HandleType::Height )
+					{
+						tipSuffix = m_handleType & HandleType::Width ? "plugs" : "heights";
+					}
 				}
-				if( m_handleType & HandleType::Height )
+				else
 				{
-					tipSuffix = m_handleType & HandleType::Width ? "plugs" : "heights";
+					tipSuffix = "radii";
 				}
 
 				drawSelectionTips(
@@ -2117,16 +2211,9 @@ class WidthHeightHandle : public LightToolHandle
 				return false;
 			}
 
-			if( m_handleType & HandleType::Width && m_handleType &HandleType::Height )
-			{
-				m_edgeCursorPoint = V3f( 0, 0, 0 );
-				return false;
-			}
+			const auto &[widthInspection, width, heightInspection, height] = handleInspections();
 
-			LineSegment3f edgeSegment = this->edgeSegment( handleInspections() );
-
-			V3f eventClosest;
-			m_edgeCursorPoint = edgeSegment.closestPoints( LineSegment3f( event.line.p0, event.line.p1 ), eventClosest );
+			m_edgeCursorPoint = handleMouseIntersection( width, height, event.line );
 
 			dirty( DirtyType::Render );
 
@@ -2142,7 +2229,12 @@ class WidthHeightHandle : public LightToolHandle
 			m_dragStartInfo.heightInspection = heightInspection;
 			m_dragStartInfo.originalHeight = originalHeight;
 
-			if( m_handleType & HandleType::Width && m_handleType & HandleType::Height )
+			if(
+				(
+					m_handleType & HandleType::Width && m_handleType & HandleType::Height
+				) ||
+				m_handleQuantity == HandleQuantity::Radius
+			)
 			{
 				m_drag = Handle::PlanarDrag( this, V3f( 0 ), m_widthProperties.axis, m_heightProperties.axis, event, true );
 			}
@@ -2154,6 +2246,29 @@ class WidthHeightHandle : public LightToolHandle
 			{
 				m_drag = Handle::LinearDrag( this, LineSegment3f( V3f( 0 ), m_heightProperties.axis ), event, true );
 			}
+		}
+
+		V3f handleMouseIntersection( const float width, const float height, const LineSegment3f &line ) const
+		{
+			if( m_handleQuantity == HandleQuantity::Length && m_handleType & HandleType::Width && m_handleType &HandleType::Height )
+			{
+				return widthToGadgetSpace( width ) + heightToGadgetSpace( height );
+			}
+
+			if( m_handleQuantity == HandleQuantity::Length )
+			{
+				LineSegment3f edgeSegment = this->edgeSegment( width, height );
+
+				const V3f offset = m_handleType & HandleType::Width ? widthToGadgetSpace( width ) : heightToGadgetSpace( height );
+				edgeSegment.p0 += offset;
+				edgeSegment.p1 += offset;
+
+				V3f eventClosest;
+				return edgeSegment.closestPoints( LineSegment3f( line.p0, line.p1 ), eventClosest );
+			}
+
+			LineSegment3f clickLine = LineSegment3f( line.p0, line.p1 );
+			return clickLine.closestPointTo( V3f( 0 ) );
 		}
 
 		InspectionInfo handleInspections() const
@@ -2217,10 +2332,8 @@ class WidthHeightHandle : public LightToolHandle
 			return enabled;
 		}
 
-		LineSegment3f edgeSegment( const InspectionInfo &inspectionInfo ) const
+		LineSegment3f edgeSegment( const float width, const float height ) const
 		{
-			const auto &[widthInspection, width, heightInspection, height] = inspectionInfo;
-
 			float fullEdgeLength = 0;
 			float fullEdgeLengthHalf = 0;
 			float radius0 = 0;
@@ -2256,27 +2369,49 @@ class WidthHeightHandle : public LightToolHandle
 			return result;
 		}
 
-		void edgeTransforms( const LineSegment3f &edgeSegment, M44f &coneTransform, M44f &edgeTransform ) const
+		V3f widthToGadgetSpace( const float width ) const
+		{
+			return ( ( m_widthProperties.axis * width * m_scale.x ) / m_widthProperties.valueToHandleRatio );
+		}
+
+		V3f heightToGadgetSpace( const float height ) const
+		{
+			return ( ( m_heightProperties.axis * height * m_scale.y ) / m_heightProperties.valueToHandleRatio );
+		}
+
+		void edgeTransform( const float width, const float height, const LineSegment3f &edgeSegment, M44f &edgeTransform ) const
 		{
 			if( m_handleType & HandleType::Width )
 			{
-				// Rotate the cone 90 degrees around the axis that is the width axis rotated 90 degrees around the z axis.
-				coneTransform = M44f().rotate( m_widthProperties.axis * M44f().rotate( V3f( 0, 0, M_PI * 0.5f ) ) * M_PI * 0.5f );
 				edgeTransform =
 					M44f().rotate( V3f( -M_PI * 0.5f, 0, 0 ) ) *
-					M44f().translate( V3f( 0, edgeSegment.p0.y, 0 ) )
+					M44f().translate(
+						V3f( 0, edgeSegment.p0.y, 0 ) +
+						widthToGadgetSpace( width )
+					)
 				;
 			}
 			else
 			{
-				// Rotate the cone 90 degrees around the axis that is the height axis rotated 90 degrees around the z axis.
-				coneTransform = M44f().rotate( m_heightProperties.axis * M44f().rotate( V3f( 0, 0, M_PI * 0.5f ) ) * M_PI * 0.5f );
 				edgeTransform =
 					M44f().rotate( V3f( 0, M_PI * 0.5f, 0 ) ) *
-					M44f().translate( V3f( edgeSegment.p0.x, 0, 0 ) )
+					M44f().translate(
+						V3f( edgeSegment.p0.x, 0, 0 ) +
+						heightToGadgetSpace( height )
+					)
 				;
 			}
-			coneTransform *= M44f().scale( V3f( ::rasterScaleFactor( this, V3f( 0.0 ) ) ) );
+		}
+
+		void coneTransform( const float width, const float height, M44f &coneTransform ) const
+		{
+			const V3f &axis = m_handleType & HandleType::Width ? m_widthProperties.axis : m_heightProperties.axis;
+			// Rotate the cone 90 degrees around the ( `axis` rotated 90 degrees around the z axis ).
+			coneTransform =
+				M44f().rotate( axis * M44f().rotate( V3f( 0, 0, M_PI * 0.5f ) ) * M_PI * 0.5f ) *
+				M44f().scale( V3f( ::rasterScaleFactor( this, V3f( 0.0 ) ) ) ) *
+				M44f().translate( m_handleType & HandleType::Width ? widthToGadgetSpace( width ) : heightToGadgetSpace( height ) )
+			;
 		}
 
 		ParameterInspectorPtr m_widthInspector;
@@ -2288,6 +2423,7 @@ class WidthHeightHandle : public LightToolHandle
 
 		const HandleProperties m_widthProperties;
 		const HandleProperties m_heightProperties;
+		const HandleQuantity m_handleQuantity;
 
 		std::vector<InspectionInfo> m_inspections;
 
@@ -2395,17 +2531,17 @@ LightTool::LightTool( SceneView *view, const std::string &name ) :
 
 	// Quadlight handles
 
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, { "widthParameter", V3f( -1.f, 0, 0 ) }, { "heightParameter", V3f( 0, 0, 0 ) }, "westParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( -1.f, 0, 0 ) }, { "heightParameter", V3f( 0, -1.f, 0 ) }, "southWestParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 0, 0, 0 ) }, { "heightParameter", V3f( 0, -1.f, 0 ) }, "southParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 1.f, 0, 0 ) }, { "heightParameter", V3f( 0, -1.f, 0 ) }, "soutEastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, { "widthParameter", V3f( 1.f, 0, 0 ) }, { "heightParameter", V3f( 0, 0, 0 ) }, "eastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 1.f, 0, 0 ) }, { "heightParameter", V3f( 0, 1.f, 0 ) }, "northEastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 0, 0, 0 ) }, { "heightParameter", V3f( 0, 1.f, 0 ) }, "northParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( -1.f, 0, 0 ) }, { "heightParameter", V3f( 0, 1.f, 0 ) }, "northWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, { "widthParameter", V3f( -1.f, 0, 0 ), 2.f }, { "heightParameter", V3f( 0, 0, 0 ), 2.f }, WidthHeightHandle::HandleQuantity::Length, "westParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( -1.f, 0, 0 ), 2.f }, { "heightParameter", V3f( 0, -1.f, 0 ), 2.f }, WidthHeightHandle::HandleQuantity::Length, "southWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 0, 0, 0 ), 2.f }, { "heightParameter", V3f( 0, -1.f, 0 ), 2.f }, WidthHeightHandle::HandleQuantity::Length, "southParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 1.f, 0, 0 ), 2.f }, { "heightParameter", V3f( 0, -1.f, 0 ), 2.f }, WidthHeightHandle::HandleQuantity::Length, "soutEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, { "widthParameter", V3f( 1.f, 0, 0 ), 2.f }, { "heightParameter", V3f( 0, 0, 0 ), 2.f }, WidthHeightHandle::HandleQuantity::Length, "eastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 1.f, 0, 0 ), 2.f }, { "heightParameter", V3f( 0, 1.f, 0 ), 2.f }, WidthHeightHandle::HandleQuantity::Length, "northEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 0, 0, 0 ), 2.f }, { "heightParameter", V3f( 0, 1.f, 0 ), 2.f }, WidthHeightHandle::HandleQuantity::Length, "northParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( -1.f, 0, 0 ), 2.f }, { "heightParameter", V3f( 0, 1.f, 0 ), 2.f }, WidthHeightHandle::HandleQuantity::Length, "northWestParameter" ) );
 
 	// DiskLight handles
-	m_handles->addChild( new WidthHeightHandle( "disk", WidthHeightHandle::HandleType::Width, view, { "radiusParameter", V3f( -1.f, 0, 0 ) }, { "radiusParameter", V3f( 0, 0.f, 0 ) }, "diskRadiusParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "disk", WidthHeightHandle::HandleType::Width, view, { "radiusParameter", V3f( -1.f, 0, 0 ), 1.f }, { "radiusParameter", V3f( 0, 1.f, 0 ), 1.f }, WidthHeightHandle::HandleQuantity::Radius, "diskRadiusParameter" ) );
 
 	// SphereLightHandles
 
