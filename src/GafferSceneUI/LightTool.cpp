@@ -1682,25 +1682,26 @@ class WidthHeightHandle : public LightToolHandle
 			Width = 1,
 			Height = 2
 		};
+		struct HandleProperties
+		{
+			const InternedString metaParameter;  // The name of the metadata entry to lookup to get the parameter name
+			const V3f axis;  // The axis, in gadget space, the handle acts on
+		};
 
 		WidthHeightHandle(
 			const std::string &lightType,
 			unsigned handleType,
 			const SceneView *view,
-			const InternedString widthParameter,
-			const InternedString heightParameter,
-			const float xSign,
-			const float ySign,
+			const HandleProperties &widthProperties,
+			const HandleProperties &heightProperties,
 			const std::string &name = "WidthHeightHandle"
 		) :
 			LightToolHandle( lightType, name ),
 			m_view( view ),
-			m_widthParameter( widthParameter ),
-			m_heightParameter( heightParameter ),
 			m_handleType( handleType ),
+			m_widthProperties( widthProperties ),
+			m_heightProperties( heightProperties ),
 			m_dragStartInfo(),
-			m_xSign( xSign ),
-			m_ySign( ySign ),
 			m_edgeCursorPoint( V3f( 0 ) ),
 			m_scale( V2f( 1.f ) )
 		{
@@ -1744,8 +1745,14 @@ class WidthHeightHandle : public LightToolHandle
 						continue;
 					}
 
-					auto widthParameterName = Metadata::value<StringData>( shaderAttribute, m_widthParameter );
-					auto heightParameterName = Metadata::value<StringData>( shaderAttribute, m_heightParameter );
+					auto widthParameterName = Metadata::value<StringData>(
+						shaderAttribute,
+						m_widthProperties.metaParameter
+					);
+					auto heightParameterName = Metadata::value<StringData>(
+						shaderAttribute,
+						m_heightProperties.metaParameter
+					);
 					if( !widthParameterName || !heightParameterName )
 					{
 						continue;
@@ -1894,11 +1901,11 @@ class WidthHeightHandle : public LightToolHandle
 			M44f transform;
 			if( m_handleType & HandleType::Width )
 			{
-				transform *= M44f().translate( V3f( originalWidth * 0.5f * m_xSign * m_scale.x, 0, 0 ) );
+				transform *= M44f().translate( m_widthProperties.axis * originalWidth * 0.5f * m_scale.x );
 			}
 			if( m_handleType & HandleType::Height )
 			{
-				transform *= M44f().translate( V3f( 0, originalHeight * 0.5f * m_ySign * m_scale.y, 0 ) );
+				transform *= M44f().translate( m_heightProperties.axis * originalHeight * 0.5f * m_scale.y );
 			}
 
 			setTransform( transform );
@@ -2137,15 +2144,15 @@ class WidthHeightHandle : public LightToolHandle
 
 			if( m_handleType & HandleType::Width && m_handleType & HandleType::Height )
 			{
-				m_drag = Handle::PlanarDrag( this, V3f( 0 ), V3f( m_xSign, 0, 0 ), V3f( 0, m_ySign, 0 ), event, true );
+				m_drag = Handle::PlanarDrag( this, V3f( 0 ), m_widthProperties.axis, m_heightProperties.axis, event, true );
 			}
 			else if( m_handleType & HandleType::Width )
 			{
-				m_drag = Handle::LinearDrag( this, LineSegment3f( V3f( 0 ), V3f( m_xSign, 0, 0 ) ), event, true );
+				m_drag = Handle::LinearDrag( this, LineSegment3f( V3f( 0 ), m_widthProperties.axis ), event, true );
 			}
 			else if( m_handleType & HandleType::Height )
 			{
-				m_drag = Handle::LinearDrag( this, LineSegment3f( V3f( 0 ), V3f( 0, m_ySign, 0 ) ), event, true );
+				m_drag = Handle::LinearDrag( this, LineSegment3f( V3f( 0 ), m_heightProperties.axis ), event, true );
 			}
 		}
 
@@ -2253,7 +2260,8 @@ class WidthHeightHandle : public LightToolHandle
 		{
 			if( m_handleType & HandleType::Width )
 			{
-				coneTransform = M44f().rotate( V3f( 0, M_PI * 0.5f * m_xSign, 0 ) );
+				// Rotate the cone 90 degrees around the axis that is the width axis rotated 90 degrees around the z axis.
+				coneTransform = M44f().rotate( m_widthProperties.axis * M44f().rotate( V3f( 0, 0, M_PI * 0.5f ) ) * M_PI * 0.5f );
 				edgeTransform =
 					M44f().rotate( V3f( -M_PI * 0.5f, 0, 0 ) ) *
 					M44f().translate( V3f( 0, edgeSegment.p0.y, 0 ) )
@@ -2261,7 +2269,8 @@ class WidthHeightHandle : public LightToolHandle
 			}
 			else
 			{
-				coneTransform = M44f().rotate( V3f( M_PI * 0.5f * -m_ySign, 0, 0 ) );
+				// Rotate the cone 90 degrees around the axis that is the height axis rotated 90 degrees around the z axis.
+				coneTransform = M44f().rotate( m_heightProperties.axis * M44f().rotate( V3f( 0, 0, M_PI * 0.5f ) ) * M_PI * 0.5f );
 				edgeTransform =
 					M44f().rotate( V3f( 0, M_PI * 0.5f, 0 ) ) *
 					M44f().translate( V3f( edgeSegment.p0.x, 0, 0 ) )
@@ -2275,20 +2284,16 @@ class WidthHeightHandle : public LightToolHandle
 
 		const SceneView *m_view;
 
-		const InternedString m_widthParameter;
-		const InternedString m_heightParameter;
+		const unsigned m_handleType;
+
+		const HandleProperties m_widthProperties;
+		const HandleProperties m_heightProperties;
 
 		std::vector<InspectionInfo> m_inspections;
 
 		std::variant<std::monostate, Handle::LinearDrag, Handle::PlanarDrag> m_drag;
 
-		const unsigned m_handleType;
-
 		InspectionInfo m_dragStartInfo;
-
-		// The sign for each axis of the handle
-		const float m_xSign;
-		const float m_ySign;
 
 		V3f m_edgeCursorPoint;
 		V2f m_scale;  // width and height scale of the light's transform
@@ -2390,17 +2395,17 @@ LightTool::LightTool( SceneView *view, const std::string &name ) :
 
 	// Quadlight handles
 
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, "widthParameter", "heightParameter", -1.f, 0, "westParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", -1.f, -1.f, "southWestParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 0, -1.f, "southParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 1.f, -1.f, "soutEastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, "widthParameter", "heightParameter", 1.f, 0.f, "eastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 1.f, 1.f, "northEastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 0, 1.f, "northParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", -1.f, 1.f, "northWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, { "widthParameter", V3f( -1.f, 0, 0 ) }, { "heightParameter", V3f( 0, 0, 0 ) }, "westParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( -1.f, 0, 0 ) }, { "heightParameter", V3f( 0, -1.f, 0 ) }, "southWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 0, 0, 0 ) }, { "heightParameter", V3f( 0, -1.f, 0 ) }, "southParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 1.f, 0, 0 ) }, { "heightParameter", V3f( 0, -1.f, 0 ) }, "soutEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width, view, { "widthParameter", V3f( 1.f, 0, 0 ) }, { "heightParameter", V3f( 0, 0, 0 ) }, "eastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 1.f, 0, 0 ) }, { "heightParameter", V3f( 0, 1.f, 0 ) }, "northEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( 0, 0, 0 ) }, { "heightParameter", V3f( 0, 1.f, 0 ) }, "northParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "quad", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, { "widthParameter", V3f( -1.f, 0, 0 ) }, { "heightParameter", V3f( 0, 1.f, 0 ) }, "northWestParameter" ) );
 
 	// DiskLight handles
-	m_handles->addChild( new WidthHeightHandle( "disk", WidthHeightHandle::HandleType::Width, view, "radiusParameter", "radiusParameter", 1.f, 0, "diskRadiusParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "disk", WidthHeightHandle::HandleType::Width, view, { "radiusParameter", V3f( -1.f, 0, 0 ) }, { "radiusParameter", V3f( 0, 0.f, 0 ) }, "diskRadiusParameter" ) );
 
 	// SphereLightHandles
 
