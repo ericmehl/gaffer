@@ -1673,12 +1673,16 @@ class WidthHeightHandle : public LightToolHandle
 			const std::string &attributePattern,
 			unsigned handleType,
 			const SceneView *view,
+			const InternedString widthParameter,
+			const InternedString heightParameter,
 			const float xSign,
 			const float ySign,
 			const std::string &name = "WidthHeightHandle"
 		) :
 			LightToolHandle( attributePattern, name ),
 			m_view( view ),
+			m_widthParameter( widthParameter ),
+			m_heightParameter( heightParameter ),
 			m_handleType( handleType ),
 			m_dragStartInfo(),
 			m_xSign( xSign ),
@@ -1721,8 +1725,8 @@ class WidthHeightHandle : public LightToolHandle
 					const auto shader = attributes->member<ShaderNetwork>( attributeName )->outputShader();
 					std::string shaderAttribute = shader->getType() + ":" + shader->getName();
 
-					auto widthParameterName = Metadata::value<StringData>( shaderAttribute, "widthParameter" );
-					auto heightParameterName = Metadata::value<StringData>( shaderAttribute, "heightParameter" );
+					auto widthParameterName = Metadata::value<StringData>( shaderAttribute, m_widthParameter );
+					auto heightParameterName = Metadata::value<StringData>( shaderAttribute, m_heightParameter );
 					if( !widthParameterName || !heightParameterName )
 					{
 						continue;
@@ -2252,6 +2256,9 @@ class WidthHeightHandle : public LightToolHandle
 
 		const SceneView *m_view;
 
+		const InternedString m_widthParameter;
+		const InternedString m_heightParameter;
+
 		std::vector<InspectionInfo> m_inspections;
 
 		std::variant<std::monostate, Handle::LinearDrag, Handle::PlanarDrag> m_drag;
@@ -2364,14 +2371,14 @@ LightTool::LightTool( SceneView *view, const std::string &name ) :
 
 	// Quadlight handles
 
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width, view, -1.f, 0, "westParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, -1.f, -1.f, "southWestParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Height, view, 0, -1.f, "southParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, 1.f, -1.f, "soutEastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width, view, 1.f, 0.f, "eastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, 1.f, 1.f, "northEastParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Height, view, 0, 1.f, "northParameter" ) );
-	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, -1.f, 1.f, "northWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width, view, "widthParameter", "heightParameter", -1.f, 0, "westParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", -1.f, -1.f, "southWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 0, -1.f, "southParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 1.f, -1.f, "soutEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width, view, "widthParameter", "heightParameter", 1.f, 0.f, "eastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 1.f, 1.f, "northEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", 0, 1.f, "northParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, "widthParameter", "heightParameter", -1.f, 1.f, "northWestParameter" ) );
 
 
 	for( const auto &c : m_handles->children() )
