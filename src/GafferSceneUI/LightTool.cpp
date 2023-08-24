@@ -1656,10 +1656,10 @@ class SpotLightHandle : public LightToolHandle
 };
 
 // ============================================================================
-// QuadLightHandle
+// WidthHeightHandle
 // ============================================================================
 
-class QuadLightHandle : public LightToolHandle
+class WidthHeightHandle : public LightToolHandle
 {
 	public :
 
@@ -1669,13 +1669,13 @@ class QuadLightHandle : public LightToolHandle
 			Height = 2
 		};
 
-		QuadLightHandle(
+		WidthHeightHandle(
 			const std::string &attributePattern,
 			unsigned handleType,
 			const SceneView *view,
 			const float xSign,
 			const float ySign,
-			const std::string &name = "QuadLightHandle"
+			const std::string &name = "WidthHeightHandle"
 		) :
 			LightToolHandle( attributePattern, name ),
 			m_view( view ),
@@ -1686,10 +1686,10 @@ class QuadLightHandle : public LightToolHandle
 			m_edgeCursorPoint( V3f( 0 ) ),
 			m_scale( V2f( 1.f ) )
 		{
-			mouseMoveSignal().connect( boost::bind( &QuadLightHandle::mouseMove, this, ::_2 ) );
+			mouseMoveSignal().connect( boost::bind( &WidthHeightHandle::mouseMove, this, ::_2 ) );
 		}
 
-		~QuadLightHandle() override
+		~WidthHeightHandle() override
 		{
 
 		}
@@ -2364,14 +2364,14 @@ LightTool::LightTool( SceneView *view, const std::string &name ) :
 
 	// Quadlight handles
 
-	m_handles->addChild( new QuadLightHandle( "*light", QuadLightHandle::HandleType::Width, view, -1.f, 0, "westParameter" ) );
-	m_handles->addChild( new QuadLightHandle( "*light", QuadLightHandle::HandleType::Width | QuadLightHandle::HandleType::Height, view, -1.f, -1.f, "southWestParameter" ) );
-	m_handles->addChild( new QuadLightHandle( "*light", QuadLightHandle::HandleType::Height, view, 0, -1.f, "southParameter" ) );
-	m_handles->addChild( new QuadLightHandle( "*light", QuadLightHandle::HandleType::Width | QuadLightHandle::HandleType::Height, view, 1.f, -1.f, "soutEastParameter" ) );
-	m_handles->addChild( new QuadLightHandle( "*light", QuadLightHandle::HandleType::Width, view, 1.f, 0.f, "eastParameter" ) );
-	m_handles->addChild( new QuadLightHandle( "*light", QuadLightHandle::HandleType::Width | QuadLightHandle::HandleType::Height, view, 1.f, 1.f, "northEastParameter" ) );
-	m_handles->addChild( new QuadLightHandle( "*light", QuadLightHandle::HandleType::Height, view, 0, 1.f, "northParameter" ) );
-	m_handles->addChild( new QuadLightHandle( "*light", QuadLightHandle::HandleType::Width | QuadLightHandle::HandleType::Height, view, -1.f, 1.f, "northWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width, view, -1.f, 0, "westParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, -1.f, -1.f, "southWestParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Height, view, 0, -1.f, "southParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, 1.f, -1.f, "soutEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width, view, 1.f, 0.f, "eastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, 1.f, 1.f, "northEastParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Height, view, 0, 1.f, "northParameter" ) );
+	m_handles->addChild( new WidthHeightHandle( "*light", WidthHeightHandle::HandleType::Width | WidthHeightHandle::HandleType::Height, view, -1.f, 1.f, "northWestParameter" ) );
 
 
 	for( const auto &c : m_handles->children() )
