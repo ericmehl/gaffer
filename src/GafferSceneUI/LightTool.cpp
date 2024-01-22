@@ -2955,7 +2955,7 @@ class HandlesGadget : public Gadget
 			/// `glDepthFunc( GL_GREATER )`. Or maybe an option to
 			/// render gadgets in an offscreen buffer before compositing
 			/// them over the current framebuffer?
-			glClearDepth( 1.0f );
+			glClearDepth( 0.0f );  // Using inverted depth buffer
 			glClear( GL_DEPTH_BUFFER_BIT );
 			glEnable( GL_DEPTH_TEST );
 

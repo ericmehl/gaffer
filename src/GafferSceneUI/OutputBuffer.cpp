@@ -172,7 +172,8 @@ void main()
 	vec4 Pcamera = vec4( 0.0, 0.0, -depth, 1.0 );
 	vec4 Pclip = gl_ProjectionMatrix * Pcamera;
 	float ndcDepth = Pclip.z / Pclip.w;
-	gl_FragDepth = (ndcDepth + 1.0) / 2.0;
+	// gl_FragDepth = (ndcDepth + 1.0) / 2.0;
+	gl_FragDepth = ndcDepth;
 
 	if( renderSelection )
 	{

@@ -1178,7 +1178,7 @@ void ViewportGadget::render() const
 	camera->render( nullptr );
 
 	glClearColor( 0.26f, 0.26f, 0.26f, 0.0f );
-	glClearDepth( 1.0f );
+	glClearDepth( 0.0f );  // Using inverted depth buffer
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	glEnable( GL_BLEND );
 
@@ -1253,6 +1253,7 @@ void ViewportGadget::renderInternal( RenderReason reason, Gadget::Layer filterLa
 
 	M44f viewTransform;
 	glGetFloatv( GL_MODELVIEW_MATRIX, viewTransform.getValue() );
+	std::cerr << viewTransform << "\n";
 	M44f projectionTransform;
 	glGetFloatv( GL_PROJECTION_MATRIX, projectionTransform.getValue() );
 
@@ -1288,7 +1289,7 @@ void ViewportGadget::renderInternal( RenderReason reason, Gadget::Layer filterLa
 		glEnable( GL_MULTISAMPLE );
 		if( layer == Layer::Back )
 		{
-			glClearDepth( 1.0f );
+			glClearDepth( 0.0f );  // Using inverted depth buffer
 			glClear( GL_DEPTH_BUFFER_BIT );
 		}
 		renderLayerInternal( RenderReason::Draw, layer, viewTransform, bound, nullptr );
@@ -1385,7 +1386,7 @@ GLuint ViewportGadget::acquireFramebuffer() const
 
 	// Resize depth buffer and attach to framebuffer
 	glBindRenderbuffer( GL_RENDERBUFFER, m_depthBuffer );
-	glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH_COMPONENT24, size.x, size.y );
+	glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH_COMPONENT32F, size.x, size.y );
 	glFramebufferRenderbuffer( GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthBuffer );
 
 	// Validate framebuffer
