@@ -223,7 +223,9 @@ class GAFFERUI_API ViewportGadget : public Gadget
 		/// and the 3D space that Gadgets live in.
 
 		IECore::LineSegment3f rasterToGadgetSpace( const Imath::V2f &rasterPosition, const Gadget *gadget ) const;
+		IECore::LineSegment3d rasterToGadgetSpaceDouble( const Imath::V2d &rasterPosition, const Gadget *gadget ) const;
 		Imath::V2f gadgetToRasterSpace( const Imath::V3f &gadgetPosition, const Gadget *gadget ) const;
+		Imath::V2d gadgetToRasterSpaceDouble( const Imath::V3d &gadgetPosition, const Gadget *gadget ) const;
 
 		IECore::LineSegment3f rasterToWorldSpace( const Imath::V2f &rasterPosition ) const;
 		Imath::V2f worldToRasterSpace( const Imath::V3f &worldPosition ) const;

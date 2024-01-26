@@ -1146,7 +1146,7 @@ def __snapshotCataloguesSubMenu( view, scriptNode ) :
 
 	else :
 		commonDescription = __snapshotDescription( view )
-		commonActive = view["renderer"]["name"].getValue() != "OpenGL"
+		commonActive = True
 
 		for c in catalogueList :
 

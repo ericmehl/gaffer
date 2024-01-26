@@ -441,6 +441,42 @@ class ViewportGadget::CameraController : public boost::noncopyable
 			far = far * m_transform;
 		}
 
+		void unprojectDouble( const Imath::V2d rasterPosition, Imath::V3d &near, Imath::V3d &far ) const
+		{
+			const V2d clippingPlanes = m_camera->getClippingPlanes();
+			if( m_planarMovement )
+			{
+				V2d rasterCenter = 0.5 * V2d( m_camera->getResolution() );
+				V2d unscaled = ( rasterPosition - rasterCenter ) * m_planarScale;
+				near = V3d( unscaled.x, -unscaled.y, -clippingPlanes[0] );
+				far = V3d( unscaled.x, -unscaled.y, -clippingPlanes[1] );
+			}
+			else
+			{
+				V2d ndc = V2d( rasterPosition ) / V2d( m_camera->getResolution() );
+				const Box2d &normalizedScreenWindow = Box2d( m_camera->frustum().min, m_camera->frustum().max );
+				V2d screen(
+					lerp( normalizedScreenWindow.min.x, normalizedScreenWindow.max.x, ndc.x ),
+					lerp( normalizedScreenWindow.max.y, normalizedScreenWindow.min.y, ndc.y )
+				);
+
+				if( m_camera->getProjection()=="perspective" )
+				{
+					V3d camera( screen.x, screen.y, -1.0 );
+					near = camera * clippingPlanes[0];
+					far = camera * clippingPlanes[1];
+				}
+				else
+				{
+					near = V3d( screen.x, screen.y, -clippingPlanes[0] );
+					far = V3d( screen.x, screen.y, -clippingPlanes[1] );
+				}
+			}
+
+			near = near * m_transform;
+			far = far * m_transform;
+		}
+
 		/// Projects the point in world space into a raster space position.
 		Imath::V2f project( const Imath::V3f &worldPosition ) const
 		{
@@ -466,6 +502,36 @@ class ViewportGadget::CameraController : public boost::noncopyable
 					lerpfactor( cameraPosition.y, normalizedScreenWindow.max.y, normalizedScreenWindow.min.y )
 				);
 				return V2f(
+					ndcPosition.x * resolution.x,
+					ndcPosition.y * resolution.y
+				);
+			}
+		}
+
+		Imath::V2d projectDouble( const Imath::V3d &worldPosition ) const
+		{
+			M44d inverseCameraMatrix = M44d( m_transform.inverse() );
+			V3d cameraPosition = worldPosition * inverseCameraMatrix;
+
+			if( m_planarMovement )
+			{
+				V2d rasterCenter = 0.5 * V2d( getViewportResolution() );
+				return rasterCenter + V2d( cameraPosition.x, -cameraPosition.y ) / V2f( m_planarScale );
+			}
+			else
+			{
+				const V2i resolution = getViewportResolution();
+				const Box2d &normalizedScreenWindow = Box2d( m_camera->frustum().min, m_camera->frustum().max );
+				if( m_camera->getProjection() == "perspective" )
+				{
+					cameraPosition = cameraPosition / -cameraPosition.z;
+				}
+
+				V2d ndcPosition(
+					lerpfactor( cameraPosition.x, normalizedScreenWindow.min.x, normalizedScreenWindow.max.x ),
+					lerpfactor( cameraPosition.y, normalizedScreenWindow.max.y, normalizedScreenWindow.min.y )
+				);
+				return V2d(
 					ndcPosition.x * resolution.x,
 					ndcPosition.y * resolution.y
 				);
@@ -1145,11 +1211,31 @@ IECore::LineSegment3f ViewportGadget::rasterToGadgetSpace( const Imath::V2f &pos
 	return result;
 }
 
+IECore::LineSegment3d ViewportGadget::rasterToGadgetSpaceDouble( const Imath::V2d &position, const Gadget *gadget ) const
+{
+	LineSegment3d result;
+	m_cameraController->unprojectDouble( position, result.p0, result.p1 );
+	if( gadget )
+	{
+		M44d m = M44d( gadget->fullTransform() );
+		m.invert( true );
+		result = result * m;
+	}
+	return result;
+}
+
 Imath::V2f ViewportGadget::gadgetToRasterSpace( const Imath::V3f &gadgetPosition, const Gadget *gadget ) const
 {
 	M44f gadgetTransform = gadget->fullTransform();
 	V3f worldSpacePosition = gadgetPosition * gadgetTransform;
 	return m_cameraController->project( worldSpacePosition );
+}
+
+Imath::V2d ViewportGadget::gadgetToRasterSpaceDouble( const Imath::V3d &gadgetPosition, const Gadget *gadget ) const
+{
+	M44d gadgetTransform = M44d( gadget->fullTransform() );
+	V3d worldSpacePosition = gadgetPosition * gadgetTransform;
+	return m_cameraController->projectDouble( worldSpacePosition );
 }
 
 IECore::LineSegment3f ViewportGadget::rasterToWorldSpace( const Imath::V2f &rasterPosition ) const

@@ -167,6 +167,15 @@ size_t objectsAt( SceneGadget &g, const Imath::V3f &corner0InGadgetSpace, const 
 	return g.objectsAt( corner0InGadgetSpace, corner1InGadgetSpace, paths );
 }
 
+tuple normalAndResultAt( SceneGadget &g, const IECore::LineSegment3f &l )
+{
+	ScopedGILRelease gilRelease;
+	Imath::V3f normal;
+	const bool result = g.normalAt( l, normal);
+
+	return boost::python::make_tuple( normal, result );
+}
+
 Imath::Box3f selectionBound( SceneGadget &g )
 {
 	ScopedGILRelease gilRelease;

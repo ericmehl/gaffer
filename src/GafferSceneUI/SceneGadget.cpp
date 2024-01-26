@@ -43,6 +43,8 @@
 
 #include "Gaffer/BackgroundTask.h"
 
+#include "IECore/Writer.h"
+
 #include "boost/bind/bind.hpp"
 #include "boost/bind/placeholders.hpp"
 
@@ -65,14 +67,14 @@ using namespace GafferSceneUI;
 namespace
 {
 
-float lineariseDepthBufferSample( float bufferDepth, float *m )
+double lineariseDepthBufferSample( float bufferDepth, float *m )
 {
 	// Heavily optimised extraction that works with our orthogonal clipping planes
 	//   Fast Extraction of Viewing Frustum Planes from the WorldView-Projection Matrix
 	//   http://www.cs.otago.ac.nz/postgrads/alexis/planeExtraction.pdf
-	const float n = - ( m[15] + m[14] ) / ( m[11] + m[10] );
-	const float f = - ( m[15] - m[14] ) / ( m[11] - m[10] );
-	return ( 2.0f * n * f ) / ( f + n - ( bufferDepth * 2.0f - 1.0f ) * ( f - n ) );
+	const double n = - ( (double)m[15] + (double)m[14] ) / ( (double)m[11] + (double)m[10] );
+	const double f = - ( (double)m[15] - (double)m[14] ) / ( (double)m[11] - (double)m[10] );
+	return ( 2.0 * n * f ) / ( f + n - ( (double)bufferDepth * 2.0 - 1.0 ) * ( f - n ) );
 }
 
 /// \todo Could this find a home in SceneAlgo?
@@ -562,6 +564,127 @@ bool SceneGadget::objectAt( const IECore::LineSegment3f &lineInGadgetSpace, Gaff
 	return true;
 }
 
+bool SceneGadget::objectAtDouble( const IECore::LineSegment3d &lineInGadgetSpace, GafferScene::ScenePlug::ScenePath &path, V3f &hitPoint ) const
+{
+	if( m_updateErrored )
+	{
+		return false;
+	}
+
+	double depth = std::numeric_limits<float>::max();
+	bool hit = false;
+	// bool hit = openGLObjectAt( lineInGadgetSpace, path, depth );
+
+	auto viewportGadget = ancestor<ViewportGadget>();
+	if( m_outputBuffer )
+	{
+		const V2d rasterPosition = viewportGadget->gadgetToRasterSpaceDouble( lineInGadgetSpace.p1, this );
+		float bufferDepth;
+		if( uint32_t id = m_outputBuffer->idAt( rasterPosition / viewportGadget->getViewport(), bufferDepth ) )
+		{
+			if( bufferDepth < depth )
+			{
+				if( auto bufferPath = m_controller->pathForID( id ) )
+				{
+					if( m_selectionMask )
+					{
+						ScenePlug::PathScope pathScope( getContext(), &*bufferPath );
+						if( !isObjectInstanceOf( getScene(), typeIdsFromTypeNames( m_selectionMask->readable() ) ) )
+						{
+							return false;
+						}
+					}
+					depth = bufferDepth;
+					path = *bufferPath;
+					hit = true;
+				}
+			}
+		}
+	}
+
+	if( !hit )
+	{
+		return false;
+	}
+
+	V3d viewDir;
+	const M44d cameraWorldTransform = M44d( viewportGadget->getCameraTransform() );
+	const M44d cameraTransform = cameraWorldTransform * M44d( fullTransform().inverse() );
+	cameraTransform.multDirMatrix( V3d( 0.0f, 0.0f, -1.0f ), viewDir );
+
+	const V3d traceDir = lineInGadgetSpace.normalizedDirection();
+
+	depth /= max( 0.00001, viewDir.dot( traceDir ) );
+
+	const V3d origin = V3f( 0.0 ) * cameraTransform;
+	hitPoint = origin + ( traceDir * depth );
+
+	hitPoint = V3f( hitPoint.y );
+
+	return true;
+}
+
+bool SceneGadget::objectAtRaster( const Imath::V2i &rasterPosition, GafferScene::ScenePlug::ScenePath &path, V3f &hitPoint ) const
+{
+	if( m_updateErrored )
+	{
+		return false;
+	}
+
+	const V2d rasterPositiond( rasterPosition );
+
+	double depth = std::numeric_limits<float>::max();
+	float depthf;
+	auto viewportGadget = ancestor<ViewportGadget>();
+	bool hit = openGLObjectAt( viewportGadget->rasterToGadgetSpace( V2f( rasterPosition ), this ), path, depthf );
+	depth = depthf;
+
+	if( m_outputBuffer )
+	{
+		float bufferDepth;
+		if( uint32_t id = m_outputBuffer->idAtRaster( rasterPosition, bufferDepth ) )
+		{
+			if( bufferDepth < depth )
+			{
+				if( auto bufferPath = m_controller->pathForID( id ) )
+				{
+					if( m_selectionMask )
+					{
+						ScenePlug::PathScope pathScope( getContext(), &*bufferPath );
+						if( !isObjectInstanceOf( getScene(), typeIdsFromTypeNames( m_selectionMask->readable() ) ) )
+						{
+							return false;
+						}
+					}
+					depth = bufferDepth;
+					path = *bufferPath;
+					hit = true;
+				}
+			}
+		}
+	}
+
+	if( !hit )
+	{
+		return false;
+	}
+
+	V3d viewDir;
+	const M44d cameraWorldTransform = M44d( viewportGadget->getCameraTransform() );
+	const M44d cameraTransform = cameraWorldTransform * M44d( fullTransform().inverse() );
+	cameraTransform.multDirMatrix( V3d( 0.0f, 0.0f, -1.0f ), viewDir );
+
+	const LineSegment3d lineInGadgetSpace = viewportGadget->rasterToGadgetSpaceDouble( rasterPositiond, this );
+	const V3d traceDir = lineInGadgetSpace.normalizedDirection();
+
+	depth /= max( 0.00001, viewDir.dot( traceDir ) );
+
+	const V3d origin = V3d( 0.0 ) * cameraTransform;
+	hitPoint = origin + ( traceDir * depth );
+
+	return true;
+}
+
 bool SceneGadget::openGLObjectAt( const IECore::LineSegment3f &lineInGadgetSpace, GafferScene::ScenePlug::ScenePath &path, float &depth ) const
 {
 	float projectionMatrix[16];
@@ -604,6 +727,7 @@ bool SceneGadget::openGLObjectAt( const IECore::LineSegment3f &lineInGadgetSpace
 
 	path = *PathMatcher::Iterator( paths.begin() );
 	depth = -lineariseDepthBufferSample( depthMin, projectionMatrix );
+	depth = depthMin;
 
 	return true;
 }
@@ -654,6 +778,93 @@ size_t SceneGadget::objectsAt(
 	}
 
 	return paths.size();
+}
+
+bool SceneGadget::normalAt( const IECore::LineSegment3f &lineInGadgetSpace, V3f &gadgetNormal ) const
+{
+	V3f centerP;
+	ScenePlug::ScenePath centerPath;
+	if( objectAt( lineInGadgetSpace, centerPath, centerP ) )
+	{
+		// Find the normal of the first triangle formed by `pixelPosition` and
+		// left + top, right + top, left + bottom or right + bottom depth samples
+		// where each pair has the same object ID as the center pixel.
+
+		auto viewportGadget = ancestor<ViewportGadget>();
+		const V2d rasterPosition = viewportGadget->gadgetToRasterSpaceDouble( lineInGadgetSpace.p1, this );
+
+		const float spread = 1.f;
+
+		V3f leftP;
+		ScenePlug::ScenePath leftPath;
+		const bool leftHit = objectAtRaster(
+			rasterPosition + V2i( -spread, 0 ),
+			leftPath,
+			leftP
+		);
+
+		V3f topP;
+		ScenePlug::ScenePath topPath;
+		const bool topHit = objectAtRaster(
+			rasterPosition + V2i( 0, -spread ),
+			topPath,
+			topP
+		);
+
+		gadgetNormal = V3f( 0 );
+		int nCount = 0;
+		if( leftHit && topHit && leftPath == topPath )
+		{
+			gadgetNormal += ( topP - centerP ).cross( leftP - centerP ).normalized();
+			nCount++;
+		}
+		else
+		{
+			V3f rightP;
+			ScenePlug::ScenePath rightPath;
+			const bool rightHit = objectAtRaster(
+				rasterPosition + V2i( 1, 0 ),
+				rightPath,
+				rightP
+			);
+
+			if( rightHit && topHit && rightPath == topPath )
+			{
+				gadgetNormal += ( rightP - centerP ).cross( topP - centerP ).normalized();
+				nCount++;
+			}
+
+			else
+			{
+				V3f bottomP;
+				ScenePlug::ScenePath bottomPath;
+				const bool bottomHit = objectAtRaster(
+					rasterPosition + V2i( 0, 1 ),
+					bottomPath,
+					bottomP
+				);
+
+				if( rightHit && bottomHit && rightPath == bottomPath )
+				{
+					gadgetNormal += ( bottomP - centerP ).cross( rightP - centerP ).normalized();
+					nCount++;
+				}
+
+				else if( leftHit && bottomHit && leftPath == bottomPath )
+				{
+					gadgetNormal += ( leftP - centerP ).cross( bottomP - centerP ).normalized();
+					nCount++;
+				}
+			}
+		}
+		if( nCount > 0 )
+		{
+			gadgetNormal /= (float)nCount;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 IECore::PathMatcher SceneGadget::convertSelection( IECore::UIntVectorDataPtr ids ) const
@@ -786,12 +997,63 @@ void SceneGadget::snapshotToFile(
 	const CompoundData *metadata
 ) const
 {
-	if( !m_outputBuffer )
+	// if( !m_outputBuffer )
+	// {
+	// 	return;
+	// }
+
+	auto viewportGadget = ancestor<ViewportGadget>();
+	const V2i &vp = viewportGadget->getViewport();
+
+	FloatVectorDataPtr rData = new FloatVectorData();
+	FloatVectorDataPtr gData = new FloatVectorData();
+	FloatVectorDataPtr bData = new FloatVectorData();
+
+	std::vector<float> &r = rData->writable();
+	std::vector<float> &g = gData->writable();
+	std::vector<float> &b = bData->writable();
+
+	int s = ( vp.x ) * ( vp.y );
+
+	r.reserve( s );
+	g.reserve( s );
+	b.reserve( s );
+
+	for( int y = 0; y < vp.y; ++y )
 	{
-		return;
+		std::cerr << "y = " << y << "\n";
+		for( int x = 0; x < vp.x; ++x )
+		{
+			LineSegment3d gadgetLine = viewportGadget->rasterToGadgetSpaceDouble( V2d( x, y ), this );
+			V3f normal;
+			// const bool result = normalAt( gadgetLine, normal );
+			ScenePlug::ScenePath path;
+			const bool result = objectAtRaster( V2i( x, y ), path, normal );
+			if( result )
+			{
+				r.push_back( normal.x );
+				g.push_back( normal.y );
+				b.push_back( normal.z );
+			}
+			else
+			{
+				r.push_back( 0 );
+				g.push_back( 0 );
+				b.push_back( 0 );
+			}
+		}
 	}
 
-	m_outputBuffer->snapshotToFile( fileName, resolutionGate, metadata );
+	const Box2i dataWindow = Box2i( V2i( 0 ), vp - V2i( 1.f ) );
+	IECoreImage::ImagePrimitivePtr img = new IECoreImage::ImagePrimitive( dataWindow, dataWindow );
+
+	img->channels["R"] = rData;
+	img->channels["G"] = gData;
+	img->channels["B"] = bData;
+
+	WriterPtr writer = IECore::Writer::create( img, fileName.string() );
+	writer->write();
+	// m_outputBuffer->snapshotToFile( fileName, resolutionGate, metadata );
 }
 
 void SceneGadget::renderLayer( Layer layer, const GafferUI::Style *style, RenderReason reason ) const

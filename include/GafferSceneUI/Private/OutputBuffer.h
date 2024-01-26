@@ -74,6 +74,7 @@ class OutputBuffer
 		/// Returns the ID for the object found at the specified NDC position, filling `depth` with its
 		/// depth from the camera. Returns 0 if no object is found.
 		uint32_t idAt( const Imath::V2f &ndcPosition, float &depth ) const;
+		uint32_t idAtRaster( const Imath::V2i &pixelPosition, float &depth ) const;
 		/// Returns the IDs of all objects found in the specified region of NDC space.
 		std::vector<uint32_t> idsAt( const Imath::Box2f &ndcBox ) const;
 

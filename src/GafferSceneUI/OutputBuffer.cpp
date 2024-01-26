@@ -379,6 +379,30 @@ uint32_t OutputBuffer::idAt( const V2f &ndcPosition, float &depth ) const
 	return 0;
 }
 
+uint32_t OutputBuffer::idAtRaster( const V2i &pixelPosition, float &depth ) const
+{
+	std::unique_lock lock( m_bufferReallocationMutex );
+
+	if( m_dataWindow.isEmpty() )
+	{
+		return false;
+	}
+
+	if( !m_dataWindow.intersects( pixelPosition ) )
+	{
+		return false;
+	}
+
+	const size_t pixelIndex = pixelPosition.x + pixelPosition.y * ( m_dataWindow.size().x + 1 );
+	assert( pixelIndex < m_idBuffer.size() );
+	if( uint32_t id = m_idBuffer[pixelIndex] )
+	{
+		depth = m_depthBuffer[pixelIndex];
+		return id;
+	}
+	return 0;
+}
+
 std::vector<uint32_t> OutputBuffer::idsAt( const Box2f &ndcBox ) const
 {
 	std::unique_lock lock( m_bufferReallocationMutex );
