@@ -118,7 +118,7 @@ out vec2 texCoords;
 void main()
 {
 	vec2 p = P * 2.0 - 1.0;
-	gl_Position = vec4( p.x, p.y, 0, 1 );
+	gl_Position = vec4( p.x, p.y, 1, 1 );
 	texCoords = P * vec2( 1, -1 ) + vec2( 0, 1 );
 }
 
@@ -313,12 +313,12 @@ void OutputBuffer::renderInternal( bool renderSelection ) const
 	glUniform1i( selectionParameter->location, selectionTextureUnit );
 	glUniform1i( m_shader->uniformParameter( "renderSelection" )->location, renderSelection );
 
-	glPushAttrib( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ENABLE_BIT );
+	glPushAttrib( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ENABLE_BIT | GL_DEPTH_FUNC );
 
 		glEnable( GL_DEPTH_TEST );
 		glEnable( GL_BLEND );
 		glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
-		glDepthFunc( renderSelection ? GL_LEQUAL : GL_LESS );
+		glDepthFunc( renderSelection ? GL_GEQUAL : GL_GREATER );
 
 		glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
 

@@ -1041,6 +1041,14 @@ class OpenGLRenderer final : public IECoreScenePreview::Renderer
 				State *state = baseState();
 				state->bind();
 
+				int df;
+				glGetIntegerv( GL_DEPTH_FUNC, &df );
+				std::cerr << "before GL_DEPTH_FUNC = " << df << "\n";
+				glDepthFunc( GL_GREATER );
+				glGetIntegerv( GL_DEPTH_FUNC, &df );
+				std::cerr << "after GL_DEPTH_FUNC = " << df << "\n";
+				glClipControl( GL_LOWER_LEFT, GL_ZERO_TO_ONE );
+
 				if( IECoreGL::Selector *selector = IECoreGL::Selector::currentSelector() )
 				{
 					// IECoreGL expects us to bind `selector->baseState()` here, so the
@@ -1075,6 +1083,8 @@ class OpenGLRenderer final : public IECoreScenePreview::Renderer
 				}
 
 			glPopAttrib();
+			glGetIntegerv( GL_DEPTH_FUNC, &df );
+			std::cerr << "after pop GL_DEPTH_FUNC = " << df << "\n";
 			glUseProgram( prevProgram );
 		}
 

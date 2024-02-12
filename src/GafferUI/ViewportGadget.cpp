@@ -1170,6 +1170,11 @@ void ViewportGadget::render() const
 		const_cast<ViewportGadget *>( this )
 	);
 
+	int df;
+	glGetIntegerv( GL_DEPTH_FUNC, &df );
+	std::cerr << "ViewportGadget::render() GL_DEPTH_FUNC = " << df << "\n";
+	glDepthFunc( GL_GREATER );
+
 	IECoreGL::ToGLConverterPtr converter = new IECoreGL::ToGLCameraConverter(
 		m_cameraController->getCamera()
 	);
@@ -1253,7 +1258,6 @@ void ViewportGadget::renderInternal( RenderReason reason, Gadget::Layer filterLa
 
 	M44f viewTransform;
 	glGetFloatv( GL_MODELVIEW_MATRIX, viewTransform.getValue() );
-	std::cerr << viewTransform << "\n";
 	M44f projectionTransform;
 	glGetFloatv( GL_PROJECTION_MATRIX, projectionTransform.getValue() );
 
