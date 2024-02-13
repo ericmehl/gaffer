@@ -43,6 +43,7 @@ import os
 import sys
 import signal
 import warnings
+import pathlib
 
 # Get rid of the annoying signal handler which turns Ctrl-C into a KeyboardInterrupt exception
 signal.signal( signal.SIGINT, signal.SIG_DFL )
@@ -50,6 +51,13 @@ signal.signal( signal.SIGINT, signal.SIG_DFL )
 # Reenable deprecation warnings - Python2.7 turns them off by default so otherwise we'd never get
 # to catch all the naughty deprecated things we do.
 warnings.simplefilter( "default", DeprecationWarning )
+
+if hasattr( os, "add_dll_directory" ) :
+	os.add_dll_directory( ( pathlib.Path( os.environ["GAFFER_ROOT"] ) / "lib" ).resolve() )
+	for p in os.environ.get( "GAFFER_EXTENSION_PATHS", "").split( os.pathsep ) :
+		extensionPath = pathlib.Path( p )
+		for subPath in [ i for i in [ "bin", "lib" ] if ( extensionPath / i ).is_dir() ] :
+			os.add_dll_directory( ( extensionPath / subPath ).resolve() )
 
 import IECore
 
