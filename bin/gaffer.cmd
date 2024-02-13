@@ -57,9 +57,6 @@ if "%OCIO%" EQU "" (
 
 rem Arnold
 if "%ARNOLD_ROOT%" NEQ "" (
-	call :appendToPath "%ARNOLD_ROOT%\bin" PATH
-	call :appendToPath "%ARNOLD_ROOT%\python" PYTHONPATH
-
 	if exist "%ARNOLD_ROOT%\include\ai_version.h" (
 		for /f "tokens=3" %%A in ('findstr /R /C:"#define *AI_VERSION_ARCH_NUM" "%ARNOLD_ROOT%\include\ai_version.h"') do (
 			set /a ARNOLD_ARCH_NUM=%%A
@@ -104,8 +101,7 @@ if "%ARNOLD_ROOT%" NEQ "" (
 
 rem 3Delight
 if "%DELIGHT%" NEQ "" (
-	call :appendToPath "%DELIGHT%\bin" PATH
-	call :appendToPath "%DELIGHT%\python" PYTHONPATH
+	call :prependToPath "%DELIGHT%" GAFFER_EXTENSION_PATHS
 
 	rem The %DELIGHT% component is included for backward compatibility and can be removed
 	rem when users have had time to update to %DELIGHT%\osl pathed shaders.
