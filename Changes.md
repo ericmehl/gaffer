@@ -187,10 +187,6 @@ Build
 - USD : Updated to version 23.11.
 
 1.3.x.x (relative to 1.3.11.0)
-=======
-
-Improvements
-------------
 
 - SceneReader : Added basic loding of UsdGeomNurbsCurves, converting them to CurvesPrimitives (basis curves).
 - Console output : Every line is now prefixed with the message level.

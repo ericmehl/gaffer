@@ -1037,17 +1037,13 @@ class OpenGLRenderer final : public IECoreScenePreview::Renderer
 			glGetIntegerv( GL_CURRENT_PROGRAM, &prevProgram );
 			glPushAttrib( GL_ALL_ATTRIB_BITS );
 
+				int df;
+				glGetIntegerv( GL_DEPTH_FUNC, &df );
+				std::cerr << "Renderer::renderToCurrentContext() GL_DEPTH_FUNC = " << df << "\n";
+
 				State::bindBaseState();
 				State *state = baseState();
 				state->bind();
-
-				int df;
-				glGetIntegerv( GL_DEPTH_FUNC, &df );
-				std::cerr << "before GL_DEPTH_FUNC = " << df << "\n";
-				glDepthFunc( GL_GREATER );
-				glGetIntegerv( GL_DEPTH_FUNC, &df );
-				std::cerr << "after GL_DEPTH_FUNC = " << df << "\n";
-				glClipControl( GL_LOWER_LEFT, GL_ZERO_TO_ONE );
 
 				if( IECoreGL::Selector *selector = IECoreGL::Selector::currentSelector() )
 				{
@@ -1083,8 +1079,6 @@ class OpenGLRenderer final : public IECoreScenePreview::Renderer
 				}
 
 			glPopAttrib();
-			glGetIntegerv( GL_DEPTH_FUNC, &df );
-			std::cerr << "after pop GL_DEPTH_FUNC = " << df << "\n";
 			glUseProgram( prevProgram );
 		}
 

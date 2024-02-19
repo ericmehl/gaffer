@@ -313,7 +313,7 @@ void OutputBuffer::renderInternal( bool renderSelection ) const
 	glUniform1i( selectionParameter->location, selectionTextureUnit );
 	glUniform1i( m_shader->uniformParameter( "renderSelection" )->location, renderSelection );
 
-	glPushAttrib( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ENABLE_BIT | GL_DEPTH_FUNC );
+	glPushAttrib( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ENABLE_BIT );
 
 		glEnable( GL_DEPTH_TEST );
 		glEnable( GL_BLEND );

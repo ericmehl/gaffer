@@ -1170,11 +1170,6 @@ void ViewportGadget::render() const
 		const_cast<ViewportGadget *>( this )
 	);
 
-	int df;
-	glGetIntegerv( GL_DEPTH_FUNC, &df );
-	std::cerr << "ViewportGadget::render() GL_DEPTH_FUNC = " << df << "\n";
-	glDepthFunc( GL_GREATER );
-
 	IECoreGL::ToGLConverterPtr converter = new IECoreGL::ToGLCameraConverter(
 		m_cameraController->getCamera()
 	);
@@ -1287,58 +1282,65 @@ void ViewportGadget::renderInternal( RenderReason reason, Gadget::Layer filterLa
 
 		// Render to intemediate framebuffer.
 
-		glBindFramebuffer( GL_DRAW_FRAMEBUFFER, acquireFramebuffer() );
-		glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-		glClear( GL_COLOR_BUFFER_BIT );
-		glEnable( GL_MULTISAMPLE );
-		if( layer == Layer::Back )
-		{
-			glClearDepth( 0.0f );  // Using inverted depth buffer
-			glClear( GL_DEPTH_BUFFER_BIT );
-		}
-		renderLayerInternal( RenderReason::Draw, layer, viewTransform, bound, nullptr );
+		glPushAttrib( GL_DEPTH_FUNC );
 
-		// Blit to downsampled framebuffer, to get the image into a texture
-		// format we can read from a shader.
+			glDepthFunc( GL_GREATER );
+			glClipControl( GL_LOWER_LEFT, GL_ZERO_TO_ONE );
 
-		glBindFramebuffer( GL_READ_FRAMEBUFFER, m_framebuffer );
-		glBindFramebuffer( GL_DRAW_FRAMEBUFFER, m_downsampledFramebuffer );
-		const V2i size = glViewportSize();
-		glBlitFramebuffer( 0, 0, size.x, size.y, 0, 0, size.x, size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST );
+			glBindFramebuffer( GL_DRAW_FRAMEBUFFER, acquireFramebuffer() );
+			glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+			glClear( GL_COLOR_BUFFER_BIT );
+			glEnable( GL_MULTISAMPLE );
+			if( layer == Layer::Back )
+			{
+				glClearDepth( 0.0f );  // Using inverted depth buffer
+				glClear( GL_DEPTH_BUFFER_BIT );
+			}
+			renderLayerInternal( RenderReason::Draw, layer, viewTransform, bound, nullptr );
 
-		// Use post-process shader to transfer into the output buffer.
-		/// \todo This could be optimised by batching layers with the
-		/// same shader.
+			// Blit to downsampled framebuffer, to get the image into a texture
+			// format we can read from a shader.
 
-		glBindFramebuffer( GL_FRAMEBUFFER, outputFramebuffer );
+			glBindFramebuffer( GL_READ_FRAMEBUFFER, m_framebuffer );
+			glBindFramebuffer( GL_DRAW_FRAMEBUFFER, m_downsampledFramebuffer );
+			const V2i size = glViewportSize();
+			glBlitFramebuffer( 0, 0, size.x, size.y, 0, 0, size.x, size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST );
 
-		const PostProcessShader &layerShader = m_postProcessShaders[layerIndex];
-		const PostProcessShader *shader = layerShader.setup ? &layerShader : PostProcessShader::defaultPostProcessShader();
+			// Use post-process shader to transfer into the output buffer.
+			/// \todo This could be optimised by batching layers with the
+			/// same shader.
 
-		IECoreGL::Shader::Setup::ScopedBinding shaderBinding( *shader->setup );
-		glActiveTexture( GL_TEXTURE0 + shader->textureParameter->textureUnit );
-		glBindTexture( GL_TEXTURE_2D, m_downsampledFramebufferTexture );
-		glUniform1i( shader->textureParameter->location, shader->textureParameter->textureUnit );
+			glBindFramebuffer( GL_FRAMEBUFFER, outputFramebuffer );
 
-		// The intermediate framebuffer is already premultipled.
-		glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
+			const PostProcessShader &layerShader = m_postProcessShaders[layerIndex];
+			const PostProcessShader *shader = layerShader.setup ? &layerShader : PostProcessShader::defaultPostProcessShader();
 
-		glEnableVertexAttribArrayARB( shader->pParameter->location );
-		{
-			IECoreGL::Buffer::ScopedBinding bufferBinding( *rectPBuffer() );
-			glVertexAttribPointerARB( shader->pParameter->location, 3, GL_FLOAT, false, 0, nullptr );
-		}
+			IECoreGL::Shader::Setup::ScopedBinding shaderBinding( *shader->setup );
+			glActiveTexture( GL_TEXTURE0 + shader->textureParameter->textureUnit );
+			glBindTexture( GL_TEXTURE_2D, m_downsampledFramebufferTexture );
+			glUniform1i( shader->textureParameter->location, shader->textureParameter->textureUnit );
 
-		glEnableVertexAttribArrayARB( shader->uvParameter->location );
-		{
-			IECoreGL::Buffer::ScopedBinding bufferBinding( *rectUvBuffer() );
-			glVertexAttribPointerARB( shader->uvParameter->location, 2, GL_FLOAT, false, 0, nullptr );
-		}
+			// The intermediate framebuffer is already premultipled.
+			glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
 
-		glDrawArrays( GL_TRIANGLE_STRIP, 0, 4 );
+			glEnableVertexAttribArrayARB( shader->pParameter->location );
+			{
+				IECoreGL::Buffer::ScopedBinding bufferBinding( *rectPBuffer() );
+				glVertexAttribPointerARB( shader->pParameter->location, 3, GL_FLOAT, false, 0, nullptr );
+			}
 
-		glDisableVertexAttribArrayARB( shader->pParameter->location );
-		glDisableVertexAttribArrayARB( shader->uvParameter->location );
+			glEnableVertexAttribArrayARB( shader->uvParameter->location );
+			{
+				IECoreGL::Buffer::ScopedBinding bufferBinding( *rectUvBuffer() );
+				glVertexAttribPointerARB( shader->uvParameter->location, 2, GL_FLOAT, false, 0, nullptr );
+			}
+
+			glDrawArrays( GL_TRIANGLE_STRIP, 0, 4 );
+
+			glDisableVertexAttribArrayARB( shader->pParameter->location );
+			glDisableVertexAttribArrayARB( shader->uvParameter->location );
+
+		glPopAttrib();
 	}
 
 	glLoadMatrixf( viewTransform.getValue() );
