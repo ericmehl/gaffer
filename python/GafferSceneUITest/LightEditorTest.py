@@ -38,8 +38,10 @@ import unittest
 import imath
 
 import IECore
+import IECoreScene
 
 import Gaffer
+import GafferUI
 from GafferSceneUI import _GafferSceneUI
 import GafferScene
 import GafferSceneUI
@@ -703,6 +705,81 @@ class LightEditorTest( GafferUITest.TestCase ) :
 			widget,
 			True  # quickBoolean
 		)
+
+	def testShaderParameterEditScope( self ) :
+
+		GafferSceneUI.LightEditor.registerParameter( "light", "add.b" )
+
+		script = Gaffer.ScriptNode()
+		script["light"] = GafferSceneTest.TestLight()
+
+		script["filter"] = GafferScene.PathFilter()
+		script["filter"]["paths"].setValue( IECore.StringVectorData( ["/light"] ) )
+
+		network = IECoreScene.ShaderNetwork(
+			shaders = {
+				"output" : IECoreScene.Shader( "testLight", "light", { "color" : imath.Color3f( 1.0 ) } ),
+				"add" : IECoreScene.Shader( "add", "osl:shader", { "a" : imath.Color3f( 0.0 ), "b" : imath.Color3f( 0.0 ) } ),
+				"image" : IECoreScene.Shader( "image", "osl:shader", {} )
+			},
+			connections = [
+				( ( "image", "" ), ( "add", "a" ) ),
+				( ( "add", "" ), ( "output", "color" ) ),
+			],
+			output = "output"
+		)
+
+		script["custAttr"] = GafferScene.CustomAttributes()
+		script["custAttr"]["in"].setInput( script["light"]["out"] )
+		script["custAttr"]["extraAttributes"].setValue( IECore.CompoundObject( { "light" : network } ) )
+		script["custAttr"]["filter"].setInput( script["filter"]["out"] )
+
+		script["editScope"] = Gaffer.EditScope()
+		script["editScope"].setup( script["custAttr"]["out"] )
+		script["editScope"]["in"].setInput( script["custAttr"]["out"] )
+
+		attributes = script["editScope"]["out"].attributes( "/light" )
+		self.assertIn( "light", attributes )
+		self.assertIn( "add", attributes["light"].shaders() )
+		self.assertEqual( attributes["light"].shaders()["add"].parameters["b"].value, imath.Color3f( 0.0 ) )
+
+		with GafferUI.Window() as window :
+			editor = GafferSceneUI.LightEditor( script )
+		editor._LightEditor__settingsNode["editScope"].setInput( script["editScope"]["out"] )
+		window.setVisible( True )
+
+		self.waitForIdle( 1000 )
+
+		editor.setNodeSet( Gaffer.StandardSet( [ script["editScope"] ] ) )
+
+		# Find the column for our `add.b` parameter
+		widget = editor._LightEditor__pathListing
+
+		addBInspector = None
+		for c in widget.getColumns() :
+			if (
+				isinstance( c, _GafferSceneUI._LightEditorInspectorColumn ) and
+				c.headerData().value == "B"
+			) :
+				addBInspector = c.inspector()
+
+		self.assertIsNotNone( addBInspector )
+
+		with Gaffer.Context() as context :
+			context["scene:path"] = IECore.InternedStringVectorData( ["light"] )
+			addBInspection = addBInspector.inspect()
+
+		self.assertIsNotNone( addBInspection )
+
+		plug = addBInspection.acquireEdit()
+		plug["enabled"].setValue( True )
+		plug["value"].setValue( imath.Color3f( 1.0, 0.5, 0.0 ) )
+
+		attributes = script["editScope"]["out"].attributes( "/light" )
+		self.assertIn( "light", attributes )
+		self.assertIn( "add", attributes["light"].shaders() )
+		self.assertEqual( attributes["light"].shaders()["add"].parameters["b"].value, imath.Color3f( 1.0, 0.5, 0.0 ) )
+
 
 if __name__ == "__main__" :
 	unittest.main()

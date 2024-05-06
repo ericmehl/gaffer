@@ -146,7 +146,8 @@ class LightEditor( GafferUI.NodeSetEditor ) :
 		# We use `tuple` to store `ShaderNetwork.Parameter`, because
 		# the latter isn't hashable and we need to use it as a dict key.
 		if isinstance( parameter, str ) :
-			parameter = ( "", parameter )
+			shader, dot, param = parameter.rpartition( "." )
+			parameter = ( shader, param )
 		else :
 			assert( isinstance( parameter, IECoreScene.ShaderNetwork.Parameter ) )
 			parameter = ( parameter.shader, parameter.name )

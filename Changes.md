@@ -6,6 +6,11 @@ Features
 
 - 3Delight : Added "3Delight Cloud" renderer, for rendering using the 3Delight cloud.
 
+Improvements
+------------
+
+- LightEditor : Added the ability to register columns for editing any shader in the light's shader network with an Edit Scope. The parameter to edit is registered in the form `shaderName.parameterName` when calling `GafferSceneUI.LightEditor.registerParameter`.
+
 1.4.2.0 (relative to 1.4.1.0)
 =======
 
