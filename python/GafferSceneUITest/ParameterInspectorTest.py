@@ -38,6 +38,7 @@ import unittest
 
 import imath
 import IECore
+import IECoreScene
 
 import Gaffer
 import GafferTest
@@ -59,12 +60,12 @@ class ParameterInspectorTest( GafferUITest.TestCase ) :
 		self.assertEqual( inspector.name(), "penumbraAngle" )
 
 	@staticmethod
-	def __inspect( scene, path, parameter, editScope=None, attribute="light" ) :
+	def __inspect( scene, path, parameter, editScope=None, attribute="light", shader = "" ) :
 
 		editScopePlug = Gaffer.Plug()
 		editScopePlug.setInput( editScope["enabled"] if editScope is not None else None )
 		inspector = GafferSceneUI.Private.ParameterInspector(
-			scene, editScopePlug, attribute, ( "", parameter )
+			scene, editScopePlug, attribute, ( shader, parameter )
 		)
 		with Gaffer.Context() as context :
 			context["scene:path"] = IECore.InternedStringVectorData( path.split( "/" )[1:] )
@@ -847,6 +848,48 @@ class ParameterInspectorTest( GafferUITest.TestCase ) :
 			sourceType = SourceType.EditScope,
 			editable = True,
 			edit = edit
+		)
+
+	def testShaderAndParameter( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		s["light"] = GafferSceneTest.TestLight()
+
+		s["filter"] = GafferScene.PathFilter()
+		s["filter"]["paths"].setValue( IECore.StringVectorData( ["/light"] ) )
+
+		network = IECoreScene.ShaderNetwork(
+			shaders = {
+				"output" : IECoreScene.Shader( "testLight", "light", { "color" : imath.Color3f( 1.0 ) } ),
+				"add" : IECoreScene.Shader( "add", "osl:shader", { "a" : imath.Color3f( 0.0 ), "b" : imath.Color3f( 0.0 ) } ),
+				"image" : IECoreScene.Shader( "image", "osl:shader", {} )
+			},
+			connections = [
+				( ( "image", "" ), ( "add", "a" ) ),
+				( ( "add", "" ), ( "output", "color" ) ),
+			],
+			output = "output"
+		)
+
+		s["custAttr"] = GafferScene.CustomAttributes()
+		s["custAttr"]["in"].setInput( s["light"]["out"] )
+		s["custAttr"]["extraAttributes"].setValue( IECore.CompoundObject( { "light" : network } ) )
+		s["custAttr"]["filter"].setInput( s["filter"]["out"] )
+
+		s["tweaks"] = GafferScene.ShaderTweaks()
+		s["tweaks"]["in"].setInput( s["custAttr"]["out"] )
+
+		s["tweaks"]["filter"].setInput( s["filter"]["out"] )
+		addBTweak = Gaffer.TweakPlug( "add.b", imath.Color3f( 0.0, 0.5, 1.0 ) )
+		s["tweaks"]["tweaks"].addChild( addBTweak )
+
+		self.__assertExpectedResult(
+			self.__inspect( s["tweaks"]["out"], "/light", "b", shader = "add" ),
+			source = addBTweak,
+			sourceType = GafferSceneUI.Private.Inspector.Result.SourceType.Other,
+			editable = True,
+			edit = addBTweak
 		)
 
 
