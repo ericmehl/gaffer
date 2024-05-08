@@ -54,6 +54,13 @@ class GAFFERSCENETEST_API TestShader : public GafferScene::Shader
 
 		GAFFER_NODE_DECLARE_TYPE( GafferSceneTest::TestShader, TestShaderTypeId, GafferScene::Shader );
 
+		// Populates the `parameters` with plugs for different test cases. Currently
+		// supports `lightTests` and `shaderTests`. If `shaderName` is not recognized,
+		// it will create a shader with that name and no parameters.
+		void loadShader( const std::string &shaderName, bool keepExistingValues=false ) override;
+
 };
+
+IE_CORE_DECLAREPTR( TestShader )
 
 } // namespace GafferSceneTest
