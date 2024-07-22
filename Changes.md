@@ -1,7 +1,12 @@
 1.4.x.x (relative to 1.4.11.0)
 =======
 
+Features
+--------
 
+- ColorChooser :
+  - Add sliders for TMI (temperature, magenta, intensity) color space.
+  - Add color field, a widget giving control of two channels of "RGB", "HSV" or "TMI" triplets. The third channel is held constant.
 
 1.4.11.0 (relative to 1.4.10.0)
 ========
