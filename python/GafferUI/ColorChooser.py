@@ -40,6 +40,7 @@ import enum
 import functools
 import math
 import sys
+import random
 import imath
 
 import IECore
@@ -560,6 +561,16 @@ class ColorChooser( GafferUI.Widget ) :
 						menu = GafferUI.Menu( menuDefinition ),
 						hasFrame = False
 					)
+
+			# color presets
+			random.seed( 42 )
+
+			with _FlowContainer( spacing = 4 ) as self.__flowContainer :
+				for x in range( 0, 60 ) :
+					c = imath.Color4f( random.random(), random.random(), random.random(), 1.0 )
+					swatch = GafferUI.ColorSwatch( c )
+					swatch._qtWidget().setFixedHeight( 16 )
+					swatch._qtWidget().setFixedWidth( 16 )
 
 			# initial and current colour swatches
 			with GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, spacing = 4 ) as self.__swatchRow :
