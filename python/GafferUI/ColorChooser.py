@@ -616,6 +616,10 @@ class ColorChooser( GafferUI.Widget ) :
 				self.__colorSwatch._qtWidget().setFixedHeight( 40 )
 
 		self.__colorChangedSignal = Gaffer.Signals.Signal2()
+		self.__visibleComponentsChangedSignal = Gaffer.Signals.Signal1()
+		self.__staticComponentChangedSignal = Gaffer.Signals.Signal1()
+		self.__colorFieldVisibleChangedSignal = Gaffer.Signals.Signal1()
+		self.__optionsMenuSignal = Gaffer.Signals.Signal2()
 
 		self.__colorFieldPrimaryIcon = GafferUI.Image( "colorFieldPrimaryIcon.png" )
 		self.__colorFieldPrimaryHighlightedIcon = GafferUI.Image( "colorFieldPrimaryHighlightedIcon.png" )
@@ -709,6 +713,36 @@ class ColorChooser( GafferUI.Widget ) :
 
 		return self.__colorChangedSignal
 
+	## A signal emitted whenever the visible components are changed. Slots
+	# should have the signature slot( ColorChooser ).
+	# `visibleComponents` is a string representing the components currently
+	# visible.
+	def visibleComponentsChangedSignal( self ) :
+
+		return self.__visibleComponentsChangedSignal
+
+	## A signal emitted whenever the static component is changed. Slots
+	# should have the signature slot( ColorChooser ).
+	# `staticComponent` is a single character string representing the
+	# current static component.
+	def staticComponentChangedSignal( self ) :
+
+		return self.__staticComponentChangedSignal
+
+	## A signal emitted whenever the visibility of the color field changes.
+	# Slots should have the signature slot( ColorChooser ).
+	# `visible` is a boolean representing the current visibility.
+	def colorFieldVisibleChangedSignal( self ) :
+
+		return self.__colorFieldVisibleChangedSignal
+
+	## A signal emitted whenever the options menu is opened.
+	# Slots should have the signature slot( ColorChooser, menuDefinition )
+	# and add menu items to `menuDefinition`.
+	def optionsMenuSignal( self ) :
+
+		return self.__optionsMenuSignal
+
 	## Returns True if a user would expect the specified sequence
 	# of changes to be merged into a single undoable event.
 	@classmethod
@@ -762,10 +796,12 @@ class ColorChooser( GafferUI.Widget ) :
 				label,
 				{
 					"command": lambda checked, c = component, weakSet = weakSet : weakSet( c ),
-					"checkBox": self.getStaticComponent() == component
+					"checkBox": self.getColorFieldStaticComponent() == component,
+					"active": self.__colorField.getVisible(),
 				}
 			)
 
+		self.__optionsMenuSignal( self, result )
 
 		return result
 
@@ -778,12 +814,17 @@ class ColorChooser( GafferUI.Widget ) :
 
 		menuDefinition = IECore.MenuDefinition()
 		menuDefinition.append( "/__colorField__", { "divider" : True, "label": "Color Field" } )
+
+		currentComponents = sorted( list( self.__colorField.xyAxes() ), key = lambda c : "rgbhsvtmi".index( c ) )
+
+		weakSet = Gaffer.WeakMethod( self.setColorFieldStaticComponent )
 		for index, otherAxis in enumerate( yCandidates ) :
-			components = [ component.upper(), otherAxis.upper() ]
+			components = sorted( [ component, otherAxis ], key = lambda c : "rgbhsvtmi".index( c ) )
 			menuDefinition.append(
-				"/" + "".join( sorted( components, key = lambda c : "RGBHSVTMI".index( c ) ) ),
+				"/" + "".join( [ i.upper() for i in components ] ),
 				{
-					"command": functools.partial( Gaffer.WeakMethod( self.setColorFieldStaticComponent ), yCandidates[ 1 - index ] ),
+					"command": lambda checked, yc = yCandidates, i = index, weakSet = weakSet : weakSet( yc[ 1 - i ] ),
+					"checkBox": components == currentComponents,
 				}
 		)
 
@@ -1043,6 +1084,12 @@ class ColorChooser( GafferUI.Widget ) :
 	def __setVisibleComponentsInternal( self, components ) :
 
 		componentsSet = set( components )
+
+		if self.getColor().dimensions() == 4 :
+			componentsSet.add( "a" )
+		elif "a" in componentsSet :
+			componentsSet.remove( "a" )
+
 		if componentsSet == set( self.getVisibleComponents() ) :
 			return
 
@@ -1052,7 +1099,7 @@ class ColorChooser( GafferUI.Widget ) :
 			self.__numericWidgets[c].setVisible( visible )
 			self.__sliders[c].setVisible( visible )
 
-		self.__visibleComponentsChangedSignal( self, components )
+		self.__visibleComponentsChangedSignal( self )
 
 	def __setColorFieldVisibleInternal( self, visible ) :
 
@@ -1076,4 +1123,4 @@ class ColorChooser( GafferUI.Widget ) :
 		for c in self.getVisibleComponents() :
 			self.__channelFrames[c].setVisible( visible )
 
-		self.__colorFieldVisibleChangedSignal( self, visible )
+		self.__colorFieldVisibleChangedSignal( self )
