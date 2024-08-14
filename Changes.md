@@ -7,7 +7,11 @@ Features
 - ColorChooser :
   - Add sliders for TMI (temperature, magenta, intensity) color space.
   - Add color field, a widget giving control of two channels of "RGB", "HSV" or "TMI" triplets. The third channel is held constant.
-  - The color field, HSV slider group and TMI slider group can be toggled on or off.
+  - The color field, HSV slider group and TMI slider group can be toggled on or off. Visibility of the elements is maintained for the duration of the Gaffer session.
+  - Default visibility of the UI elements can be set at startup by setting `colorChooser:inlineOptions` and `colorChooser:dialogueOptions` `userData` entries for the inline chooser and dialogue chooser respectively. The value of the metadata entry is an `IECore.CompoundData` object with the following optional keys :
+    - `visibleComponents` : A string where each character is a visible component slider. Optional components are `rgbahsvtmi`.
+    - `staticComponent` : A single character string for the component to use as the static component for the color field.
+    - `colorFieldVisible` : A boolean indicating if the color field should be visible or not.
 
 1.4.11.0 (relative to 1.4.10.0)
 ========
