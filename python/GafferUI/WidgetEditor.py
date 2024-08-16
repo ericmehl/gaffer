@@ -41,6 +41,37 @@ import IECore
 import Gaffer
 import GafferUI
 
+from Qt import QtCore
+from Qt import QtWidgets
+
+# A `QtCore.Object` for capturing all mouse clicks before any UI elements
+# get the click event so we can identify the widget clicked on.
+class _ButtonPressFilter( QtCore.QObject ) :
+
+	def __init__( self ) :
+
+		QtCore.QObject.__init__( self )
+
+		self.__widgetPickedSignal = Gaffer.Signals.Signal1()
+
+	def eventFilter( self, obj, event ) :
+
+		if event.type() == QtCore.QEvent.MouseButtonRelease :
+			widget = GafferUI.Widget.widgetAt( GafferUI.Widget.mousePosition() )
+
+			if widget is not None :
+				self.__widgetPickedSignal( widget )
+
+			return True
+
+		return False
+
+	# A signal emitted whenver a widget is picked. Slots should have the
+	# signature slot( widget ).
+	def widgetPickedSignal( self ) :
+
+		return self.__widgetPickedSignal
+
 
 class WidgetPath( Gaffer.Path ) :
 	# A `Gaffer.Path` to a `GafferUI.Widget` rooted at `rootWidget`. Path
@@ -165,6 +196,9 @@ class WidgetEditor( GafferUI.Editor ) :
 
 		with column :
 
+			self.__pickButton = GafferUI.Button( "Pick Widget" )
+			self.__pickButton.buttonReleaseSignal().connect( Gaffer.WeakMethod( self.__pickButtonReleased ), scoped = False )
+
 			self.__widgetNameColumn = GafferUI.PathListingWidget.StandardColumn( "Name", "widgetEditor:name", sizeMode = GafferUI.PathColumn.SizeMode.Stretch )
 
 			self.__widgetListingWidget = GafferUI.PathListingWidget(
@@ -180,6 +214,9 @@ class WidgetEditor( GafferUI.Editor ) :
 
 		self.visibilityChangedSignal().connect( Gaffer.WeakMethod( self.__visibilityChanged ), scoped = False )
 
+		self.__buttonPressFilter = _ButtonPressFilter()
+		self.__buttonPressFilter.widgetPickedSignal().connect( Gaffer.WeakMethod( self.__widgetPicked ), scoped = False )
+
 	def __repr__( self ) :
 
 		return "GafferUI.WidgetEditor( scriptNode )"
@@ -194,9 +231,31 @@ class WidgetEditor( GafferUI.Editor ) :
 			GafferUI.Pointer.setCurrent( "nodes" )
 			return path
 
+	def __pickButtonReleased( self, *unused ) :
+
+		QtWidgets.QApplication.instance().installEventFilter( self.__buttonPressFilter )
+
 	def __visibilityChanged( self, widget ) :
 
 		if widget.visible() and self.__widgetListingWidget.getPath().rootWidget() is None :
 			self.__widgetListingWidget.setPath( WidgetPath( self.ancestor( GafferUI.ScriptWindow ) ) )
+
+	def __widgetPathWalk( self, path, targetWidget ) :
+
+		for c in path.children() :
+			widget = c.property( "widgetEditor:widget" )
+			if widget == targetWidget :
+				return c
+			elif widget.isAncestorOf( targetWidget ) :
+				return self.__widgetPathWalk( c, targetWidget )
+
+	def __widgetPicked( self, widget ) :
+
+		path = self.__widgetPathWalk( self.__widgetListingWidget.getPath(), widget )
+		pm = IECore.PathMatcher()
+		pm.addPath( str( path ) )
+		self.__widgetListingWidget.setSelection( pm, True )
+		QtWidgets.QApplication.instance().removeEventFilter( self.__buttonPressFilter )
+
 
 GafferUI.Editor.registerType( "WidgetEditor", WidgetEditor )
