@@ -272,17 +272,30 @@ _styleSheet = string.Template(
 	}
 
 	QLabel#gafferColorComponentLabel {
-		padding-left: 12px;
+		padding-left: 14px;
+		width: 27px;
 	}
 
-	QLabel#gafferColorComponentLabel[gafferColorStaticComponent="true"] {
-		background-image: url(:/colorChooserStaticChannelIcon.png);
+	QLabel#gafferColorComponentLabel[gafferColorFieldPrimaryHover="true"] {
+		background-image: url(:/colorFieldPrimaryHighlightedIcon.png);
 		background-repeat: no-repeat;
 		background-position: left;
 	}
 
-	QLabel#gafferColorComponentLabel[gafferColorStaticComponentHover="true"] {
-		background-image: url(:/colorChooserStaticChannelHighlightedIcon.png);
+	QLabel#gafferColorComponentLabel[gafferColorFieldPrimary="true"] {
+		background-image: url(:/colorFieldPrimaryIcon.png);
+		background-repeat: no-repeat;
+		background-position: left;
+	}
+
+	QLabel#gafferColorComponentLabel[gafferColorFieldSpacer="true"] {
+		background-image: url(:/colorFieldSpacerIcon.png);
+		background-repeat: no-repeat;
+		background-position: left;
+	}
+
+	QLabel#gafferColorComponentLabel[gafferColorFieldSecondary="true"] {
+		background-image: url(:/colorFieldSecondaryIcon.png);
 		background-repeat: no-repeat;
 		background-position: left;
 	}
