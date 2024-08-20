@@ -529,6 +529,8 @@ class _QFlowLayout( QtWidgets.QLayout ) :
 
 	def minimumSize( self ) :
 
+		print( "minimumSize" )
+
 		size = QtCore.QSize()
 		for item in self.__items :
 			size = size.expandedTo( item.minimumSize() )
@@ -538,7 +540,15 @@ class _QFlowLayout( QtWidgets.QLayout ) :
 
 		return size
 
+	def maximumSize( self ) :
+
+		print( "maximumSize", QtWidgets.QLayout.maximumSize( self ) )
+
+		return QtWidgets.QLayout.maximumSize( self )
+
 	def sizeHint( self ) :
+
+		print( "sizeHint" )
 
 		return self.minimumSize()
 
@@ -554,6 +564,8 @@ class _QFlowLayout( QtWidgets.QLayout ) :
 		return True
 
 	def heightForWidth( self, width ) :
+
+		print( "heightForWidth" )
 
 		cells = self.__cells( QtCore.QRect( 0, 0, width, 0 ) )
 		if len( cells ) == 0 :
@@ -597,6 +609,40 @@ class _QFlowLayout( QtWidgets.QLayout ) :
 
 		return cells
 
+class _QFlowWidget( QtWidgets.QWidget ) :
+
+	def __init__( self, parent = None ) :
+
+		QtWidgets.QWidget.__init__( self )
+
+		self.setSizePolicy( QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum )
+
+	def maximumSize( self ) :
+
+		print("widget.maximumSize()")
+
+		size = QtWidgets.QWidget.maximumSize( self )
+		layout = self.layout()
+		if layout is not None :
+			print("widget.maximumSize() layout is not None")
+			size.setHeight( layout.heightForWidth( size.width() ) )
+
+		return size
+
+	def sizeHint( self ) :
+
+		print("widget.sizeHint()")
+
+		size = QtWidgets.QWidget.sizeHint( self )
+
+		layout = self.layout()
+		if layout is not None :
+			size.setHeight( layout.heightForWidth( size.width() ) )
+			print("widget.sizeHint() layout is not None", size)
+
+		return size
+
+
 ###############################################################################
 # FlowContainer
 ###############################################################################
@@ -605,7 +651,7 @@ class _FlowContainer( GafferUI.ContainerWidget ) :
 
 	def __init__( self, spacing = 0, **kw ) :
 
-		GafferUI.ContainerWidget.__init__( self, QtWidgets.QWidget(), **kw )
+		GafferUI.ContainerWidget.__init__( self, _QFlowWidget(), **kw )
 
 		self.__qtLayout = _QFlowLayout( spacing = spacing )
 
@@ -728,7 +774,7 @@ class ColorChooser( GafferUI.Widget ) :
 			# color presets
 			random.seed( 42 )
 
-			with _FlowContainer( spacing = 4 ) as self.__flowContainer :
+			with _FlowContainer( spacing = 4, parenting = { "verticalAlignment" : GafferUI.VerticalAlignment.Top } ) as self.__flowContainer :
 				for x in range( 0, 60 ) :
 					c = imath.Color4f( random.random(), random.random(), random.random(), 1.0 )
 					swatch = GafferUI.ColorSwatch( c )

@@ -63,6 +63,7 @@ class _WidgetItem( QtWidgets.QWidgetItem ) :
 		a = self.alignment()
 		self.setAlignment( QtCore.Qt.Alignment() )
 		s = QtWidgets.QWidgetItem.maximumSize( self )
+		print(self.widget(), "_WidgetItem.maximumSize()", s)
 		self.setAlignment( a )
 
 		return s
