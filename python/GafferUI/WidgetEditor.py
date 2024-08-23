@@ -101,7 +101,8 @@ class WidgetPath( Gaffer.Path ) :
 
 		return Gaffer.Path.propertyNames() + [
 			"widgetEditor:name",
-			"widgetEditor:widget"
+			"widgetEditor:widget",
+			"widgetEditor:widgetType",
 		]
 
 	def property( self, name, canceller = None ) :
@@ -116,9 +117,11 @@ class WidgetPath( Gaffer.Path ) :
 			return None
 
 		if name == "widgetEditor:name" :
-			return "{} ({})".format( self[-1], type( widget ).__name__ )
+			return self[-1]
 		elif name == "widgetEditor:widget" :
 			return widget
+		elif name == "widgetEditor:widgetType" :
+			return type( widget ).__name__
 
 	def widget( self ) :
 
@@ -199,12 +202,13 @@ class WidgetEditor( GafferUI.Editor ) :
 			self.__pickButton = GafferUI.Button( "Pick Widget" )
 			self.__pickButton.buttonReleaseSignal().connect( Gaffer.WeakMethod( self.__pickButtonReleased ), scoped = False )
 
-			self.__widgetNameColumn = GafferUI.PathListingWidget.StandardColumn( "Name", "widgetEditor:name", sizeMode = GafferUI.PathColumn.SizeMode.Stretch )
+			self.__widgetNameColumn = GafferUI.PathListingWidget.StandardColumn( "Name", "widgetEditor:name" )
 
 			self.__widgetListingWidget = GafferUI.PathListingWidget(
 				WidgetPath( None ),  # temp until we make a WidgetPath
 				columns = (
 					self.__widgetNameColumn,
+					GafferUI.PathListingWidget.StandardColumn( "Type", "widgetEditor:widgetType" ),
 				),
 				selectionMode = GafferUI.PathListingWidget.SelectionMode.Row,
 				displayMode = GafferUI.PathListingWidget.DisplayMode.Tree
