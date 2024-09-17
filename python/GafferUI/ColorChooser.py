@@ -597,6 +597,11 @@ class ColorChooser( GafferUI.Widget ) :
 							slider.valueChangedSignal().connect( Gaffer.WeakMethod( self.__componentValueChanged ) )
 						)
 
+					spacerHeight = 2
+					self.__spacers["a"] = GafferUI.Spacer( imath.V2i( 0, spacerHeight ), parenting = { "index" : ( 0, 3 ) } )
+					self.__spacers["hsv"] = GafferUI.Spacer( imath.V2i( 0, spacerHeight ), parenting = {  "index" : ( 0, 5 ) } )
+					self.__spacers["tmi"] = GafferUI.Spacer( imath.V2i( 0, spacerHeight ), parenting = { "index" : ( 0, 9 ) } )
+
 				# Options Button
 				GafferUI.MenuButton(
 					image = "gear.png",
@@ -965,13 +970,9 @@ class ColorChooser( GafferUI.Widget ) :
 				self.__sliders["a"].setValue( c[3] )
 				self.__numericWidgets["a"].setValue( c[3] )
 
-				self.__sliders["a"].setVisible( True )
-				self.__numericWidgets["a"].setVisible( True )
-				self.__channelLabels["a"].setVisible( True )
+				self.__setComponentVisible( "a", True )
 			else :
-				self.__sliders["a"].setVisible( False )
-				self.__numericWidgets["a"].setVisible( False )
-				self.__channelLabels["a"].setVisible( False )
+				self.__setComponentVisible( "a", False )
 
 			for slider in [ v for k, v in self.__sliders.items() if k in "hsv" ] :
 				slider.setColor( self.__colorHSV )
@@ -1094,10 +1095,7 @@ class ColorChooser( GafferUI.Widget ) :
 			return
 
 		for c in self.__sliders.keys() :
-			visible = c in componentsSet
-			self.__channelLabels[c].setVisible( visible )
-			self.__numericWidgets[c].setVisible( visible )
-			self.__sliders[c].setVisible( visible )
+			self.__setComponentVisible( c, c in componentsSet )
 
 		self.__visibleComponentsChangedSignal( self )
 
