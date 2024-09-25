@@ -1,6 +1,11 @@
 1.x.x.x (relative to 1.5.0.0a1)
 =======
 
+Improvements
+------------
+
+- Light Editor : Add original and current color swatches to color popups.
+
 Fixes
 -----
 

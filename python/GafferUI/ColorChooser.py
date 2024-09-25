@@ -571,7 +571,7 @@ class ColorChooser( GafferUI.Widget ) :
 
 	def setSwatchesVisible( self, visible ) :
 
-		self.__swatchRow.setVisible( False )
+		self.__swatchRow.setVisible( visible )
 
 	def getSwatchesVisible( self ) :
 

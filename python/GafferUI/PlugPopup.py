@@ -122,6 +122,12 @@ class PlugPopup( GafferUI.PopupWindow ) :
 
 		GafferUI.PopupWindow.popup( self, center, parent )
 
+		colorPlugValueWidget = self.__colorPlugValueWidget( self.__plugValueWidget )
+		if colorPlugValueWidget is not None :
+			colors = [ p.getValue() for p in self.__plugValueWidget.getPlugs() ]
+			colorPlugValueWidget.setInitialColor( sum( colors ) / len( colors ) )
+			colorPlugValueWidget.setSwatchesVisible( True )
+
 		# Attempt to focus the first text widget. This is done after making
 		# the window visible, as we check child widget visibility to avoid
 		# attempting to focus hidden widgets.
