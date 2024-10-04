@@ -56,7 +56,7 @@ class _ButtonPressFilter( QtCore.QObject ) :
 
 	def eventFilter( self, obj, event ) :
 
-		if event.type() == QtCore.QEvent.MouseButtonRelease :
+		if event.type() == QtCore.QEvent.MouseButtonPress :
 			widget = GafferUI.Widget.widgetAt( GafferUI.Widget.mousePosition() )
 
 			if widget is not None :
