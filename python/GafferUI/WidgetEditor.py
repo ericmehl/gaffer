@@ -124,6 +124,7 @@ class WidgetPath( Gaffer.Path ) :
 			return type( widget ).__name__
 
 	def widget( self ) :
+		# Returns the `GafferUI.Widget` for this path.
 
 		widget = self.__rootWidget
 		# A path with a single element is the top level `ScriptWindow`, start looking below that.
