@@ -184,6 +184,11 @@ class _ColorField( GafferUI.Widget ) :
 		self.__colorFieldToDraw = None
 		self.setColor( color, staticComponent )
 
+		self.__indicatorPainterPath = QtGui.QPainterPath()
+		radius = 4.5
+		self.__indicatorPainterPath.addEllipse( -radius, -radius, radius * 2.0, radius * 2.0 )
+		self.__indicatorPainterPath.addEllipse( -radius + 2.0, -radius + 2.0, radius * 2.0 - 4.0, radius * 2.0 - 4.0 )
+
 	# Sets the color and the static component. `color` is in
 	# RGB space for RGB static components, HSV space for
 	# HSV static components and TMI space for TMI components.
@@ -379,15 +384,15 @@ class _ColorField( GafferUI.Widget ) :
 		pen.setWidth( 1 )
 		painter.setPen( pen )
 
-		color = QtGui.QColor( 119, 156, 255, 255 )
+		color = QtGui.QColor( 255, 255, 255, 255 )
 
 		painter.setBrush( QtGui.QBrush( color ) )
 
 		size = self.size()
 
-		# Use a dot when both axes are a valid value.
+		# Use a circle when both axes are a valid value.
 		if position.x >= 0 and position.y >= 0 and position.x <= size.x and position.y <= size.y :
-			painter.drawEllipse( QtCore.QPoint( position.x, position.y ), 4.5, 4.5 )
+			painter.drawPath( self.__indicatorPainterPath.translated( position.x, position.y ) )
 			return
 
 		triangleWidth = 5.0
