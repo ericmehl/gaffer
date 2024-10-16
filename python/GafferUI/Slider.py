@@ -82,6 +82,8 @@ class Slider( GafferUI.Widget ) :
 		self.__hoverPositionVisible = False
 		self.__hoverEvent = None # The mouseMove event that gives us hover status
 
+		self.__indicatorPainterPath = None  # Created in `_drawValue()` where we know the size
+
 		self.leaveSignal().connect( Gaffer.WeakMethod( self.__leave ) )
 		self.mouseMoveSignal().connect( Gaffer.WeakMethod( self.__mouseMove ) )
 		self.buttonPressSignal().connect( Gaffer.WeakMethod( self.__buttonPress ) )
@@ -333,10 +335,7 @@ class Slider( GafferUI.Widget ) :
 		pen.setWidth( 1 )
 		painter.setPen( pen )
 
-		if state == state.NormalState :
-			color = QtGui.QColor( 128, 128, 128, 255 )
-		else :
-			color = QtGui.QColor( 119, 156, 255, 255 )
+		color = self._indicatorColor( state )
 		painter.setBrush( QtGui.QBrush( color ) )
 
 		if state == state.DisabledState :
@@ -363,7 +362,27 @@ class Slider( GafferUI.Widget ) :
 				)
 			)
 		else :
-			painter.drawEllipse( QtCore.QPoint( position, size.y / 2 ), size.y / 4, size.y / 4 )
+			painter.drawPath( self._indicatorPainterPath( size.y / 4 ).translated( position, size.y / 2 ) )
+
+	## May be overriden by derived classes to customise the
+	# value indicator when it is within the min / max values.
+	# This will be called once for each `paintEvent`, derived
+	# classes should consider caching the path for better performance.
+	def _indicatorPainterPath( self, radius ) :
+
+		if self.__indicatorPainterPath is None :
+			self.__indicatorPainterPath = QtGui.QPainterPath()
+			self.__indicatorPainterPath.addEllipse( -radius, -radius, radius * 2.0, radius * 2.0 )
+
+		return self.__indicatorPainterPath
+
+	## May be overridden by derived classes to customize the
+	# color of the indicator.
+	def _indicatorColor( self, state ) :
+
+		if state == state.NormalState :
+			return QtGui.QColor( 128, 128, 128, 255 )
+		return QtGui.QColor( 119, 156, 255, 255 )
 
 	def __indexUnderMouse( self ) :
 

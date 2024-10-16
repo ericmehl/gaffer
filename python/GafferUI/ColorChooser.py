@@ -100,6 +100,14 @@ _ranges = {
 	"i" : __Range( 0, 1, -sys.float_info.max, sys.float_info.max ),
 }
 
+def _indicator( radius ) :
+
+	circle = QtGui.QPainterPath()
+	circle.addEllipse( -radius, -radius, radius * 2.0, radius * 2.0 )
+	circle.addEllipse( -radius + 2.0, -radius + 2.0, radius * 2.0 - 4.0, radius * 2.0 - 4.0 )
+
+	return circle
+
 # A custom slider for drawing the backgrounds.
 class _ComponentSlider( GafferUI.Slider ) :
 
@@ -114,6 +122,7 @@ class _ComponentSlider( GafferUI.Slider ) :
 
 		self.color = color
 		self.component = component
+		self.__indicatorPainterPath = None
 
 	# Sets the slider color in RGB space for RGBA channels,
 	# HSV space for HSV channels and TMI space for TMI channels.
@@ -158,6 +167,17 @@ class _ComponentSlider( GafferUI.Slider ) :
 		brush = QtGui.QBrush( grad )
 		painter.fillRect( 0, 0, size.x, size.y, brush )
 
+	def _indicatorPainterPath( self, radius ) :
+
+		if self.__indicatorPainterPath is None :
+			self.__indicatorPainterPath = _indicator( radius )
+
+		return self.__indicatorPainterPath
+
+	def _indicatorColor( self, state ) :
+
+		return QtGui.QColor( 255, 255, 255, 255 )
+
 	def _displayTransformChanged( self ) :
 
 		GafferUI.Slider._displayTransformChanged( self )
@@ -184,10 +204,7 @@ class _ColorField( GafferUI.Widget ) :
 		self.__colorFieldToDraw = None
 		self.setColor( color, staticComponent )
 
-		self.__indicatorPainterPath = QtGui.QPainterPath()
-		radius = 4.5
-		self.__indicatorPainterPath.addEllipse( -radius, -radius, radius * 2.0, radius * 2.0 )
-		self.__indicatorPainterPath.addEllipse( -radius + 2.0, -radius + 2.0, radius * 2.0 - 4.0, radius * 2.0 - 4.0 )
+		self.__indicatorPainterPath = _indicator( 4.5 )
 
 	# Sets the color and the static component. `color` is in
 	# RGB space for RGB static components, HSV space for
