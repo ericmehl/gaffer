@@ -232,7 +232,7 @@ class _ComponentSlider( GafferUI.Slider ) :
 
 class _ColorField( GafferUI.Widget ) :
 
-	def __init__( self, color = imath.Color3f( 1.0 ), staticComponent = "v", **kw ) :
+	def __init__( self, color = imath.Color3f( 1.0 ), staticComponent = "v", dynamicColors = False, **kw ) :
 
 		GafferUI.Widget.__init__( self, QtWidgets.QWidget(), **kw )
 
@@ -251,6 +251,8 @@ class _ColorField( GafferUI.Widget ) :
 		self.__colorFieldToDraw = None
 		self.setColor( color, staticComponent )
 
+		self.setDynamicColors( dynamicColors )
+
 	# Sets the color and the static component. `color` is in
 	# RGB space for RGB static components, HSV space for
 	# HSV static components and TMI space for TMI components.
@@ -262,6 +264,16 @@ class _ColorField( GafferUI.Widget ) :
 	def getColor( self ) :
 
 		return self.__color, self.__staticComponent
+
+	def setDynamicColors( self, dynamic ) :
+
+		self.__dynamicColors = dynamic
+		self.__colorFieldToDraw = None
+		self._qtWidget().update()
+
+	def getDynamicColors( self ) :
+
+		return self.__dynamicColors
 
 	## A signal emitted whenever a value has been changed. Slots should
 	# have the signature slot( _ColorField, GafferUI.Slider.ValueChangedReason )
@@ -449,10 +461,15 @@ class _ColorField( GafferUI.Widget ) :
 			xIndex, yIndex = self.__xyIndices()
 			zIndex = self.__zIndex()
 
-			staticValue = self.__color[zIndex]
-
 			c = imath.Color3f()
-			c[zIndex] = staticValue
+			if self.__dynamicColors or self.__staticComponent == "h" :
+				c[zIndex] = self.__color[zIndex]
+			elif self.__staticComponent in "rgbtm" :
+				c[zIndex] = 0.0
+			elif self.__staticComponent in "sv" :
+				c[zIndex] = 1.0
+			elif self.__staticComponent == "i" :
+				c[zIndex] = 0.5
 
 			ColorSpace = enum.Enum( "ColorSpace", [ "RGB", "HSV", "TMI" ] )
 			if self.__staticComponent in "rgb" :
@@ -946,6 +963,7 @@ class ColorChooser( GafferUI.Widget ) :
 
 		for component, slider in self.__sliders.items() :
 			slider.setDynamicColors( dynamic )
+		self.__colorField.setDynamicColors( dynamic )
 
 		self.__dynamicColorsChangedSignal( self )
 
