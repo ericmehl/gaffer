@@ -34,7 +34,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "ShaderNetworkAlgo.h"
+#include "IECoreRenderMan/ShaderNetworkAlgo.h"
 
 #include "ParamListAlgo.h"
 
@@ -376,3 +376,13 @@ std::vector<riley::ShadingNode> IECoreRenderMan::ShaderNetworkAlgo::convert( con
 
 	return result;
 }
+
+namespace IECoreRenderMan::ShaderNetworkAlgo
+{
+
+void convertUSDShaders( ShaderNetwork *shaderNetwork )
+{
+	std::cerr << "Not implemented\n";
+}
+
+} // namespace IECoreRenderMan::ShaderNetworkAlgo
