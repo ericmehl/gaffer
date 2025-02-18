@@ -38,6 +38,8 @@
 
 #include "ParamListAlgo.h"
 
+#include "IECoreScene/ShaderNetworkAlgo.h"
+
 #include "IECore/DataAlgo.h"
 #include "IECore/LRUCache.h"
 #include "IECore/MessageHandler.h"
@@ -53,6 +55,7 @@
 #include <unordered_set>
 
 using namespace std;
+using namespace Imath;
 using namespace IECore;
 using namespace IECoreScene;
 using namespace IECoreRenderMan;
@@ -360,6 +363,164 @@ void convertShaderNetworkWalk( const ShaderNetwork::Parameter &outputParameter, 
 	shadingNodes.push_back( node );
 }
 
+//////////////////////////////////////////////////////////////////////////
+// USD conversion code
+//////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+T parameterValue( const Shader *shader, InternedString parameterName, const T &defaultValue )
+{
+	if( auto d = shader->parametersData()->member<TypedData<T>>( parameterName ) )
+	{
+		return d->readable();
+	}
+
+	if constexpr( is_same_v<remove_cv_t<T>, Color3f > )
+	{
+		// Correction for USD files which author `float3` instead of `color3f`.
+		// See `ShaderNetworkAlgoTest.testConvertUSDFloat3ToColor3f()`.
+		if( auto d = shader->parametersData()->member<V3fData>( parameterName ) )
+		{
+			return d->readable();
+		}
+		// Conversion of Color4 to Color3, for cases like converting `UsdUVTexture.scale`
+		// to `PxrTexture.colorScale`.
+		if( auto d = shader->parametersData()->member<Color4fData>( parameterName ) )
+		{
+			const Color4f &c = d->readable();
+			return Color3f( c[0], c[1], c[2] );
+		}
+	}
+	else if constexpr( is_same_v<remove_cv_t<T>, std::string> )
+	{
+		// Support for USD `token`, which will be loaded as `InternedString`, but which
+		// we want to translate to `string`.
+		if( auto d = shader->parametersData()->member<InternedStringData>( parameterName ) )
+		{
+			return d->readable().string();
+		}
+	}
+
+	return defaultValue;
+}
+
+// Traits class to handle the GeometricTypedData fiasco.
+template<typename T>
+struct DataTraits
+{
+
+	using DataType = IECore::TypedData<T>;
+
+};
+
+template<typename T>
+struct DataTraits<Vec2<T> >
+{
+
+	using DataType = IECore::GeometricTypedData<Vec2<T>>;
+
+};
+
+template<typename T>
+struct DataTraits<Vec3<T> >
+{
+
+	using DataType = IECore::GeometricTypedData<Vec3<T>>;
+
+};
+
+template<typename T>
+void transferUSDParameter( ShaderNetwork *network, InternedString shaderHandle, const Shader *usdShader, InternedString usdName, Shader *shader, InternedString name, const T &defaultValue )
+{
+	shader->parameters()[name] = new typename DataTraits<T>::DataType( parameterValue( usdShader, usdName, defaultValue ) );
+
+	if( ShaderNetwork::Parameter input = network->input( { shaderHandle, usdName } ) )
+	{
+		if( name != usdName )
+		{
+			network->addConnection( { input, { shaderHandle, name } } );
+			network->removeConnection( { input, { shaderHandle, usdName } } );
+		}
+	}
+}
+
+const InternedString g_aParameter( "a" );
+const InternedString g_bParameter( "b" );
+const InternedString g_clearcoatParameter( "clearcoat" );
+const InternedString g_clearcoatFacingParameter( "clearcoatFacing" );
+const InternedString g_clearcoatEdgeParameter( "clearcoatEdge" );
+const InternedString g_clearcoatIorParameter( "clearcoatIor" );
+const InternedString g_clearcoatRoughnessParameter( "clearcoatRoughness" );
+const InternedString g_diffuseColorParameter( "diffuseColor" );
+const InternedString g_diffuseGainParameter( "diffuseGain" );
+const InternedString g_emissiveColorParameter( "emissiveColor" );
+const InternedString g_gParameter( "g" );
+const InternedString g_glowColorParameter( "glowColor" );
+const InternedString g_glowGainParameter( "glowGain" );
+const InternedString g_iorParameter( "ior" );
+const InternedString g_metallicParameter( "metallic" );
+const InternedString g_rParameter( "r" );
+const InternedString g_roughnessParameter( "roughness" );
+const InternedString g_specularColorParameter( "specularColor" );
+const InternedString g_specularEdgeColorParameter( "specularEdgeColor" );
+const InternedString g_specularFaceColorParameter( "specularFaceColor" );
+const InternedString g_specularFresnelModeParameter( "specularFresnelMode" );
+const InternedString g_specularIorParameter( "specularIor" );
+const InternedString g_specularRoughnessParameter( "specularRoughness" );
+const InternedString g_useSpecularWorkflowParameter( "useSpecularWorkflow" );
+// const InternedString g_resultParameter( "result" );
+
+// Map of USD shaders with `result` parameters to the output of their equivalent RenderMan shader.
+
+/// \todo Update the shader names for RenderMan (these are copied from 3dl)
+// const std::unordered_map<std::string, InternedString> g_resultParameterMap = {
+// 	{ "UsdPrimvarReader_int", g_valueParameter },
+// 	{ "UsdPrimvarReader_float", g_valueParameter },
+// 	{ "UsdPrimvarReader_float2", g_oUVParameter },
+// 	{ "UsdPrimvarReader_float3", g_valueParameter },
+// 	{ "UsdPrimvarReader_float4", g_valueParameter },
+// 	{ "UsdPrimvarReader_normal", g_valueParameter },
+// 	{ "UsdPrimvarReader_point", g_valueParameter },
+// 	{ "UsdPrimvarReader_vector", g_valueParameter },
+// 	{ "UsdTransform2d", g_outUVParameter },
+// };
+
+const InternedString remapOutputParameterName( const InternedString name, const InternedString shaderName )
+{
+	// if( name == g_resultParameter )
+	// {
+	// 	// `result` parameters are remapped based on the shader name
+	// 	const auto it = g_resultParameterMap.find( shaderName );
+	// 	if( it != g_resultParameterMap.end() )
+	// 	{
+	// 		return it->second;
+	// 	}
+	// }
+
+	return InternedString();
+}
+
+void replaceUSDShader( ShaderNetwork *network, InternedString handle, ShaderPtr &&newShader )
+{
+	const InternedString shaderName = network->getShader( handle )->getName();
+
+	// Replace original shader with the new.
+	network->setShader( handle, std::move( newShader ) );
+
+	// Iterating over a copy because we will modify the range during iteration.
+	ShaderNetwork::ConnectionRange range = network->outputConnections( handle );
+	vector<ShaderNetwork::Connection> outputConnections( range.begin(), range.end() );
+	for( auto &c : outputConnections )
+	{
+		if( c.source.name != g_rParameter && c.source.name != g_gParameter && c.source.name != g_bParameter && c.source.name != g_aParameter )
+		{
+			network->removeConnection( c );
+			c.source.name = remapOutputParameterName( c.source.name, shaderName );
+			network->addConnection( c );
+		}
+	}
+}
+
 } // namespace
 
 //////////////////////////////////////////////////////////////////////////
@@ -380,9 +541,87 @@ std::vector<riley::ShadingNode> IECoreRenderMan::ShaderNetworkAlgo::convert( con
 namespace IECoreRenderMan::ShaderNetworkAlgo
 {
 
+// https://github.com/PixarAnimationStudios/OpenUSD/blob/dev/third_party/renderman-26/shaders/UsdPreviewSurfaceParameters.osl
+// demonstrates how to convert parameters from USD to a `PxrSurface`.
 void convertUSDShaders( ShaderNetwork *shaderNetwork )
 {
-	std::cerr << "Not implemented\n";
+	for( const auto &[handle, shader] : shaderNetwork->shaders() )
+	{
+		ShaderPtr newShader;
+		if( shader->getName() == "UsdPreviewSurface" )
+		{
+			Color3f diffuseGain( 1.f );
+			newShader = new Shader( "PxrSurface" );
+
+			// Easy stuff with a one-to-one correspondence between `UsdPreviewSurface` and `PxrSurface`.
+
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_diffuseColorParameter, newShader.get(), g_diffuseColorParameter, Color3f( 0.18f ) );
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_roughnessParameter, newShader.get(), g_specularRoughnessParameter, 0.5f );
+
+			// Physical specular mode
+			newShader->parameters()[g_specularFresnelModeParameter] = new IntData( 1 );
+
+			// Emission. USDPreviewSurface only has `emissiveColor`, which we transfer to `glowColor`. But then
+			// we need to turn on RenderMan's `glowGain` so that the `glowColor` is actually used.
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_emissiveColorParameter, newShader.get(), g_glowColorParameter, Color3f( 0.f ) );
+			const bool hasEmission =
+				shaderNetwork->input( { handle, g_glowColorParameter } ) ||
+				parameterValue( newShader.get(), g_glowColorParameter, Color3f( 0.f ) ) != Color3f( 0.f )
+			;
+			newShader->parameters()[g_glowGainParameter] = new FloatData( hasEmission ? 1.f : 0.f );
+
+			// Parameters needed for specular and clearcoat
+			const float ior = parameterValue( shader.get(), g_iorParameter, 1.5f );
+			float fZero = ( ( 1.f - ior ) / ( 1.f + ior ) );
+			fZero *= fZero;
+
+			// Specular
+			if( parameterValue<int>( shader.get(), g_useSpecularWorkflowParameter, 0 ) )
+			{
+				transferUSDParameter( shaderNetwork, handle, shader.get(), g_specularColorParameter, newShader.get(), g_specularFaceColorParameter, Color3f( 0.f ) );
+				newShader->parameters()[g_specularEdgeColorParameter] = new Color3fData( Color3f( 1.f ) );
+			}
+			else
+			{
+				float metallic = std::clamp( parameterValue( shader.get(), g_metallicParameter, 0.f ), 0.f, 1.f );
+				Color3f diffuseColor = parameterValue( shader.get(), g_diffuseColorParameter, Color3f( 0.18f ) );
+				const Color3f spec = Color3f( 1.f ) + ( diffuseColor - Color3f( 1.f ) ) * metallic;
+				const Color3f fZeroSpec = fZero * spec;
+
+				newShader->parameters()[g_specularFaceColorParameter] = new Color3fData(
+					fZeroSpec + ( spec - fZeroSpec ) * metallic
+				);
+				newShader->parameters()[g_specularEdgeColorParameter] = new Color3fData( spec );
+				diffuseGain *= 1.f - metallic;
+			}
+
+			if( diffuseGain != Color3f( 1.f ) )
+			{
+				newShader->parameters()[g_diffuseGainParameter] = new Color3fData( diffuseGain );
+			}
+
+			// Ior is float in USD and `Color3f` in RenderMan
+			newShader->parameters()[g_specularIorParameter] = new Color3fData( Color3f( ior ) );
+			if( ShaderNetwork::Parameter input = shaderNetwork->input( { handle, g_iorParameter } ) )
+			{
+				shaderNetwork->addConnection( { input, { handle, g_specularIorParameter } } );
+				shaderNetwork->removeConnection( { input, { handle, g_iorParameter } } );
+			}
+
+			// Clearcoat
+			const float clearcoat = parameterValue( shader.get(), g_clearcoatParameter, 0.f );
+			if( clearcoat > 0.f )
+			{
+
+			}
+		}
+
+		if( newShader )
+		{
+			replaceUSDShader( shaderNetwork, handle, std::move( newShader ) );
+		}
+	}
+	IECoreScene::ShaderNetworkAlgo::removeUnusedShaders( shaderNetwork );
 }
 
 } // namespace IECoreRenderMan::ShaderNetworkAlgo
