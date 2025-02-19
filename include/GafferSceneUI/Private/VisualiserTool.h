@@ -40,6 +40,7 @@
 #include "GafferSceneUI/SelectionTool.h"
 #include "GafferSceneUI/TypeIds.h"
 
+#include "GafferScene/PathFilter.h"
 #include "GafferScene/ScenePlug.h"
 
 #include "GafferUI/ButtonEvent.h"
@@ -114,17 +115,20 @@ class GAFFERSCENEUI_API VisualiserTool : public SelectionTool
 		{
 			Selection(
 				const GafferScene::ScenePlug &scene,
+				const GafferScene::ScenePlug &uniformPScene,
 				const GafferScene::ScenePlug::ScenePath &path,
 				const Gaffer::Context &context
 			);
 
 			const GafferScene::ScenePlug &scene() const;
+			const GafferScene::ScenePlug &uniformPScene() const;
 			const GafferScene::ScenePlug::ScenePath &path() const;
 			const Gaffer::Context &context() const;
 
 			private:
 
 				GafferScene::ConstScenePlugPtr m_scene;
+				GafferScene::ConstScenePlugPtr m_uniformPScene;
 				GafferScene::ScenePlug::ScenePath m_path;
 				Gaffer::ConstContextPtr m_context;
 		};
@@ -140,6 +144,12 @@ class GAFFERSCENEUI_API VisualiserTool : public SelectionTool
 		GafferScene::ScenePlug *internalScenePlug();
 		const GafferScene::ScenePlug *internalScenePlug() const;
 
+		GafferScene::ScenePlug *internalSceneUniformPPlug();
+		const GafferScene::ScenePlug *internalSceneUniformPPlug() const;
+
+		GafferScene::PathFilter *uniformPFilter();
+		const GafferScene::PathFilter *uniformPFilter() const;
+
 		void connectOnActive();
 		void disconnectOnInactive();
 		bool mouseMove( const GafferUI::ButtonEvent &event );
@@ -152,7 +162,7 @@ class GAFFERSCENEUI_API VisualiserTool : public SelectionTool
 		bool dragEnd( const GafferUI::DragDropEvent &event );
 		void plugDirtied( const Gaffer::Plug *plug );
 		void plugSet( const Gaffer::Plug *plug );
-		void updateSelection() const;
+		void updateSelection();
 		void preRender();
 		void updateCursorPos( const GafferUI::ButtonEvent &event );
 		void updateCursorValue();
@@ -169,11 +179,11 @@ class GAFFERSCENEUI_API VisualiserTool : public SelectionTool
 		Gaffer::Signals::ScopedConnection m_dragBeginConnection;
 
 		GafferUI::GadgetPtr m_gadget;
-		mutable std::vector<Selection> m_selection;
+		std::vector<Selection> m_selection;
 		CursorPosition m_cursorPos;
 		CursorValue m_cursorValue;
 		bool m_gadgetDirty;
-		mutable bool m_selectionDirty;
+		bool m_selectionDirty;
 		bool m_priorityPathsDirty;
 		CursorValue m_valueAtButtonPress;
 		bool m_initiatedDrag;
