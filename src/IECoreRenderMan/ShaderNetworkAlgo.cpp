@@ -34,7 +34,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "ShaderNetworkAlgo.h"
+#include "IECoreRenderMan/ShaderNetworkAlgo.h"
 
 #include "ParamListAlgo.h"
 
