@@ -444,7 +444,48 @@ void transferUSDParameter( ShaderNetwork *network, InternedString shaderHandle, 
 	}
 }
 
+const InternedString g_aParameter( "a" );
+const InternedString g_bParameter( "b" );
+const InternedString g_biasParameter( "bias" );
+const InternedString g_colorOffsetParameter( "colorOffset" );
+const InternedString g_colorScaleParameter( "colorScale" );
 const InternedString g_diffuseColorParameter( "diffuseColor" );
+const InternedString g_fallbackParameter( "fallback" );
+const InternedString g_fileParameter( "file" );
+const InternedString g_filenameParameter( "filename" );
+const InternedString g_gParameter( "g" );
+const InternedString g_missingColorParameter( "missingColor" );
+const InternedString g_rParameter( "r" );
+const InternedString g_resultAParameter( "resultA" );
+const InternedString g_resultBParameter( "resultB" );
+const InternedString g_resultGParameter( "resultG" );
+const InternedString g_resultRParameter( "resultR" );
+const InternedString g_resultRGBParameter( "resultRGB" );
+const InternedString g_rgbParameter( "rgb" );
+const InternedString g_scaleParameter( "scale" );
+const InternedString g_usdUVTexture( "UsdUVTexture" );
+
+const std::unordered_map<InternedString, InternedString> g_usdUVTextureParameterMap = {
+	{ g_rgbParameter, g_resultRGBParameter },
+	{ g_rParameter, g_resultRParameter },
+	{ g_gParameter, g_resultGParameter },
+	{ g_bParameter, g_resultBParameter },
+	{ g_aParameter, g_resultAParameter }
+};
+
+const InternedString remapOutputParameterName( const InternedString name, const InternedString shaderName )
+{
+	if( shaderName == g_usdUVTexture )
+	{
+		const auto it = g_usdUVTextureParameterMap.find( name );
+		if( it != g_usdUVTextureParameterMap.end() )
+		{
+			return it->second;
+		}
+	}
+
+	return name;
+}
 
 void replaceUSDShader( ShaderNetwork *network, InternedString handle, ShaderPtr &&newShader )
 {
@@ -452,6 +493,20 @@ void replaceUSDShader( ShaderNetwork *network, InternedString handle, ShaderPtr 
 
 	// Replace original shader with the new.
 	network->setShader( handle, std::move( newShader ) );
+
+	// Iterating over a copy because we will modify the range during iteration
+	ShaderNetwork::ConnectionRange range = network->outputConnections( handle );
+	std::vector<ShaderNetwork::Connection> outputConnections( range.begin(), range.end() );
+	for( auto &c : outputConnections )
+	{
+		const InternedString remappedName = remapOutputParameterName( c.source.name, shaderName );
+		if( remappedName != c.source.name )
+		{
+			network->removeConnection( c );
+			c.source.name = remapOutputParameterName( c.source.name, shaderName );
+			network->addConnection( c );
+		}
+	}
 }
 
 } // namespace
@@ -486,6 +541,16 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 			// Easy stuff with a one-to-one correspondence between `UsdPreviewSurface` and `PxrSurface`.
 
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_diffuseColorParameter, newShader.get(), g_diffuseColorParameter, Color3f( 0.18f ) );
+		}
+
+		else if( shader->getName() == "UsdUVTexture" )
+		{
+			newShader = new Shader( "PxrTexture", "osl:shader" );
+
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_fileParameter, newShader.get(), g_filenameParameter, std::string() );
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_fallbackParameter, newShader.get(), g_missingColorParameter, Color4f( 0.f, 0.f, 0.f, 1.f ) );
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_scaleParameter, newShader.get(), g_colorScaleParameter, Color4f( 1.f ) );
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_biasParameter, newShader.get(), g_colorOffsetParameter, Color4f( 0.f ) );
 		}
 
 		if( newShader )

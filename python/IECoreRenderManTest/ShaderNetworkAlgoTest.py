@@ -67,5 +67,51 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 
 		self.assertEqual( convertedShader.parameters["diffuseColor"].value, imath.Color3f( 0.1, 0.2, 0.3 ) )
 
+	def testConvertSimpleUSDUVTexture( self ) :
+
+		for usdOutput, riOutput in [
+			( "rgb", "resultRGB" ),
+			( "r", "resultR" ),
+			( "g", "resultG" ),
+			( "b", "resultB" ),
+			( "a", "resultA" ),
+		] :
+
+			with self.subTest( usdOutput = usdOutput, riOutput = riOutput ) :
+				network = IECoreScene.ShaderNetwork(
+					shaders = {
+						"previewSurface" : IECoreScene.Shader( "UsdPreviewSurface" ),
+						"texture" : IECoreScene.Shader(
+							"UsdUVTexture", "shader",
+							{
+								"file" : "test.png",
+								# \todo Can we support `wrapS` and `wrapT`, `sourceColorSpace`?
+								# "wrapS" : "useMetadata",
+								# "wrapT" : "repeat",
+								"sourceColorSpace" : "raw",
+								"fallback" : IECore.Color4fData( imath.Color4f( 0.1, 0.2, 0.3, 1.0 ) ),
+								"scale" : IECore.Color4fData( imath.Color4f( 0.4, 0.5, 0.6, 1.0 ) ),
+								"bias" : IECore.Color4fData( imath.Color4f( 0.7, 0.8, 0.9, 1.0 ) ),
+							}
+						),
+					},
+					connections = [
+						( ( "texture", usdOutput ), ( "previewSurface", "diffuseColor" ) ),
+					],
+					output = "previewSurface",
+				)
+
+				IECoreRenderMan.ShaderNetworkAlgo.convertUSDShaders( network )
+
+				self.assertEqual( network.input( ( "previewSurface", "diffuseColor" ) ), ( "texture", riOutput ) )
+
+				texture = network.getShader( "texture" )
+				self.assertEqual( texture.name, "PxrTexture" )
+				self.assertEqual( texture.parameters["filename"].value, "test.png" )
+				self.assertEqual( texture.parameters["missingColor"].value, imath.Color4f( 0.1, 0.2, 0.3, 1.0 ) )
+				self.assertEqual( texture.parameters["colorScale"].value, imath.Color4f( 0.4, 0.5, 0.6, 1.0 ) )
+				self.assertEqual( texture.parameters["colorOffset"].value, imath.Color4f( 0.7, 0.8, 0.9, 1.0 ) )
+
+
 if __name__ == "__main__" :
 	unittest.main()
