@@ -78,6 +78,52 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 		self.assertNotIn( "clearcoatIor", convertedShader.parameters )
 		self.assertNotIn( "clearcoatFresnelMode", convertedShader.parameters )
 
+	def testConvertSimpleUSDUVTexture( self ) :
+
+		for uvPrimvar in ( "st", "customUV" ) :
+
+			network = IECoreScene.ShaderNetwork(
+				shaders = {
+					"previewSurface" : IECoreScene.Shader( "UsdPreviewSurface" ),
+					"texture" : IECoreScene.Shader(
+						"UsdUVTexture", "shader",
+						{
+							"file" : "test.png",
+							# \todo Can we support `wrapS` and `wrapT`, `sourceColorSpace`?
+							# "wrapS" : "useMetadata",
+							# "wrapT" : "repeat",
+							"sourceColorSpace" : "raw",
+							"fallback" : IECore.Color3fData( imath.Color3f( 0.1, 0.2, 0.3 ) ),
+							"scale" : IECore.Color3fData( imath.Color3f( 0.4, 0.5, 0.6 ) ),
+							"bias" : IECore.Color3fData( imath.Color3f( 0.7, 0.8, 0.9 ) ),
+						}
+					),
+				},
+				connections = [
+					( ( "texture", "rgb" ), ( "previewSurface", "diffuseColor" ) ),
+				],
+				output = "previewSurface",
+			)
+
+			IECoreRenderMan.ShaderNetworkAlgo.convertUSDShaders( network )
+
+			self.assertEqual( network.input( ( "previewSurface", "diffuseColor" ) ), "texture" )
+
+			texture = network.getShader( "texture" )
+			self.assertEqual( texture.name, "PxrTexture" )
+			self.assertEqual( texture.parameters["filename"].value, "test.png" )
+			self.assertEqual( texture.parameters["missingColor"].value, imath.Color3f( 0.1, 0.2, 0.3 ) )
+			self.assertEqual( texture.parameters["colorScale"].value, imath.Color3f( 0.4, 0.5, 0.6 ) )
+			self.assertEqual( texture.parameters["colorOffset"].value, imath.Color3f( 0.7, 0.8, 0.9 ) )
+
+	def testConvertUSDUVTextureST( self ) :
+
+		self.assertTrue( False )
+
+	def testConvertUSDUVTextureSrgb( self ) :
+
+		self.assertTrue( False )
+
 	def testConvertUSDPreviewSurfaceIor( self ) :
 
 		parameters = {
