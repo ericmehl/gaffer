@@ -47,6 +47,7 @@
 
 #include "OSL/oslquery.h"
 
+#include "boost/algorithm/string.hpp"
 #include "boost/container/flat_map.hpp"
 #include "boost/property_tree/xml_parser.hpp"
 
@@ -449,6 +450,9 @@ const InternedString g_bParameter( "b" );
 const InternedString g_biasParameter( "bias" );
 const InternedString g_colorOffsetParameter( "colorOffset" );
 const InternedString g_colorScaleParameter( "colorScale" );
+const InternedString g_defaultFloatParameter( "defaultFloat" );
+const InternedString g_defaultFloat3Parameter( "defaultFloat3" );
+const InternedString g_defaultIntParameter( "defaultInt" );
 const InternedString g_diffuseColorParameter( "diffuseColor" );
 const InternedString g_fallbackParameter( "fallback" );
 const InternedString g_fileParameter( "file" );
@@ -459,13 +463,18 @@ const InternedString g_missingColorParameter( "missingColor" );
 const InternedString g_rParameter( "r" );
 const InternedString g_resultAParameter( "resultA" );
 const InternedString g_resultBParameter( "resultB" );
+const InternedString g_resultFParameter( "resultF" );
 const InternedString g_resultGParameter( "resultG" );
 const InternedString g_resultRParameter( "resultR" );
 const InternedString g_resultRGBParameter( "resultRGB" );
 const InternedString g_rgbParameter( "rgb" );
 const InternedString g_scaleParameter( "scale" );
 const InternedString g_sourceColorSpaceParameter( "sourceColorSpace" );
+const InternedString g_typeParameter( "type" );
+const InternedString g_usdPrimvarReaderIntShaderName( "UsdPrimvarReader_int" );
+const InternedString g_usdPrimvarReaderFloatShaderName( "UsdPrimvarReader_float" );
 const InternedString g_usdUVTexture( "UsdUVTexture" );
+const InternedString g_varnameParameter( "varname" );
 
 const std::unordered_map<InternedString, InternedString> g_usdUVTextureParameterMap = {
 	{ g_rgbParameter, g_resultRGBParameter },
@@ -473,6 +482,16 @@ const std::unordered_map<InternedString, InternedString> g_usdUVTextureParameter
 	{ g_gParameter, g_resultGParameter },
 	{ g_bParameter, g_resultBParameter },
 	{ g_aParameter, g_resultAParameter }
+};
+
+const std::unordered_map<std::string, std::tuple<std::string, std::optional<InternedString>, std::variant<std::monostate, float, V3f, int>>> g_primVarMap = {
+	{ "UsdPrimvarReader_float", { "float", g_defaultFloatParameter, 0.f } },
+	{ "UsdPrimvarReader_float2", { "float2", {}, {} } },
+	{ "UsdPrimvarReader_float3", { "vector", g_defaultFloat3Parameter, V3f( 0.f ) } },
+	{ "UsdPrimvarReader_normal", { "normal", g_defaultFloat3Parameter, V3f( 0.f ) } },
+	{ "UsdPrimvarReader_point", { "point", g_defaultFloat3Parameter, V3f( 0.f ) } },
+	{ "UsdPrimvarReader_vector", { "vector", g_defaultFloat3Parameter, V3f( 0.f ) } },
+	{ "UsdPrimvarReader_int", { "int", g_defaultIntParameter, 0 } }
 };
 
 const InternedString remapOutputParameterName( const InternedString name, const InternedString shaderName )
@@ -483,6 +502,17 @@ const InternedString remapOutputParameterName( const InternedString name, const 
 		if( it != g_usdUVTextureParameterMap.end() )
 		{
 			return it->second;
+		}
+	}
+	else if( boost::starts_with( shaderName.string(), "UsdPrimvarReader" ) )
+	{
+		if( shaderName == g_usdPrimvarReaderFloatShaderName || shaderName == g_usdPrimvarReaderIntShaderName )
+		{
+			return g_resultFParameter;
+		}
+		else
+		{
+			return g_resultRGBParameter;
 		}
 	}
 
@@ -568,6 +598,28 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 				newShader->parameters()[g_linearizeParameter] = new IntData( 0 );
 				IECore::msg( IECore::Msg::Warning, "IECoreRenderMan::ShaderNetworkAlgo::convertUSDShaders", "\"sourceColorSpace\" must be \"raw\" or \"sRGB\". Defaulting to \"raw\".");
 			}
+		}
+
+		const auto it = g_primVarMap.find( shader->getName() );
+		if( it != g_primVarMap.end() )
+		{
+			newShader = new Shader( "PxrPrimvar", "osl:shader" );
+			const auto &[typeName, defaultParameter, defaultValue] = it->second;
+
+			newShader->parameters()[g_typeParameter] = new StringData( typeName );
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_varnameParameter, newShader.get(), g_varnameParameter, string() );
+			std::visit(
+				[&shaderNetwork, &handle, &shader, &newShader, &defaultParameter]( auto &&v )
+				{
+					using T = std::decay_t<decltype( v )>;
+					if constexpr( !std::is_same_v<T, std::monostate> )
+					{
+						assert( defaultParameter );
+						transferUSDParameter( shaderNetwork, handle, shader.get(), g_fallbackParameter, newShader.get(), defaultParameter.value(), v );
+					}
+				},
+				defaultValue
+			);
 		}
 
 		if( newShader )
