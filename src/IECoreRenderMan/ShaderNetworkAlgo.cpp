@@ -454,6 +454,7 @@ const InternedString g_fallbackParameter( "fallback" );
 const InternedString g_fileParameter( "file" );
 const InternedString g_filenameParameter( "filename" );
 const InternedString g_gParameter( "g" );
+const InternedString g_linearizeParameter( "linearize" );
 const InternedString g_missingColorParameter( "missingColor" );
 const InternedString g_rParameter( "r" );
 const InternedString g_resultAParameter( "resultA" );
@@ -463,6 +464,7 @@ const InternedString g_resultRParameter( "resultR" );
 const InternedString g_resultRGBParameter( "resultRGB" );
 const InternedString g_rgbParameter( "rgb" );
 const InternedString g_scaleParameter( "scale" );
+const InternedString g_sourceColorSpaceParameter( "sourceColorSpace" );
 const InternedString g_usdUVTexture( "UsdUVTexture" );
 
 const std::unordered_map<InternedString, InternedString> g_usdUVTextureParameterMap = {
@@ -551,6 +553,21 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_fallbackParameter, newShader.get(), g_missingColorParameter, Color4f( 0.f, 0.f, 0.f, 1.f ) );
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_scaleParameter, newShader.get(), g_colorScaleParameter, Color4f( 1.f ) );
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_biasParameter, newShader.get(), g_colorOffsetParameter, Color4f( 0.f ) );
+
+			const InternedString sourceColorSpace = parameterValue( shader.get(), g_sourceColorSpaceParameter, string( "auto" ) );
+			if( sourceColorSpace == "raw" )
+			{
+				newShader->parameters()[g_linearizeParameter] = new IntData( 0 );
+			}
+			else if( sourceColorSpace == "sRGB" )
+			{
+				newShader->parameters()[g_linearizeParameter] = new IntData( 1 );
+			}
+			else
+			{
+				newShader->parameters()[g_linearizeParameter] = new IntData( 0 );
+				IECore::msg( IECore::Msg::Warning, "IECoreRenderMan::ShaderNetworkAlgo::convertUSDShaders", "\"sourceColorSpace\" must be \"raw\" or \"sRGB\". Defaulting to \"raw\".");
+			}
 		}
 
 		if( newShader )

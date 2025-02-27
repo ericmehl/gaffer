@@ -112,6 +112,44 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 				self.assertEqual( texture.parameters["colorScale"].value, imath.Color4f( 0.4, 0.5, 0.6, 1.0 ) )
 				self.assertEqual( texture.parameters["colorOffset"].value, imath.Color4f( 0.7, 0.8, 0.9, 1.0 ) )
 
+	def testConvertUSDUVTextureColorSpace( self ) :
+
+		for sourceColorSpace, linearizeValue, warningMessage in [
+			( "raw", 0, None ),
+			( "sRGB", 1, None ),
+			( "auto", 0, "\"sourceColorSpace\" must be \"raw\" or \"sRGB\". Defaulting to \"raw\"." )
+		] :
+			with self.subTest( sourceColorSpace = sourceColorSpace, linearizeValue = linearizeValue, warningMessage = warningMessage ) :
+				network = IECoreScene.ShaderNetwork(
+					shaders = {
+						"previewSurface" : IECoreScene.Shader( "UsdPreviewSurface" ),
+						"texture" : IECoreScene.Shader(
+							"UsdUVTexture", "shader",
+							{
+								"sourceColorSpace" : sourceColorSpace,
+							}
+						),
+					},
+					connections = [
+						( ( "texture", "rgb" ), ( "previewSurface", "diffuseColor" ) ),
+					],
+					output = "previewSurface",
+				)
+
+				with IECore.CapturingMessageHandler() as mh :
+					IECoreRenderMan.ShaderNetworkAlgo.convertUSDShaders( network )
+
+				self.assertEqual( network.input( ( "previewSurface", "diffuseColor" ) ), ( "texture", "resultRGB" ) )
+
+				texture = network.getShader( "texture" )
+
+				self.assertEqual( texture.parameters["linearize"].value, linearizeValue )
+
+				if warningMessage is not None :
+					self.assertEqual( len( mh.messages ), 1 )
+					self.assertEqual( mh.messages[0].level, IECore.MessageHandler.Level.Warning )
+					self.assertEqual( mh.messages[0].context, "IECoreRenderMan::ShaderNetworkAlgo::convertUSDShaders" )
+					self.assertEqual( mh.messages[0].message, warningMessage )
 
 if __name__ == "__main__" :
 	unittest.main()
