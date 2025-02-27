@@ -448,19 +448,32 @@ void transferUSDParameter( ShaderNetwork *network, InternedString shaderHandle, 
 const InternedString g_aParameter( "a" );
 const InternedString g_bParameter( "b" );
 const InternedString g_biasParameter( "bias" );
+const InternedString g_bumpNormalParameter( "bumpNormal" );
+const InternedString g_clearcoatFaceColorParameter( "clearcoatFaceColor" );
+const InternedString g_clearcoatEdgeColorParameter( "clearcoatEdgeColor" );
+const InternedString g_clearcoatRoughnessParameter( "clearcoatRoughness" );
 const InternedString g_colorOffsetParameter( "colorOffset" );
 const InternedString g_colorScaleParameter( "colorScale" );
 const InternedString g_defaultFloatParameter( "defaultFloat" );
 const InternedString g_defaultFloat3Parameter( "defaultFloat3" );
 const InternedString g_defaultIntParameter( "defaultInt" );
 const InternedString g_diffuseColorParameter( "diffuseColor" );
+const InternedString g_diffuseGainParameter( "diffuseGain") ;
 const InternedString g_fallbackParameter( "fallback" );
 const InternedString g_fileParameter( "file" );
 const InternedString g_filenameParameter( "filename" );
 const InternedString g_gParameter( "g" );
+const InternedString g_glassIorParameter( "glassIor" );
+const InternedString g_glassRoughnessParameter( "glassRoughness" );
+const InternedString g_glowColorParameter( "glowColor" );
+const InternedString g_glowGainParameter( "glowGain" );
 const InternedString g_linearizeParameter( "linearize" );
 const InternedString g_missingColorParameter( "missingColor" );
+const InternedString g_normalParameter( "normal" );
+const InternedString g_normalInParameter( "normalIn" );
+const InternedString g_presenceParameter( "presence" );
 const InternedString g_rParameter( "r" );
+const InternedString g_refractionGainParameter( "refractionGain" );
 const InternedString g_resultAParameter( "resultA" );
 const InternedString g_resultBParameter( "resultB" );
 const InternedString g_resultFParameter( "resultF" );
@@ -470,6 +483,10 @@ const InternedString g_resultRGBParameter( "resultRGB" );
 const InternedString g_rgbParameter( "rgb" );
 const InternedString g_scaleParameter( "scale" );
 const InternedString g_sourceColorSpaceParameter( "sourceColorSpace" );
+const InternedString g_specularEdgeColorParameter( "specularEdgeColor" );
+const InternedString g_specularFaceColorParameter( "specularFaceColor" );
+const InternedString g_specularIorParameter( "specularIor" );
+const InternedString g_specularRoughnessParameter( "specularRoughness" );
 const InternedString g_typeParameter( "type" );
 const InternedString g_usdPrimvarReaderIntShaderName( "UsdPrimvarReader_int" );
 const InternedString g_usdPrimvarReaderFloatShaderName( "UsdPrimvarReader_float" );
@@ -492,6 +509,25 @@ const std::unordered_map<std::string, std::tuple<std::string, std::optional<Inte
 	{ "UsdPrimvarReader_point", { "point", g_defaultFloat3Parameter, V3f( 0.f ) } },
 	{ "UsdPrimvarReader_vector", { "vector", g_defaultFloat3Parameter, V3f( 0.f ) } },
 	{ "UsdPrimvarReader_int", { "int", g_defaultIntParameter, 0 } }
+};
+
+const std::vector<InternedString> g_pxrSurfaceParameters = {
+	g_diffuseGainParameter,
+	g_diffuseColorParameter,
+	g_specularFaceColorParameter,
+	g_specularEdgeColorParameter,
+	g_specularRoughnessParameter,
+	g_specularIorParameter,
+	g_clearcoatFaceColorParameter,
+	g_clearcoatEdgeColorParameter,
+	g_clearcoatRoughnessParameter,
+	g_glowGainParameter,
+	g_glowColorParameter,
+	g_bumpNormalParameter,
+	g_glassIorParameter,
+	g_glassRoughnessParameter,
+	g_refractionGainParameter,
+	g_presenceParameter
 };
 
 const InternedString remapOutputParameterName( const InternedString name, const InternedString shaderName )
@@ -568,11 +604,23 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 		ShaderPtr newShader;
 		if( shader->getName() == "UsdPreviewSurface" )
 		{
-			newShader = new Shader( "PxrSurface" );
+			newShader = new Shader( "__usd/UsdPreviewSurfaceParameters", "osl:shader" );
 
-			// Easy stuff with a one-to-one correspondence between `UsdPreviewSurface` and `PxrSurface`.
+			// `UsdPreviewSurface` and `UsdPreviewSurfaceParameters` match except for `normal` -> `normalIn`.
+			for( const auto &[p, v] : shader->parameters() )
+			{
+				newShader->parameters()[p != g_normalParameter ? p : g_normalInParameter] = v;
+			}
 
-			transferUSDParameter( shaderNetwork, handle, shader.get(), g_diffuseColorParameter, newShader.get(), g_diffuseColorParameter, Color3f( 0.18f ) );
+			ShaderPtr pxrSurfaceShader = new Shader( "PxrSurface" );
+			const InternedString pxrSurfaceHandle = shaderNetwork->addShader( handle.string() + "PxrSurface", std::move( pxrSurfaceShader ) );
+
+			for( const auto &p : g_pxrSurfaceParameters )
+			{
+				shaderNetwork->addConnection( ShaderNetwork::Connection( { handle, InternedString( p.string() + "Out" ) }, { pxrSurfaceHandle, p } ) );
+			}
+
+			shaderNetwork->setOutput( { pxrSurfaceHandle, "" } );
 		}
 
 		else if( shader->getName() == "UsdUVTexture" )
