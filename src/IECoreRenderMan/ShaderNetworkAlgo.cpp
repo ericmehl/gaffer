@@ -577,6 +577,15 @@ void replaceUSDShader( ShaderNetwork *network, InternedString handle, ShaderPtr 
 	}
 }
 
+ShaderNetworkPtr preprocessedNetwork( const IECoreScene::ShaderNetwork *shaderNetwork )
+{
+	ShaderNetworkPtr result = shaderNetwork->copy();
+
+	IECoreRenderMan::ShaderNetworkAlgo::convertUSDShaders( result.get() );
+
+	return result;
+}
+
 } // namespace
 
 //////////////////////////////////////////////////////////////////////////
@@ -585,11 +594,12 @@ void replaceUSDShader( ShaderNetwork *network, InternedString handle, ShaderPtr 
 
 std::vector<riley::ShadingNode> IECoreRenderMan::ShaderNetworkAlgo::convert( const IECoreScene::ShaderNetwork *network )
 {
+	ConstShaderNetworkPtr preprocessedNetwork = ::preprocessedNetwork( network );
 	vector<riley::ShadingNode> result;
-	result.reserve( network->size() );
+	result.reserve( preprocessedNetwork->size() );
 
 	HandleSet visited;
-	convertShaderNetworkWalk( network->getOutput(), network, result, visited );
+	convertShaderNetworkWalk( preprocessedNetwork->getOutput(), preprocessedNetwork.get(), result, visited );
 
 	return result;
 }
@@ -612,7 +622,7 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 				newShader->parameters()[p != g_normalParameter ? p : g_normalInParameter] = v;
 			}
 
-			ShaderPtr pxrSurfaceShader = new Shader( "PxrSurface" );
+			ShaderPtr pxrSurfaceShader = new Shader( "PxrSurface", "ri:surface" );
 			const InternedString pxrSurfaceHandle = shaderNetwork->addShader( handle.string() + "PxrSurface", std::move( pxrSurfaceShader ) );
 
 			for( const auto &p : g_pxrSurfaceParameters )
