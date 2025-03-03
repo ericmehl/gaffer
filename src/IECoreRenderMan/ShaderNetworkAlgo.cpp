@@ -638,9 +638,9 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 			newShader = new Shader( "PxrTexture", "osl:shader" );
 
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_fileParameter, newShader.get(), g_filenameParameter, std::string() );
-			transferUSDParameter( shaderNetwork, handle, shader.get(), g_fallbackParameter, newShader.get(), g_missingColorParameter, Color4f( 0.f, 0.f, 0.f, 1.f ) );
-			transferUSDParameter( shaderNetwork, handle, shader.get(), g_scaleParameter, newShader.get(), g_colorScaleParameter, Color4f( 1.f ) );
-			transferUSDParameter( shaderNetwork, handle, shader.get(), g_biasParameter, newShader.get(), g_colorOffsetParameter, Color4f( 0.f ) );
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_fallbackParameter, newShader.get(), g_missingColorParameter, Color3f( 0.f ) );
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_scaleParameter, newShader.get(), g_colorScaleParameter, Color3f( 1.f ) );
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_biasParameter, newShader.get(), g_colorOffsetParameter, Color3f( 0.f ) );
 
 			const InternedString sourceColorSpace = parameterValue( shader.get(), g_sourceColorSpaceParameter, string( "auto" ) );
 			if( sourceColorSpace == "raw" )

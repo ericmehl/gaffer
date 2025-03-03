@@ -160,9 +160,9 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 				texture = network.getShader( "texture" )
 				self.assertEqual( texture.name, "PxrTexture" )
 				self.assertEqual( texture.parameters["filename"].value, "test.png" )
-				self.assertEqual( texture.parameters["missingColor"].value, imath.Color4f( 0.1, 0.2, 0.3, 1.0 ) )
-				self.assertEqual( texture.parameters["colorScale"].value, imath.Color4f( 0.4, 0.5, 0.6, 1.0 ) )
-				self.assertEqual( texture.parameters["colorOffset"].value, imath.Color4f( 0.7, 0.8, 0.9, 1.0 ) )
+				self.assertEqual( texture.parameters["missingColor"].value, imath.Color3f( 0.1, 0.2, 0.3 ) )
+				self.assertEqual( texture.parameters["colorScale"].value, imath.Color3f( 0.4, 0.5, 0.6 ) )
+				self.assertEqual( texture.parameters["colorOffset"].value, imath.Color3f( 0.7, 0.8, 0.9 ) )
 
 	def testConvertUSDUVTextureColorSpace( self ) :
 
