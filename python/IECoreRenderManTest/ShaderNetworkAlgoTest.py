@@ -208,7 +208,7 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 		for usdDataType, fallback, riType, riDefaultParameter, riDefault, readerOut, surfaceIn in [
 			( "float", 2.0, "float", "defaultFloat", 2.0, "resultF", "metallic" ),
 			# \todo `float2` doesn't have default in `PxrPrimvar`. Does it use `defaultFloat3`?
-			( "float2", imath.V2f( 1, 2 ), "float2", None, None, "resultRGB", "diffuseColor" ),
+			( "float2", imath.V2f( 1, 2 ), "float2", "defaultFloat3", imath.Color3f( 1, 2, 0 ), "resultRGB", "diffuseColor" ),
 			( "float3", imath.V3f( 1, 2, 3 ), "vector", "defaultFloat3", imath.Color3f( 1, 2, 3 ), "resultRGB", "diffuseColor" ),
 			( "normal", imath.V3f( 1, 2, 3 ), "normal", "defaultFloat3", imath.Color3f( 1, 2, 3 ), "resultRGB", "diffuseColor" ),
 			( "point", imath.V3f( 1, 2, 3 ), "point", "defaultFloat3", imath.Color3f( 1, 2, 3 ), "resultRGB", "diffuseColor" ),
@@ -237,11 +237,10 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 
 				reader = network.getShader( "reader" )
 				self.assertEqual( reader.name, "PxrPrimvar" )
-				self.assertEqual( len( reader.parameters ), 3 if riDefaultParameter is not None else 2 )
+				self.assertEqual( len( reader.parameters ), 3 )
 				self.assertEqual( reader.parameters["varname"].value, "test" )
 				self.assertEqual( reader.parameters["type"].value, riType )
-				if riDefaultParameter is not None :
-					self.assertEqual( reader.parameters[riDefaultParameter].value, riDefault )
+				self.assertEqual( reader.parameters[riDefaultParameter].value, riDefault )
 
 				self.assertEqual( network.input( ( "previewSurface", surfaceIn ) ), ( "reader", readerOut ) )
 

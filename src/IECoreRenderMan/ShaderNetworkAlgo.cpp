@@ -392,6 +392,16 @@ T parameterValue( const Shader *shader, InternedString parameterName, const T &d
 			return Color3f( c[0], c[1], c[2] );
 		}
 	}
+	if constexpr( is_same_v<remove_cv_t<T>, V3f > )
+	{
+		// Conversion of V2f to V3f, for cases like converting `UsdPrimvarReader_float2.fallback`
+		// to `PxrPrimvar.defaultFloat3`
+		if( auto d = shader->parametersData()->member<V2fData>( parameterName ) )
+		{
+			const V2f &v = d->readable();
+			return V3f( v[0], v[1], 0.f );
+		}
+	}
 	else if constexpr( is_same_v<remove_cv_t<T>, std::string> )
 	{
 		// Support for USD `token`, which will be loaded as `InternedString`, but which
@@ -501,9 +511,9 @@ const std::unordered_map<InternedString, InternedString> g_usdUVTextureParameter
 	{ g_aParameter, g_resultAParameter }
 };
 
-const std::unordered_map<std::string, std::tuple<std::string, std::optional<InternedString>, std::variant<std::monostate, float, V3f, int>>> g_primVarMap = {
+const std::unordered_map<std::string, std::tuple<std::string, InternedString, std::variant<float, V3f, int>>> g_primVarMap = {
 	{ "UsdPrimvarReader_float", { "float", g_defaultFloatParameter, 0.f } },
-	{ "UsdPrimvarReader_float2", { "float2", {}, {} } },
+	{ "UsdPrimvarReader_float2", { "float2", g_defaultFloat3Parameter, V3f( 0.f ) } },
 	{ "UsdPrimvarReader_float3", { "vector", g_defaultFloat3Parameter, V3f( 0.f ) } },
 	{ "UsdPrimvarReader_normal", { "normal", g_defaultFloat3Parameter, V3f( 0.f ) } },
 	{ "UsdPrimvarReader_point", { "point", g_defaultFloat3Parameter, V3f( 0.f ) } },
@@ -669,12 +679,7 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 			std::visit(
 				[&shaderNetwork, &handle, &shader, &newShader, &defaultParameter]( auto &&v )
 				{
-					using T = std::decay_t<decltype( v )>;
-					if constexpr( !std::is_same_v<T, std::monostate> )
-					{
-						assert( defaultParameter );
-						transferUSDParameter( shaderNetwork, handle, shader.get(), g_fallbackParameter, newShader.get(), defaultParameter.value(), v );
-					}
+					transferUSDParameter( shaderNetwork, handle, shader.get(), g_fallbackParameter, newShader.get(), defaultParameter, v );
 				},
 				defaultValue
 			);
