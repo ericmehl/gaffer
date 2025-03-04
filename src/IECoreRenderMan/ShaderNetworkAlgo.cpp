@@ -540,6 +540,7 @@ const InternedString g_glassIorParameter( "glassIor" );
 const InternedString g_glassRoughnessParameter( "glassRoughness" );
 const InternedString g_glowColorParameter( "glowColor" );
 const InternedString g_glowGainParameter( "glowGain" );
+const InternedString g_linearizeParameter( "linearize" );
 const InternedString g_missingColorParameter( "missingColor" );
 const InternedString g_normalParameter( "normal" );
 const InternedString g_normalInParameter( "normalIn" );
@@ -556,6 +557,7 @@ const InternedString g_resultRGBParameter( "resultRGB" );
 const InternedString g_rgbParameter( "rgb" );
 const InternedString g_roughSpecularDoubleSidedParameter( "roughSpecularDoubleSided" );
 const InternedString g_scaleParameter( "scale" );
+const InternedString g_sourceColorSpaceParameter( "sourceColorSpace" );
 const InternedString g_specularDoubleSidedParameter( "specularDoubleSided" );
 const InternedString g_specularEdgeColorParameter( "specularEdgeColor" );
 const InternedString g_specularFaceColorParameter( "specularFaceColor" );
@@ -725,6 +727,21 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_fallbackParameter, newShader.get(), g_missingColorParameter, Color3f( 0.f ) );
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_scaleParameter, newShader.get(), g_colorScaleParameter, Color3f( 1.f ) );
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_biasParameter, newShader.get(), g_colorOffsetParameter, Color3f( 0.f ) );
+
+			const InternedString sourceColorSpace = parameterValue( shader.get(), g_sourceColorSpaceParameter, string( "auto" ) );
+			if( sourceColorSpace == "raw" )
+			{
+				newShader->parameters()[g_linearizeParameter] = new IntData( 0 );
+			}
+			else if( sourceColorSpace == "sRGB" )
+			{
+				newShader->parameters()[g_linearizeParameter] = new IntData( 1 );
+			}
+			else
+			{
+				newShader->parameters()[g_linearizeParameter] = new IntData( 0 );
+				IECore::msg( IECore::Msg::Warning, "IECoreRenderMan::ShaderNetworkAlgo::convertUSDShaders", "\"sourceColorSpace\" must be \"raw\" or \"sRGB\". Defaulting to \"raw\".");
+			}
 		}
 		else
 		{
