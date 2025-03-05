@@ -541,7 +541,9 @@ const InternedString g_glassRoughnessParameter( "glassRoughness" );
 const InternedString g_glowColorParameter( "glowColor" );
 const InternedString g_glowGainParameter( "glowGain" );
 const InternedString g_linearizeParameter( "linearize" );
+const InternedString g_manifoldParameter( "manifold" );
 const InternedString g_missingColorParameter( "missingColor" );
+const InternedString g_nameUvSetParameter( "name_uvSet" );
 const InternedString g_normalParameter( "normal" );
 const InternedString g_normalInParameter( "normalIn" );
 const InternedString g_presenceParameter( "presence" );
@@ -552,6 +554,7 @@ const InternedString g_resultBParameter( "resultB" );
 const InternedString g_resultFParameter( "resultF" );
 const InternedString g_resultGParameter( "resultG" );
 const InternedString g_resultIParameter( "resultI" );
+const InternedString g_resultParameter( "result" );
 const InternedString g_resultRParameter( "resultR" );
 const InternedString g_resultRGBParameter( "resultRGB" );
 const InternedString g_rgbParameter( "rgb" );
@@ -564,11 +567,15 @@ const InternedString g_specularFaceColorParameter( "specularFaceColor" );
 const InternedString g_specularIorParameter( "specularIor" );
 const InternedString g_specularModelTypeParameter( "specularModelType" );
 const InternedString g_specularRoughnessParameter( "specularRoughness" );
+const InternedString g_stParameter( "st" );
 const InternedString g_typeParameter( "type" );
 const InternedString g_usdPrimvarReaderIntShaderName( "UsdPrimvarReader_int" );
 const InternedString g_usdPrimvarReaderFloatShaderName( "UsdPrimvarReader_float" );
+const InternedString g_usdPrimvarReaderFloat2ShaderName( "UsdPrimvarReader_float2" );
 const InternedString g_usdUVTextureShaderName( "UsdUVTexture" );
 const InternedString g_varnameParameter( "varname" );
+
+const string g_pxrAttributeShaderName( "PxrAttribute" );
 
 const std::vector<InternedString> g_pxrSurfaceParameters = {
 	g_diffuseGainParameter,
@@ -591,7 +598,6 @@ const std::vector<InternedString> g_pxrSurfaceParameters = {
 
 const std::unordered_map<std::string, std::tuple<std::string, InternedString, std::variant<float, V3f, int>>> g_primVarMap = {
 	{ "UsdPrimvarReader_float", { "float", g_defaultFloatParameter, 0.f } },
-	{ "UsdPrimvarReader_float2", { "float2", g_defaultFloat3Parameter, V3f( 0.f ) } },
 	{ "UsdPrimvarReader_float3", { "vector", g_defaultFloat3Parameter, V3f( 0.f ) } },
 	{ "UsdPrimvarReader_normal", { "normal", g_defaultFloat3Parameter, V3f( 0.f ) } },
 	{ "UsdPrimvarReader_point", { "point", g_defaultFloat3Parameter, V3f( 0.f ) } },
@@ -616,7 +622,7 @@ const InternedString remapOutputParameterName( const InternedString name, const 
 
 		return it->second;
 	}
-	else if( boost::starts_with( shaderName.string(), "UsdPrimvarReader" ) )
+	else if( shaderName != g_usdPrimvarReaderFloat2ShaderName && boost::starts_with( shaderName.string(), "UsdPrimvarReader" ) )
 	{
 		if( shaderName == g_usdPrimvarReaderFloatShaderName )
 		{
@@ -728,6 +734,12 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_scaleParameter, newShader.get(), g_colorScaleParameter, Color3f( 1.f ) );
 			transferUSDParameter( shaderNetwork, handle, shader.get(), g_biasParameter, newShader.get(), g_colorOffsetParameter, Color3f( 0.f ) );
 
+			if( ShaderNetwork::Parameter input = shaderNetwork->input( { handle, g_stParameter } ) )
+			{
+				shaderNetwork->addConnection( { input, { handle, g_manifoldParameter } } );
+				shaderNetwork->removeConnection( { input, { handle, g_stParameter } } );
+			}
+
 			const InternedString sourceColorSpace = parameterValue( shader.get(), g_sourceColorSpaceParameter, string( "auto" ) );
 			if( sourceColorSpace == "raw" )
 			{
@@ -743,12 +755,18 @@ void convertUSDShaders( ShaderNetwork *shaderNetwork )
 				IECore::msg( IECore::Msg::Warning, "IECoreRenderMan::ShaderNetworkAlgo::convertUSDShaders", "\"sourceColorSpace\" must be \"raw\" or \"sRGB\". Defaulting to \"raw\".");
 			}
 		}
+		else if( shader->getName() == "UsdPrimvarReader_float2" )
+		{
+			newShader = new Shader( "PxrManifold2D", "ri:surface" );
+
+			transferUSDParameter( shaderNetwork, handle, shader.get(), g_varnameParameter, newShader.get(), g_nameUvSetParameter, string() );
+		}
 		else
 		{
 			const auto it = g_primVarMap.find( shader->getName() );
 			if( it != g_primVarMap.end() )
 			{
-				newShader = new Shader( "PxrAttribute", "osl:shader" );
+				newShader = new Shader( g_pxrAttributeShaderName, "osl:shader" );
 				const auto &[typeName, defaultParameter, defaultValue] = it->second;
 
 				newShader->parameters()[g_typeParameter] = new StringData( typeName );
