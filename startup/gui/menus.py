@@ -245,6 +245,13 @@ if "RMANTREE" in os.environ :
 		import GafferRenderMan
 		import GafferRenderManUI
 
+		import ctypes
+		if os.name == "nt" :
+			# Because GafferRenderManUI currently doesn't export any symbols,
+			# the Windows linker omits it. Load it explicitly, because it
+			# registers light filter visualisers.
+			ctypes.CDLL( "GafferRenderManUI.dll" )
+
 		GafferRenderManUI.RenderManShaderUI.appendShaders( nodeMenu.definition() )
 
 		nodeMenu.append( "/RenderMan/Attributes", GafferRenderMan.RenderManAttributes, searchText = "RenderManAttributes" )
