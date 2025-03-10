@@ -34,12 +34,56 @@
 
 #include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
 
+#include "IECoreGL/CurvesPrimitive.h"
+#include "IECoreGL/Group.h"
+#include "IECoreGL/Primitive.h"
+#include "IECoreGL/ShaderLoader.h"
+#include "IECoreGL/ShaderStateComponent.h"
+#include "IECoreGL/TextureLoader.h"
+
 #include "GafferRenderManUI/Export.h"
 
+using namespace Imath;
 using namespace IECoreGLPreview;
+using namespace IECoreScene;
+using namespace IECore;
+using namespace IECoreGL;
 
 namespace
 {
+
+/// \todo We have similar methods in several places. Can we consolidate them all somewhere? Perhaps a new
+/// method of CompoundData?
+template<typename T>
+T parameterOrDefault( const IECore::CompoundData *parameters, const IECore::InternedString &name, const T &defaultValue )
+{
+	if( const auto d = parameters->member<TypedData<T>>( name ) )
+	{
+		return d->readable();
+	}
+
+	return defaultValue;
+}
+
+void addWireframeCurveState( IECoreGL::Group *group )
+{
+	group->getState()->add( new IECoreGL::Primitive::DrawWireframe( false ) );
+	group->getState()->add( new IECoreGL::Primitive::DrawSolid( true ) );
+	group->getState()->add( new IECoreGL::CurvesPrimitive::UseGLLines( true ) );
+	group->getState()->add( new IECoreGL::CurvesPrimitive::GLLineWidth( 2.0f ) );
+	group->getState()->add( new IECoreGL::LineSmoothingStateComponent( true ) );
+}
+
+void addRect( const V2f &innerSize, std::vector<int> &vertsPerCurve, std::vector<V3f> &p )
+{
+	const V2f halfSize = innerSize * 0.5f;
+
+	vertsPerCurve.push_back( 4 );
+	p.push_back( V3f( -halfSize.x, -halfSize.y, 0.f ) );
+	p.push_back( V3f( halfSize.x, -halfSize.y, 0.f ) );
+	p.push_back( V3f( halfSize.x, halfSize.y, 0.f ) );
+	p.push_back( V3f( -halfSize.x, halfSize.y, 0.f ) );
+}
 
 class GAFFERRENDERMANUI_API BarnVisualiser final : public LightFilterVisualiser
 {
@@ -51,7 +95,7 @@ class GAFFERRENDERMANUI_API BarnVisualiser final : public LightFilterVisualiser
 		BarnVisualiser();
 		~BarnVisualiser() override;
 
-		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
+		Visualisations visualise( const InternedString &attributeName, const ShaderNetwork *filterShaderNetwork, const ShaderNetwork *lightShaderNetwork, const CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
 
 	protected :
 
@@ -62,7 +106,7 @@ class GAFFERRENDERMANUI_API BarnVisualiser final : public LightFilterVisualiser
 IE_CORE_DECLAREPTR( BarnVisualiser )
 
 // Register the new visualiser
-LightFilterVisualiser::LightFilterVisualiserDescription<BarnVisualiser> BarnVisualiser::g_visualiserDescription( "ri:lightFilter", "PxrBarnLightFilter" );
+LightFilterVisualiser::LightFilterVisualiserDescription<BarnVisualiser> BarnVisualiser::g_visualiserDescription( "ri:lightfilter", "PxrBarnLightFilter" );
 
 BarnVisualiser::BarnVisualiser()
 {
@@ -72,9 +116,39 @@ BarnVisualiser::~BarnVisualiser()
 {
 }
 
-Visualisations BarnVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
+Visualisations BarnVisualiser::visualise( const InternedString &attributeName, const ShaderNetwork *filterShaderNetwork, const ShaderNetwork *lightShaderNetwork, const CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
 {
-	return {};
+	const CompoundData *barnParameters = filterShaderNetwork->outputShader()->parametersData();
+
+	IECoreGL::GroupPtr result = new IECoreGL::Group();
+
+	addWireframeCurveState( result.get() );
+
+	CompoundObjectPtr parameters = new CompoundObject();
+	result->getState()->add(
+		new IECoreGL::ShaderStateComponent( ShaderLoader::defaultShaderLoader(), TextureLoader::defaultTextureLoader(), "", "", IECoreGL::Shader::constantFragmentSource(), parameters )
+	);
+
+	const V2f innerSize = V2f( parameterOrDefault( barnParameters, "width", 1.f ), parameterOrDefault( barnParameters, "height", 1.f ) );
+	IntVectorDataPtr innerVertsPerCurveData = new IntVectorData();
+	V3fVectorDataPtr innerPData = new V3fVectorData();
+
+	std::vector<int> &innerVertsPerCurve = innerVertsPerCurveData->writable();
+	std::vector<V3f> &innerP = innerPData->writable();
+
+	addRect(
+		V2f( parameterOrDefault( barnParameters, "width", 1.f ), parameterOrDefault( barnParameters, "height", 1.f ) ),
+		innerVertsPerCurve,
+		innerP
+	);
+
+	IECoreGL::CurvesPrimitivePtr rect = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), /* periodic */ true, innerVertsPerCurveData );
+	rect->addPrimitiveVariable( "P", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Vertex, innerPData ) );
+	rect->addPrimitiveVariable( "Cs", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Constant, new Color3fData( Color3f( 255.f / 255.f, 171.f / 255.f, 15.f / 255.f ) ) ) );
+
+	result->addChild( rect );
+
+	return { Visualisation::createGeometry( result ) };
 }
 
 }  // namespace

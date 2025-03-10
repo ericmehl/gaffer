@@ -1408,7 +1408,8 @@ libraries = {
 
 	"GafferRenderManUI" : {
 		"envAppends" : {
-			"LIBS" : [ "GafferScene" ],
+			#  "OpenImageIO$OIIO_LIB_SUFFIX", "OpenImageIO_Util$OIIO_LIB_SUFFIX", "oslquery$OSL_LIB_SUFFIX", "Gaffer", "GafferScene", "GafferOSL", "GafferSceneUI", "ai"
+			"LIBS" : [ "GafferScene", "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX",],
 		},
 		"requiredOptions" : [ "RENDERMAN_ROOT" ],
 	},
