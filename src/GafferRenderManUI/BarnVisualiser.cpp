@@ -74,15 +74,49 @@ void addWireframeCurveState( IECoreGL::Group *group )
 	group->getState()->add( new IECoreGL::LineSmoothingStateComponent( true ) );
 }
 
-void addRect( const V2f &innerSize, std::vector<int> &vertsPerCurve, std::vector<V3f> &p )
+void addRect( const V2f &innerSize, const float radius, std::vector<int> &vertsPerCurve, std::vector<V3f> &p )
 {
-	const V2f halfSize = innerSize * 0.5f;
+	const V3f halfSize( innerSize.x * 0.5f, innerSize.y * 0.5f, 0.f );
 
-	vertsPerCurve.push_back( 4 );
-	p.push_back( V3f( -halfSize.x, -halfSize.y, 0.f ) );
-	p.push_back( V3f( halfSize.x, -halfSize.y, 0.f ) );
-	p.push_back( V3f( halfSize.x, halfSize.y, 0.f ) );
-	p.push_back( V3f( -halfSize.x, halfSize.y, 0.f ) );
+	if( radius == 0 )
+	{
+		vertsPerCurve.push_back( 4 );
+		p.push_back( V3f( -halfSize.x, -halfSize.y, 0.f ) );
+		p.push_back( V3f( halfSize.x, -halfSize.y, 0.f ) );
+		p.push_back( V3f( halfSize.x, halfSize.y, 0.f ) );
+		p.push_back( V3f( -halfSize.x, halfSize.y, 0.f ) );
+
+		return;
+	}
+
+	const int numDivisions = 100;
+	vertsPerCurve.push_back( numDivisions );
+
+	for( int i = 0; i < numDivisions; ++i )
+	{
+		const float angle = 2.f * M_PI * (float)i / (float)(numDivisions - 1 );
+
+		V3f quadrantMult( 1.f, 1.f, 0.f );  // Default to top-right
+		if( i >= numDivisions / 4 && i < numDivisions / 2 )
+		{
+			// Top-left
+			quadrantMult.x = -1.f;
+		}
+		else if( i >= numDivisions / 2 && i < ( numDivisions * 3 ) / 4 )
+		{
+			// Bottom-left
+			quadrantMult.x = -1.f;
+			quadrantMult.y = -1.f;
+		}
+		else if( i >= ( numDivisions * 3 ) / 4 )
+		{
+			// Bottom-right
+			quadrantMult.y = -1.f;
+		}
+
+		const V3f delta( cos( angle ), sin( angle ), 0.f );
+		p.push_back( delta * radius + ( halfSize * quadrantMult ) );
+	}
 }
 
 class GAFFERRENDERMANUI_API BarnVisualiser final : public LightFilterVisualiser
@@ -130,17 +164,15 @@ Visualisations BarnVisualiser::visualise( const InternedString &attributeName, c
 	);
 
 	const V2f innerSize = V2f( parameterOrDefault( barnParameters, "width", 1.f ), parameterOrDefault( barnParameters, "height", 1.f ) );
+	const float radius = parameterOrDefault( barnParameters, "radius", 0.f );
+
 	IntVectorDataPtr innerVertsPerCurveData = new IntVectorData();
 	V3fVectorDataPtr innerPData = new V3fVectorData();
 
 	std::vector<int> &innerVertsPerCurve = innerVertsPerCurveData->writable();
 	std::vector<V3f> &innerP = innerPData->writable();
 
-	addRect(
-		V2f( parameterOrDefault( barnParameters, "width", 1.f ), parameterOrDefault( barnParameters, "height", 1.f ) ),
-		innerVertsPerCurve,
-		innerP
-	);
+	addRect( innerSize, radius, innerVertsPerCurve, innerP );
 
 	IECoreGL::CurvesPrimitivePtr rect = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), /* periodic */ true, innerVertsPerCurveData );
 	rect->addPrimitiveVariable( "P", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Vertex, innerPData ) );
