@@ -104,7 +104,7 @@ Visualisations LightFilterVisualiser::allVisualisations( const IECore::CompoundO
 	for( const auto& it : attributes->members() )
 	{
 		const std::string &attributeName = it.first.string();
-		if( attributeName.find( ":lightFilter" ) == std::string::npos )
+		if( attributeName.find( ":lightFilter" ) == std::string::npos && attributeName.find( ":lightfilter" ) == std::string::npos )
 		{
 			continue;
 		}
