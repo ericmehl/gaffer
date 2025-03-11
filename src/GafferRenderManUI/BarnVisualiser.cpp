@@ -77,6 +77,7 @@ void addWireframeCurveState( IECoreGL::Group *group )
 void addRect(
 	const V2f &innerSize,
 	const V2f &innerScale,
+	const V4f &innerOffset,  // Convenient way to pass top, left, bottom, right, in that order
 	const float radius,
 	const float falloffWidth,
 	std::vector<int> &vertsPerCurve,
@@ -90,10 +91,10 @@ void addRect(
 	{
 		const V3f halfSizeScaled = halfSize * scale;
 		vertsPerCurve.push_back( 4 );
-		p.push_back( V3f( -halfSizeScaled.x, -halfSizeScaled.y, 0.f ) );
-		p.push_back( V3f( halfSizeScaled.x, -halfSizeScaled.y, 0.f ) );
-		p.push_back( V3f( halfSizeScaled.x, halfSizeScaled.y, 0.f ) );
-		p.push_back( V3f( -halfSizeScaled.x, halfSizeScaled.y, 0.f ) );
+		p.push_back( V3f( -halfSizeScaled.x - innerOffset[1] * innerScale.x, -halfSizeScaled.y - innerOffset[2] * innerScale.y, 0.f ) );
+		p.push_back( V3f( halfSizeScaled.x + innerOffset[3] * innerScale.x, -halfSizeScaled.y - innerOffset[2] * innerScale.y, 0.f ) );
+		p.push_back( V3f( halfSizeScaled.x + innerOffset[3] * innerScale.x, halfSizeScaled.y + innerOffset[0] * innerScale.y, 0.f ) );
+		p.push_back( V3f( -halfSizeScaled.x - innerOffset[1] * innerScale.x, halfSizeScaled.y + innerOffset[0] * innerScale.y, 0.f ) );
 
 		return;
 	}
@@ -105,26 +106,32 @@ void addRect(
 	{
 		const float angle = 2.f * M_PI * (float)i / (float)(numDivisions - 1 );
 
-		V3f quadrantMult( 1.f, 1.f, 0.f );  // Default to top-right
+		// Default to top-right
+		V3f quadrantMult( 1.f, 1.f, 0.f );
+		V3f quadrantOffset( innerOffset[3], innerOffset[0], 0.f );
 		if( i >= numDivisions / 4 && i < numDivisions / 2 )
 		{
 			// Top-left
 			quadrantMult.x = -1.f;
+			quadrantOffset.x = -innerOffset[1];
 		}
 		else if( i >= numDivisions / 2 && i < ( numDivisions * 3 ) / 4 )
 		{
 			// Bottom-left
 			quadrantMult.x = -1.f;
 			quadrantMult.y = -1.f;
+			quadrantOffset.x = -innerOffset[1];
+			quadrantOffset.y = -innerOffset[2];
 		}
 		else if( i >= ( numDivisions * 3 ) / 4 )
 		{
 			// Bottom-right
 			quadrantMult.y = -1.f;
+			quadrantOffset.y = -innerOffset[2];
 		}
 
 		const V3f delta( cos( angle ), sin( angle ), 0.f );
-		p.push_back( ( delta * radius + ( halfSize * quadrantMult ) ) * scale + ( delta * falloffWidth ) );
+		p.push_back( ( delta * radius + ( halfSize * quadrantMult ) + quadrantOffset ) * scale + ( delta * falloffWidth ) );
 	}
 }
 
@@ -178,6 +185,12 @@ Visualisations BarnVisualiser::visualise( const InternedString &attributeName, c
 		parameterOrDefault( barnParameters, "scaleWidth", 1.f ),
 		parameterOrDefault( barnParameters, "scaleHeight", 1.f )
 	);
+	const V4f innerOffset(
+		parameterOrDefault( barnParameters, "top", 0.f ),
+		parameterOrDefault( barnParameters, "left", 0.f ),
+		parameterOrDefault( barnParameters, "bottom", 0.f ),
+		parameterOrDefault( barnParameters, "right", 0.f )
+	);
 
 	IntVectorDataPtr innerVertsPerCurveData = new IntVectorData();
 	V3fVectorDataPtr innerPData = new V3fVectorData();
@@ -185,7 +198,7 @@ Visualisations BarnVisualiser::visualise( const InternedString &attributeName, c
 	std::vector<int> &innerVertsPerCurve = innerVertsPerCurveData->writable();
 	std::vector<V3f> &innerP = innerPData->writable();
 
-	addRect( innerSize, innerScale, radius, 0.f, innerVertsPerCurve, innerP );
+	addRect( innerSize, innerScale, innerOffset, radius, 0.f, innerVertsPerCurve, innerP );
 
 	IECoreGL::CurvesPrimitivePtr rect = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), /* periodic */ true, innerVertsPerCurveData );
 	rect->addPrimitiveVariable( "P", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Vertex, innerPData ) );
@@ -205,7 +218,7 @@ Visualisations BarnVisualiser::visualise( const InternedString &attributeName, c
 		std::vector<int> &edgeVertsPerCurve = edgeVertsPerCurveData->writable();
 		std::vector<V3f> &edgeP = edgePData->writable();
 
-		addRect( innerSize, innerScale, radius, edge, edgeVertsPerCurve, edgeP );
+		addRect( innerSize, innerScale, innerOffset, radius, edge, edgeVertsPerCurve, edgeP );
 
 		IECoreGL::CurvesPrimitivePtr edgeRect = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), /* periodic */ true, edgeVertsPerCurveData );
 		edgeRect->addPrimitiveVariable( "P", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Vertex, edgePData ) );
