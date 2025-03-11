@@ -80,6 +80,7 @@ void addRect(
 	const V4f &innerOffset,  // Convenient way to pass top, left, bottom, right, in that order
 	const float radius,
 	const float falloffWidth,
+	const V4f &falloffScale,  // Same order as above
 	std::vector<int> &vertsPerCurve,
 	std::vector<V3f> &p
 )
@@ -109,11 +110,13 @@ void addRect(
 		// Default to top-right
 		V3f quadrantMult( 1.f, 1.f, 0.f );
 		V3f quadrantOffset( innerOffset[3], innerOffset[0], 0.f );
+		V3f falloffMult( falloffScale[3], falloffScale[0], 0.f );
 		if( i >= numDivisions / 4 && i < numDivisions / 2 )
 		{
 			// Top-left
 			quadrantMult.x = -1.f;
 			quadrantOffset.x = -innerOffset[1];
+			falloffMult.x = falloffScale[1];
 		}
 		else if( i >= numDivisions / 2 && i < ( numDivisions * 3 ) / 4 )
 		{
@@ -122,16 +125,19 @@ void addRect(
 			quadrantMult.y = -1.f;
 			quadrantOffset.x = -innerOffset[1];
 			quadrantOffset.y = -innerOffset[2];
+			falloffMult.x = falloffScale[1];
+			falloffMult.y = falloffScale[2];
 		}
 		else if( i >= ( numDivisions * 3 ) / 4 )
 		{
 			// Bottom-right
 			quadrantMult.y = -1.f;
 			quadrantOffset.y = -innerOffset[2];
+			falloffMult.y = falloffScale[2];
 		}
 
 		const V3f delta( cos( angle ), sin( angle ), 0.f );
-		p.push_back( ( delta * radius + ( halfSize * quadrantMult ) + quadrantOffset ) * scale + ( delta * falloffWidth ) );
+		p.push_back( ( delta * radius + ( halfSize * quadrantMult ) + quadrantOffset ) * scale + ( delta * falloffWidth * falloffMult ) );
 	}
 }
 
@@ -191,6 +197,12 @@ Visualisations BarnVisualiser::visualise( const InternedString &attributeName, c
 		parameterOrDefault( barnParameters, "bottom", 0.f ),
 		parameterOrDefault( barnParameters, "right", 0.f )
 	);
+	const V4f falloffScale(
+		parameterOrDefault( barnParameters, "topEdge", 1.f ),
+		parameterOrDefault( barnParameters, "leftEdge", 1.f ),
+		parameterOrDefault( barnParameters, "bottomEdge", 1.f ),
+		parameterOrDefault( barnParameters, "rightEdge", 1.f )
+	);
 
 	IntVectorDataPtr innerVertsPerCurveData = new IntVectorData();
 	V3fVectorDataPtr innerPData = new V3fVectorData();
@@ -198,7 +210,7 @@ Visualisations BarnVisualiser::visualise( const InternedString &attributeName, c
 	std::vector<int> &innerVertsPerCurve = innerVertsPerCurveData->writable();
 	std::vector<V3f> &innerP = innerPData->writable();
 
-	addRect( innerSize, innerScale, innerOffset, radius, 0.f, innerVertsPerCurve, innerP );
+	addRect( innerSize, innerScale, innerOffset, radius, 0.f, V4f( 0.f ), innerVertsPerCurve, innerP );
 
 	IECoreGL::CurvesPrimitivePtr rect = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), /* periodic */ true, innerVertsPerCurveData );
 	rect->addPrimitiveVariable( "P", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Vertex, innerPData ) );
@@ -218,7 +230,7 @@ Visualisations BarnVisualiser::visualise( const InternedString &attributeName, c
 		std::vector<int> &edgeVertsPerCurve = edgeVertsPerCurveData->writable();
 		std::vector<V3f> &edgeP = edgePData->writable();
 
-		addRect( innerSize, innerScale, innerOffset, radius, edge, edgeVertsPerCurve, edgeP );
+		addRect( innerSize, innerScale, innerOffset, radius, edge, falloffScale, edgeVertsPerCurve, edgeP );
 
 		IECoreGL::CurvesPrimitivePtr edgeRect = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), /* periodic */ true, edgeVertsPerCurveData );
 		edgeRect->addPrimitiveVariable( "P", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Vertex, edgePData ) );
