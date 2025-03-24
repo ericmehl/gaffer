@@ -44,7 +44,7 @@ jobs:
             # assert that filesystem permissions are respected, because root doesn't
             # respect permissions. So we run the final test suite as a dedicated
             # test user rather than as root.
-            testRunner: su testUser -c
+            testRunner: sudo -E -u testUser
             sconsCacheMegabytes: 400
             jobs: 4
 
@@ -53,7 +53,7 @@ jobs:
             buildType: DEBUG
             publish: false
             containerImage: ghcr.io/gafferhq/build/build:3.2.0
-            testRunner: su testUser -c
+            testRunner: sudo -E -u testUser
             testArguments: -excludedCategories performance
             # Debug builds are ludicrously big, so we must use a larger cache
             # limit. In practice this compresses down to 4-500Mb.
@@ -65,7 +65,6 @@ jobs:
             buildType: RELEASE
             publish: true
             containerImage:
-            testRunner: Invoke-Expression
             testArguments: -excludedCategories performance
             sconsCacheMegabytes: 800
             jobs: 4
@@ -218,7 +217,7 @@ jobs:
 
           # Test Arnold extension
           print( "::add-matcher::./.github/workflows/main/problemMatchers/unittest.json" )
-          subprocess.check_call( "${{ matrix.testRunner }} \"" + os.path.join( os.environ["GAFFER_BUILD_DIR"], "bin", "gaffer" ) + " test IECoreArnoldTest GafferArnoldTest GafferArnoldUITest\"", shell = True )
+          subprocess.check_call( "${{ matrix.testRunner }} " + os.path.join( os.environ["GAFFER_BUILD_DIR"], "bin", "gaffer" if os.name != "nt" else "gaffer.cmd" ) + " test IECoreArnoldTest GafferArnoldTest GafferArnoldUITest", shell = True )
           print( "::remove-matcher owner=unittest::" )
 
           # Publish ARNOLD_ROOT to the environment for subsequent steps,
