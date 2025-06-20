@@ -128,6 +128,7 @@ const int g_primitiveVariablePrefixSize = g_primitiveVariablePrefix.size();
 // VertexLabel constants
 const float g_cursorRadius2 = 25.f * 25.f;
 const std::string g_vertexIndexDataName = "vertex:index";
+const std::string g_faceIndexDataName = "face:index";
 
 //-----------------------------------------------------------------------------
 // Color shader
@@ -1246,27 +1247,47 @@ class VisualiserGadget : public Gadget
 					continue;
 				}
 
-				ConstDataPtr vData = nullptr;
+				ConstDataPtr labelData = nullptr;
+				IECoreScene::PrimitiveVariable::Interpolation labelInterpolation = IECoreScene::PrimitiveVariable::Interpolation::Invalid;
 
 				if( dataName != g_vertexIndexDataName )
 				{
-					vData = primitive->expandedVariableData<Data>(
+					labelData = primitive->expandedVariableData<Data>(
 						primitiveVariableName,
 						IECoreScene::PrimitiveVariable::Vertex,
 						false /* throwIfInvalid */
 					);
-
-					if( !vData )
+					if( labelData )
 					{
-						continue;
+						labelInterpolation = IECoreScene::PrimitiveVariable::Interpolation::Vertex;
+					}
+					else
+					{
+						ConstMeshPrimitivePtr meshPrimitive = runTimeCast<const MeshPrimitive>( primitive );
+						if( !meshPrimitive )
+						{
+							/// \todo Add handling for curves primitive
+							continue;
+						}
+						labelData = meshPrimitive->expandedVariableData<Data>(
+							primitiveVariableName,
+							IECoreScene::PrimitiveVariable::Uniform,
+							false /* throwIfInvalid */
+						);
+
+						if( !labelData )
+						{
+							continue;
+						}
+						labelInterpolation = IECoreScene::PrimitiveVariable::Interpolation::Uniform;
 					}
 
 					if(
 						mode == VisualiserTool::Mode::Auto &&
 						primitive->typeId() == MeshPrimitive::staticTypeId() &&
-						vData->typeId() != IntVectorDataTypeId &&
-						vData->typeId() != V3fVectorDataTypeId &&
-						vData->typeId() != QuatfVectorDataTypeId
+						labelData->typeId() != IntVectorDataTypeId &&
+						labelData->typeId() != V3fVectorDataTypeId &&
+						labelData->typeId() != QuatfVectorDataTypeId
 					)
 					{
 						// Will be handled by `renderColorVisualiser()` instead.
@@ -1277,12 +1298,12 @@ class VisualiserGadget : public Gadget
 					}
 
 					if(
-						vData->typeId() != IntVectorDataTypeId &&
-						vData->typeId() != FloatVectorDataTypeId &&
-						vData->typeId() != V2fVectorDataTypeId &&
-						vData->typeId() != V3fVectorDataTypeId &&
-						vData->typeId() != Color3fVectorDataTypeId &&
-						vData->typeId() != QuatfVectorDataTypeId
+						labelData->typeId() != IntVectorDataTypeId &&
+						labelData->typeId() != FloatVectorDataTypeId &&
+						labelData->typeId() != V2fVectorDataTypeId &&
+						labelData->typeId() != V3fVectorDataTypeId &&
+						labelData->typeId() != Color3fVectorDataTypeId &&
+						labelData->typeId() != QuatfVectorDataTypeId
 					)
 					{
 						continue;
@@ -1290,9 +1311,9 @@ class VisualiserGadget : public Gadget
 				}
 
 				if(
-					mode == VisualiserTool::Mode::Auto && vData && (
-						vData->typeId() == V3fVectorDataTypeId ||
-						vData->typeId() == QuatfVectorDataTypeId
+					mode == VisualiserTool::Mode::Auto && labelData && (
+						labelData->typeId() == V3fVectorDataTypeId ||
+						labelData->typeId() == QuatfVectorDataTypeId
 					)
 				)
 				{
@@ -1486,105 +1507,141 @@ class VisualiserGadget : public Gadget
 
 					VisualiserTool::CursorValue vertexValue;
 					const std::vector<Imath::V3f> &points = pData->readable();
-					for( size_t i = 0; i < points.size(); ++i )
+					if( dataName == g_vertexIndexDataName || labelInterpolation == IECoreScene::PrimitiveVariable::Interpolation::Vertex )
 					{
-						// Check visibility of vertex
-
-						const std::uint32_t index = static_cast<std::uint32_t>( i ) / static_cast<std::uint32_t>( 32u );
-						const std::uint32_t value = static_cast<std::uint32_t>( i ) % static_cast<std::uint32_t>( 32u );
-
-						if( vBuffer[index] & ( static_cast<std::uint32_t>( 1u ) << value ) )
+						for( size_t i = 0; i < points.size(); ++i )
 						{
-							// Transform vertex position to raster space and do manual scissor test
-							//
-							// NOTE : visibility pass encorporates scissor test which culls most
-							//        vertices however some will slip through as visibility pass
-							//        draws "fat" points. bounds test is cheap.
+							// Check visibility of vertex
 
-							Imath::V3f worldPos;
-							o2w.multVecMatrix( points[i], worldPos );
-							std::optional<V2f> rasterPos = viewportGadget->worldToRasterSpace( worldPos );
-							if( rasterBounds.intersects( rasterPos.value() ) )
+							const std::uint32_t index = static_cast<std::uint32_t>( i ) / static_cast<std::uint32_t>( 32u );
+							const std::uint32_t value = static_cast<std::uint32_t>( i ) % static_cast<std::uint32_t>( 32u );
+
+							if( vBuffer[index] & ( static_cast<std::uint32_t>( 1u ) << value ) )
 							{
-								if( !vData )
-								{
-									vertexValue = (int)i;
-								}
-								else
-								{
-									if( auto iData = runTimeCast<const IntVectorData>( vData.get() ) )
-									{
-										vertexValue = iData->readable()[i];
-									}
-									if( auto fData = runTimeCast<const FloatVectorData>( vData.get() ) )
-									{
-										vertexValue = fData->readable()[i];
-									}
-									if( auto v2fData = runTimeCast<const V2fVectorData>( vData.get() ) )
-									{
-										vertexValue = v2fData->readable()[i];
-									}
-									if( auto v3fData = runTimeCast<const V3fVectorData>( vData.get() ) )
-									{
-										vertexValue = v3fData->readable()[i];
-									}
-									if( auto c3fData = runTimeCast<const Color3fVectorData>( vData.get() ) )
-									{
-										vertexValue = c3fData->readable()[i];
-									}
-									if( auto qData = runTimeCast<const QuatfVectorData>( vData.get() ) )
-									{
-										vertexValue = qData->readable()[i];
-									}
-								}
-
-								// Update cursor value
+								// Transform vertex position to raster space and do manual scissor test
 								//
-								// NOTE : We defer drawing of the value currently under the cursor, so
-								//        draw the last value label if we replace the cursor value
+								// NOTE : visibility pass encorporates scissor test which culls most
+								//        vertices however some will slip through as visibility pass
+								//        draws "fat" points. bounds test is cheap.
 
-								if( cursorRasterPos )
+								Imath::V3f worldPos;
+								o2w.multVecMatrix( points[i], worldPos );
+								std::optional<V2f> rasterPos = viewportGadget->worldToRasterSpace( worldPos );
+								if( rasterBounds.intersects( rasterPos.value() ) )
 								{
-									const float distance2 = ( cursorRasterPos.value() - rasterPos.value() ).length2();
-									if( ( distance2 < cursorRadius2 ) && ( distance2 < minDistance2 ) )
+									if( !labelData )
 									{
-										std::swap( cursorVertexValue, vertexValue );
-										std::swap( cursorVertexRasterPos, rasterPos );
-										minDistance2 = distance2;
+										vertexValue = (int)i;
 									}
-								}
+									else
+									{
+										if( auto iData = runTimeCast<const IntVectorData>( labelData.get() ) )
+										{
+											vertexValue = iData->readable()[i];
+										}
+										if( auto fData = runTimeCast<const FloatVectorData>( labelData.get() ) )
+										{
+											vertexValue = fData->readable()[i];
+										}
+										if( auto v2fData = runTimeCast<const V2fVectorData>( labelData.get() ) )
+										{
+											vertexValue = v2fData->readable()[i];
+										}
+										if( auto v3fData = runTimeCast<const V3fVectorData>( labelData.get() ) )
+										{
+											vertexValue = v3fData->readable()[i];
+										}
+										if( auto c3fData = runTimeCast<const Color3fVectorData>( labelData.get() ) )
+										{
+											vertexValue = c3fData->readable()[i];
+										}
+										if( auto qData = runTimeCast<const QuatfVectorData>( labelData.get() ) )
+										{
+											vertexValue = qData->readable()[i];
+										}
+									}
 
-								if(
-									mode == VisualiserTool::Mode::Auto && vData && (
-										vData->typeId() == V3fVectorDataTypeId ||
-										vData->typeId() == QuatfVectorDataTypeId
+									// Update cursor value
+									//
+									// NOTE : We defer drawing of the value currently under the cursor, so
+									//        draw the last value label if we replace the cursor value
+
+									if( cursorRasterPos )
+									{
+										const float distance2 = ( cursorRasterPos.value() - rasterPos.value() ).length2();
+										if( ( distance2 < cursorRadius2 ) && ( distance2 < minDistance2 ) )
+										{
+											std::swap( cursorVertexValue, vertexValue );
+											std::swap( cursorVertexRasterPos, rasterPos );
+											minDistance2 = distance2;
+										}
+									}
+
+									if(
+										mode == VisualiserTool::Mode::Auto && labelData && (
+											labelData->typeId() == V3fVectorDataTypeId ||
+											labelData->typeId() == QuatfVectorDataTypeId
+										)
 									)
-								)
-								{
-									// Do everything except drawing the per-vertex value. That will
-									// be handled by `renderVectorVisualiser()` instead.
-									continue;
-								}
+									{
+										// Do everything except drawing the per-vertex value. That will
+										// be handled by `renderVectorVisualiser()` instead.
+										continue;
+									}
 
-								// Draw value label
+									// Draw value label
 
-								if( !std::holds_alternative<std::monostate>( vertexValue ) && rasterPos )
-								{
-									const std::string text = std::visit( stringFromValue, vertexValue );
+									if( !std::holds_alternative<std::monostate>( vertexValue ) && rasterPos )
+									{
+										const std::string text = std::visit( stringFromValue, vertexValue );
 
-									drawStrokedText(
-										viewportGadget,
-										text,
-										size,
-										V2f(
-											rasterPos.value().x - style->textBound( GafferUI::Style::LabelText, text ).size().x * 0.5f * scale.x,
-											rasterPos.value().y
-										),
-										style,
-										Style::State::NormalState
-									);
+										drawStrokedText(
+											viewportGadget,
+											text,
+											size,
+											V2f(
+												rasterPos.value().x - style->textBound( GafferUI::Style::LabelText, text ).size().x * 0.5f * scale.x,
+												rasterPos.value().y
+											),
+											style,
+											Style::State::NormalState
+										);
+									}
 								}
 							}
+						}
+					}
+					else if( dataName == g_faceIndexDataName || labelInterpolation == IECoreScene::PrimitiveVariable::Interpolation::Uniform )
+					{
+						ConstMeshPrimitivePtr uniformMeshPrimitive;
+						try
+						{
+							uniformMeshPrimitive = runTimeCast<const MeshPrimitive>( location.uniformPScene().objectPlug()->getValue() );
+						}
+						catch( const std::exception & )
+						{
+							continue;
+						}
+
+						if( !uniformMeshPrimitive )
+						{
+							continue;
+						}
+						const std::vector<int> &vertsPerFace = uniformMeshPrimitive->verticesPerFace()->readable();
+						
+						ConstV3fVectorDataPtr uniformPData = uniformMeshPrimitive->expandedVariableData<IECore::V3fVectorData>(
+							g_pName,
+							IECoreScene::PrimitiveVariable::Vertex,
+							false /* throwIfInvalid */
+						);
+						if( !uniformPData )
+						{
+							continue;
+						}
+
+						for( size_t i = 0; i < vertsPerFace.size(); ++i )
+						{
+
 						}
 					}
 
