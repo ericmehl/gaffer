@@ -1627,8 +1627,7 @@ class VisualiserGadget : public Gadget
 						{
 							continue;
 						}
-						const std::vector<int> &vertsPerFace = uniformMeshPrimitive->verticesPerFace()->readable();
-						
+
 						ConstV3fVectorDataPtr uniformPData = uniformMeshPrimitive->expandedVariableData<IECore::V3fVectorData>(
 							g_pName,
 							IECoreScene::PrimitiveVariable::Vertex,
@@ -1639,9 +1638,24 @@ class VisualiserGadget : public Gadget
 							continue;
 						}
 
-						for( size_t i = 0; i < vertsPerFace.size(); ++i )
+						size_t vertIndex = 0;
+						const std::vector<int> &vertsPerFace = uniformMeshPrimitive->verticesPerFace()->readable();
+						for( size_t faceIndex = 0; faceIndex < vertsPerFace.size(); ++faceIndex )
 						{
+							for( size_t i = 0; i < vertsPerFace[faceIndex]; ++i )
+							{
 
+								// Check visibility of vertex
+
+								const std::uint32_t index = static_cast<std::uint32_t>( i ) / static_cast<std::uint32_t>( 32u );
+								const std::uint32_t value = static_cast<std::uint32_t>( i ) % static_cast<std::uint32_t>( 32u );
+
+								if( vBuffer[index] & ( static_cast<std::uint32_t>( 1u ) << value ) )
+								{
+									// If any of the points of the face are visible, we treat the face as visible
+								}
+							}
+							vertIndex += vertsPerFace[faceIndex];
 						}
 					}
 
