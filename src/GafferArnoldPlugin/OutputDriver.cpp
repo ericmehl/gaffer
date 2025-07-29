@@ -141,104 +141,120 @@ const char **driverExtension()
 
 void driverOpen( AtNode *node, struct AtOutputIterator *iterator, AtBBox2 displayWindow, AtBBox2 dataWindow, int bucketSize )
 {
-	LocalData *localData = (LocalData *)AiNodeGetLocalData( node );
-	localData->numOutputs = 0;
+	// LocalData *localData = (LocalData *)AiNodeGetLocalData( node );
+	// localData->numOutputs = 1;
 
-	std::vector<std::string> channelNames;
+	// std::vector<std::string> channelNames{ "RGBA" };
 
-	CompoundDataPtr parameters = new CompoundData();
-	ParameterAlgo::getParameters( node, parameters->writable() );
+	// std::cerr << "driverOpen()\n";
 
-	AtString name;
-	int pixelType = 0;
-	while( AiOutputIteratorGetNext( iterator, &name, &pixelType, nullptr ) )
-	{
-		std::string namePrefix;
-		if( strcmp( name, "RGB" ) && strcmp( name, "RGBA" ) )
-		{
-			namePrefix = std::string( name ) + ".";
-		}
+	// {
+	// 	CompoundDataPtr parameters = new IECore::CompoundData();
+	// }
+	// ParameterAlgo::getParameters( node, parameters->writable() );
 
-		const AtString layerName = AiOutputIteratorGetLayerName( iterator );
-		if( layerName.length() )
-		{
-			namePrefix = std::string( layerName.c_str() ) + ".";
-		}
+	// std::cerr << "getParameters() end\n";
 
-		switch( pixelType )
-		{
-			case AI_TYPE_RGB :
-			case AI_TYPE_VECTOR :
-				channelNames.push_back( namePrefix + "R" );
-				channelNames.push_back( namePrefix + "G" );
-				channelNames.push_back( namePrefix + "B" );
-				break;
-			case AI_TYPE_RGBA :
-				channelNames.push_back( namePrefix + "R" );
-				channelNames.push_back( namePrefix + "G" );
-				channelNames.push_back( namePrefix + "B" );
-				channelNames.push_back( namePrefix + "A" );
-				break;
-			case AI_TYPE_FLOAT :
-			case AI_TYPE_UINT :
-				// no need for prefix because it's not a compound type
-				channelNames.push_back( name.c_str() );
-				break;
-		}
-		localData->numOutputs += 1;
-	}
+	// AtString name;
+	// int pixelType = 0;
+	// while( AiOutputIteratorGetNext( iterator, &name, &pixelType, nullptr ) )
+	// {
+	// 	std::cerr << "iterator name =  " << name << "\n";
+	// 	std::string namePrefix;
+	// 	if( strcmp( name, "RGB" ) && strcmp( name, "RGBA" ) )
+	// 	{
+	// 		namePrefix = std::string( name ) + ".";
+	// 	}
+
+	// 	const AtString layerName = AiOutputIteratorGetLayerName( iterator );
+	// 	std::cerr << "layerName = " << layerName << "\n";
+	// 	if( layerName.length() )
+	// 	{
+	// 		namePrefix = std::string( layerName.c_str() ) + ".";
+	// 	}
+
+	// 	switch( pixelType )
+	// 	{
+	// 		case AI_TYPE_RGB :
+	// 		case AI_TYPE_VECTOR :
+	// 			channelNames.push_back( namePrefix + "R" );
+	// 			channelNames.push_back( namePrefix + "G" );
+	// 			channelNames.push_back( namePrefix + "B" );
+	// 			break;
+	// 		case AI_TYPE_RGBA :
+	// 			channelNames.push_back( namePrefix + "R" );
+	// 			channelNames.push_back( namePrefix + "G" );
+	// 			channelNames.push_back( namePrefix + "B" );
+	// 			channelNames.push_back( namePrefix + "A" );
+	// 			break;
+	// 		case AI_TYPE_FLOAT :
+	// 		case AI_TYPE_UINT :
+	// 			// no need for prefix because it's not a compound type
+	// 			channelNames.push_back( name.c_str() );
+	// 			break;
+	// 	}
+	// 	// localData->numOutputs += 1;
+	// }
 
 	/// \todo Make Convert.h
-	Box2i cortexDisplayWindow(
-		V2i( displayWindow.minx, displayWindow.miny ),
-		V2i( displayWindow.maxx, displayWindow.maxy )
-	);
+	// Box2i cortexDisplayWindow(
+	// 	V2i( displayWindow.minx, displayWindow.miny ),
+	// 	V2i( displayWindow.maxx, displayWindow.maxy )
+	// );
 
-	Box2i cortexDataWindow(
-		V2i( dataWindow.minx, dataWindow.miny ),
-		V2i( dataWindow.maxx, dataWindow.maxy )
-	);
+	// Box2i cortexDataWindow(
+	// 	V2i( dataWindow.minx, dataWindow.miny ),
+	// 	V2i( dataWindow.maxx, dataWindow.maxy )
+	// );
 
 	// IECore::DisplayDriver lacks any official mechanism for passing
 	// the pixel aspect ratio, so for now we just pass it via the
 	// parameters. We should probably move GafferImage::Format to
 	// IECoreImage::Format and then use that in place of the display
 	// window.
-	parameters->writable()["pixelAspect"] = new FloatData(
-		AiNodeGetFlt( AiUniverseGetOptions( AiNodeGetUniverse( node ) ), g_pixelAspectRatioArnoldString )
-	);
+	// parameters->writable()["pixelAspect"] = new FloatData(
+	// 	AiNodeGetFlt( AiUniverseGetOptions( AiNodeGetUniverse( node ) ), g_pixelAspectRatioArnoldString )
+	// );
 
-	const std::string driverType = AiNodeGetStr( node, g_driverTypeArnoldString ).c_str();
+	// const std::string driverType = AiNodeGetStr( node, g_driverTypeArnoldString ).c_str();
+	// std::cerr << "driverType = " << driverType << "\n";
 
 	// We reuse the previous driver if we can - this allows us to use
 	// the same driver for every stage of a progressive render.
-	if( localData->displayDriver )
-	{
-		if(
-			localData->displayDriver->typeName() == driverType &&
-			localData->displayDriver->displayWindow() == cortexDisplayWindow &&
-			localData->displayDriver->dataWindow() == cortexDataWindow &&
-			localData->displayDriver->channelNames() == channelNames &&
-			localData->displayDriverParameters->isEqualTo( parameters.get() )
-		)
-		{
-			// Can reuse
-			return;
-		}
-	}
+	// if( localData->displayDriver )
+	// {
+	// 	if(
+	// 		localData->displayDriver->typeName() == driverType &&
+	// 		localData->displayDriver->displayWindow() == cortexDisplayWindow &&
+	// 		localData->displayDriver->dataWindow() == cortexDataWindow &&
+	// 		localData->displayDriver->channelNames() == channelNames &&
+	// 		localData->displayDriverParameters->isEqualTo( parameters.get() )
+	// 	)
+	// 	{
+	// 		// Can reuse
+	// 		return;
+	// 	}
+	// }
 
 	// Couldn't reuse a driver, so create one from scratch.
-	try
-	{
-		localData->assignDisplayDriver( IECoreImage::DisplayDriver::create( driverType, cortexDisplayWindow, cortexDataWindow, channelNames, parameters ) );
-		localData->displayDriverParameters = parameters;
-	}
-	catch( const std::exception &e )
-	{
-		// We have to catch and report exceptions because letting them out into pure c land
-		// just causes aborts.
-		msg( Msg::Error, "ieOutputDriver:driverOpen", e.what() );
-	}
+	// try
+	// {
+	// 	localData->assignDisplayDriver( IECoreImage::DisplayDriver::create( driverType, cortexDisplayWindow, cortexDataWindow, channelNames, parameters ) );
+	// 	localData->displayDriverParameters = parameters;
+	// }
+	// catch( const std::exception &e )
+	// {
+	// 	// We have to catch and report exceptions because letting them out into pure c land
+	// 	// just causes aborts.
+	// 	msg( Msg::Error, "ieOutputDriver:driverOpen", e.what() );
+	// }
+
+	// std::cerr << "driverOpen() end\n";
+
+	// for( const auto &[k, v] : parameters->readable() )
+	// {
+	// 	std::cerr << k << " = " << v << "\n";
+	// }
 }
 
 bool driverNeedsBucket( AtNode *node, int x, int y, int sx, int sy, uint16_t tId )
