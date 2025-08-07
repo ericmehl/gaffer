@@ -53,6 +53,10 @@ from Qt import QtCore
 from Qt import QtGui
 from Qt import QtWidgets
 
+###############################################################################
+# Utilities
+###############################################################################
+
 __tmiToRGBMatrix = imath.M33f(
 	-1.0 / 2.0, 0.0, 1.0 / 2.0,
 	1.0 / 3.0, -2.0 / 3.0, 1.0 / 3.0,
@@ -115,6 +119,10 @@ def _drawIndicator( painter, position ) :
 	pen.setColor( QtGui.QColor( 255, 255, 255, 255 ) )
 	painter.setPen( pen )
 	painter.drawEllipse( position, 3.5, 3.5 )
+
+###############################################################################
+# _ComponentSlider
+###############################################################################
 
 # A custom slider for drawing the backgrounds.
 class _ComponentSlider( GafferUI.Slider ) :
@@ -243,6 +251,10 @@ class _ComponentSlider( GafferUI.Slider ) :
 		GafferUI.Slider._displayTransformChanged( self )
 		self.__gradientToDraw = None
 		self._qtWidget().update()
+
+###############################################################################
+# _ColorField
+###############################################################################
 
 class _ColorField( GafferUI.Widget ) :
 
@@ -817,6 +829,10 @@ class _ColorField( GafferUI.Widget ) :
 
 		self.__drawValue( painter )
 
+###############################################################################
+# _ColorFieldRowLayout
+###############################################################################
+
 class _ColorFieldRowLayout( QtWidgets.QLayout ) :
 
 	def __init__( self ) :
@@ -894,6 +910,10 @@ class _ColorFieldRowLayout( QtWidgets.QLayout ) :
 			)
 		)
 
+###############################################################################
+# _ColorFieldRowContainer
+###############################################################################
+
 class _ColorFieldRowContainer( GafferUI.ContainerWidget ) :
 
 	def __init__( self, **kw ) :
@@ -927,6 +947,161 @@ class _ColorFieldRowContainer( GafferUI.ContainerWidget ) :
 		self.__widgets.remove( child )
 		child._qtWidget().setParent( None )
 		child._applyVisibility()
+
+###############################################################################
+# _QFlowLayout
+###############################################################################
+
+class _QFlowLayout( QtWidgets.QLayout ) :
+
+	# A QLayout for packing child widgets to the top-left. When a child widget
+	# would extend out of the bounds of the parent widget, it is moved to a new
+	# line and subsequent placements continue from that line.
+
+	# \todo To make this suitable for general purpose use :
+	# - Handle resizing of child widgets
+	# - Handle child widget visibility
+
+	def __init__( self, parent = None, spacing = 0, contentsMargin = 0 ) :
+
+		QtWidgets.QLayout.__init__( self, parent )
+		if parent is not None :
+			self.setContentsMargins( contentsMargin, contentsMargin, contentsMargin, contentsMargin )
+
+		self.setSpacing( spacing )
+
+		self.__items = []
+
+	def addItem( self, item ) :
+
+		self.__items.append( item )
+
+	def count( self ) :
+
+		return len( self.__items )
+
+	def expandingDirections( self ) :
+
+		return QtCore.Qt.Orientations( QtCore.Qt.Orientation( 0 ) )
+
+	def itemAt( self, index ) :
+
+		return self.__items[index] if index >= 0 and index < len( self.__items ) else None
+
+	def takeAt( self, index ) :
+
+		if index >= 0 and index < len( self.__items ) :
+			return self.__items.pop( index )
+		return None
+
+	def minimumSize( self ) :
+
+		size = QtCore.QSize()
+		for item in self.__items :
+			size = size.expandedTo( item.minimumSize() )
+
+		left, top, right, bottom = self.getContentsMargins()
+		size = size + QtCore.QSize( left + right, top + bottom )
+
+		return size
+
+	def sizeHint( self ) :
+
+		return self.minimumSize()
+
+	def setGeometry( self, rect ) :
+
+		cells = self.__cells( rect )
+
+		for item in self.__items :
+			item.setGeometry( cells[item] )
+
+	def hasHeightForWidth( self ) :
+
+		return True
+
+	def heightForWidth( self, width ) :
+
+		cells = self.__cells( QtCore.QRect( 0, 0, width, 0 ) )
+		if len( cells ) == 0 :
+			return 0
+
+		left, top, right, bottom = self.getContentsMargins()
+
+		lastCell = cells[next( reversed ( cells ) )]
+
+		return lastCell.bottom() + top + bottom
+
+	# Returns a dictionary with QLayoutItem objects from `__items` as keys and
+	# QRect objects, without content padding, representing the bounds
+	# of the cell the item is in as values.
+	def __cells( self, rect ) :
+
+		left, top, right, bottom = self.getContentsMargins()
+		effectiveRect = rect.adjusted( left, top, -right, -bottom )
+		x = effectiveRect.x()
+		y = effectiveRect.y()
+		lineHeight = 0
+
+		cells = {}
+
+		for item in self.__items :
+			itemSize = item.sizeHint()
+
+			nextXUnspaced = x + itemSize.width()
+			if nextXUnspaced > effectiveRect.right() and lineHeight > 0 :
+				# Go down to the next line
+				x = effectiveRect.x()
+				y = y + lineHeight + self.spacing()
+
+				nextXUnspaced = x + itemSize.width()
+				lineHeight = 0
+
+			cells[item] = QtCore.QRect( QtCore.QPoint( x, y ), itemSize )
+
+			x = nextXUnspaced + self.spacing()
+			lineHeight = max( lineHeight, itemSize.height() )
+
+		return cells
+
+###############################################################################
+# FlowContainer
+###############################################################################
+
+class _FlowContainer( GafferUI.ContainerWidget ) :
+
+	def __init__( self, spacing = 0, **kw ) :
+
+		GafferUI.ContainerWidget.__init__( self, QtWidgets.QWidget(), **kw )
+
+		self.__qtLayout = _QFlowLayout( spacing = spacing )
+
+		self._qtWidget().setLayout( self.__qtLayout )
+
+		self.__widgets = []
+
+	def addChild( self, child, **kw ) :
+
+		assert( isinstance( child, GafferUI.Widget ) )
+
+		oldParent = child.parent()
+		if oldParent is not None :
+			oldParent.removeChild( child )
+
+		self.__widgets.append( child )
+
+		self.__qtLayout.addWidget( child._qtWidget() )
+		child._applyVisibility()
+
+	def removeChild( self, child ) :
+
+		self.__widgets.remove( child )
+		child._qtWidget().setParent( None )
+		child.__applyVisibility()
+
+###############################################################################
+# ColorChooser
+###############################################################################
 
 class ColorChooser( GafferUI.Widget ) :
 
