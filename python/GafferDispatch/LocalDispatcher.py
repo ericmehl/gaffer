@@ -79,14 +79,12 @@ class LocalDispatcher( GafferDispatch.Dispatcher ) :
 			self.__rootBatch = batch
 
 			script = batch.preTasks()[0].plug().ancestor( Gaffer.ScriptNode )
-			self.__context = Gaffer.Context( script.context() )
 
 			# Store all dispatcher settings now, as we can't access the dispatcher
 			# again if we're executing in the background (as it may be modified on
 			# the main thread).
 			self.__name = dispatcher["jobName"].getValue()
 			self.__directory = Gaffer.Context.current()["dispatcher:jobDirectory"]
-			self.__scriptFile = Gaffer.Context.current()["dispatcher:scriptFileName"]
 			self.__frameRange = dispatcher.frameRange()
 			self.__id = os.path.basename( self.__directory )
 			self.__ignoreScriptLoadErrors = dispatcher["ignoreScriptLoadErrors"].getValue()
@@ -287,31 +285,6 @@ class LocalDispatcher( GafferDispatch.Dispatcher ) :
 				batch.execute()
 				return
 
-			# Background execution. Launch a separate process.
-			# Start by building the command arguments.
-
-			taskContext = batch.context()
-			frames = str( IECore.frameListFromList( [ int(x) for x in batch.frames() ] ) )
-
-			args = shlex.split( self.__environmentCommand ) + [
-				str( Gaffer.executablePath() ),
-				"execute",
-				"-script", str( self.__scriptFile ),
-				"-nodes", batch.blindData()["nodeName"].value,
-				"-frames", frames,
-			]
-
-			if self.__ignoreScriptLoadErrors :
-				args.append( "-ignoreScriptLoadErrors" )
-
-			contextArgs = []
-			for entry in [ k for k in taskContext.keys() if k != "frame" ] :
-				if entry not in self.__context.keys() or taskContext[entry] != self.__context[entry] :
-					contextArgs.extend( [ "-" + entry, IECore.repr( taskContext[entry] ) ] )
-
-			if contextArgs :
-				args.extend( [ "-context" ] + contextArgs )
-
 			# Build environment. We want to enable all Cortex message levels so
 			# we can capture everything and then let the LocalJobs UI filter
 			# it dynamically.
@@ -320,6 +293,7 @@ class LocalDispatcher( GafferDispatch.Dispatcher ) :
 			env["IECORE_LOG_LEVEL"] = "DEBUG"
 
 			# Launch process.
+			args = batch.blindData()["args"]
 
 			IECore.msg( IECore.Msg.Level.Debug, batch.blindData()["nodeName"].value, "Executing `{}`".format( " ".join( args ) ) )
 
@@ -393,6 +367,13 @@ class LocalDispatcher( GafferDispatch.Dispatcher ) :
 			if batch.plug() is not None :
 				nodeName = batch.plug().node().relativeName( batch.plug().node().scriptNode() )
 			batch.blindData()["nodeName"] = nodeName
+
+			# Get the arguments now to ensure the script context variables and node name
+			# are preserved in case those are changed in the script before execution.
+			batch.blindData()["args"] = IECore.StringVectorData(
+				shlex.split( self.__environmentCommand ) +
+				GafferDispatch.gafferCommandArguments( batch, self.__ignoreScriptLoadErrors )
+			)
 
 			for upstreamBatch in batch.preTasks() :
 				self.__initBatchWalk( upstreamBatch )
