@@ -45,4 +45,39 @@ from .TaskContextVariables import TaskContextVariables
 from .TaskSwitch import TaskSwitch
 from .PythonCommand import PythonCommand
 
+
+# Returns a list containting the arguments, including the Gaffer executable,
+# to pass to a subprocess to run the given task batch.
+def gafferCommandArguments( batch, ignoreScriptLoadErrors = False ) :
+
+	batchContext = batch.context()
+	if batchContext is None or batch.plug() is None :
+		return []
+
+	frames = str( __import__( "IECore" ).frameListFromList( [ int( x ) for x in batch.frames() ] ) )
+
+	args = [
+		str( __import__( "Gaffer" ).executablePath() ), "execute",
+		"-script", batch.context()["dispatcher:scriptFileName"],
+		"-nodes", batch.plug().node().getName(),
+		"-frames", frames,
+	]
+
+	if ignoreScriptLoadErrors :
+		args.append( "-ignoreScriptLoadErrors" )
+
+	scriptNode = batch.plug().ancestor( __import__( "Gaffer" ).ScriptNode )
+	assert( scriptNode is not None )
+	scriptContext = scriptNode.context()
+
+	contextArgs = []
+	for entry in [ k for k in batchContext.keys() if k != "frame" ] :
+		if entry not in scriptContext.keys() or batchContext[entry] != scriptContext[entry] :
+			contextArgs.extend( [ "-" + entry, __import__( "IECore" ).repr( batchContext[entry] ) ] )
+
+	if contextArgs :
+		args.extend( [ "-context" ] + contextArgs )
+
+	return args
+
 __import__( "IECore" ).loadConfig( "GAFFER_STARTUP_PATHS", subdirectory = "GafferDispatch" )
