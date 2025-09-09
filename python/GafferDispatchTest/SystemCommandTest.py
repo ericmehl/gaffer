@@ -202,6 +202,29 @@ class SystemCommandTest( GafferTest.TestCase ) :
 
 		self.assertEqual( "red truck\n", open( self.temporaryDirectory() / "systemCommandTest.txt", encoding = "utf-8" ).readlines()[0] )
 
+	def testDirectEnvironmentVariables( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		s["n"] = GafferDispatch.SystemCommand()
+		s["n"]["dispatcher"]["direct"].setValue( True )
+		if os.name != "nt" :
+			s["n"]["command"].setValue( "env > {}".format( self.temporaryDirectory() / "systemCommandTest.txt" ) )
+		else :
+			s["n"]["command"].setValue( " set > {}".format( ( self.temporaryDirectory() / "systemCommandTest.txt" ).as_posix() ) )
+		s["n"]["environmentVariables"].addChild( Gaffer.NameValuePlug( "GAFFER_SYSTEMCOMMAND_TEST", IECore.StringData( "test" ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic ) )
+
+		s["d"] = self.__createLocalDispatcher()
+		s["d"]["executeInBackground"].setValue( True )
+		s["d"]["framesMode"].setValue( GafferDispatch.Dispatcher.FramesMode.CurrentFrame )
+		s["d"]["tasks"][0].setInput( s["n"]["task"] )
+
+		s["d"]["task"].execute()
+		s["d"].jobPool().waitForAll()
+
+		env = "".join( open( self.temporaryDirectory() / "systemCommandTest.txt", encoding = "utf-8" ).readlines() )
+		self.assertTrue( "GAFFER_SYSTEMCOMMAND_TEST=test" in env )
+
 
 if __name__ == "__main__":
 	unittest.main()

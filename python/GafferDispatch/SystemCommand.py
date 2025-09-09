@@ -80,7 +80,9 @@ class SystemCommand( GafferDispatch.TaskNode ) :
 		if self["dispatcher"]["direct"].getValue() and self["shell"].getValue() :
 			with context :
 				command, useShell, env = self.__subprocessArguments()
-				return [ str( Gaffer.executablePath() ), "env" ] + shlex.split( command )
+				env = IECore.CompoundData()
+				self["environmentVariables"].fillCompoundData( env )
+				return [ str( Gaffer.executablePath() ), "env" ] + [ f"{k}={v}" for k, v in env.items() ] + shlex.split( command )
 
 		return []
 
