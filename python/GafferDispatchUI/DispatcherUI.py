@@ -253,7 +253,21 @@ Gaffer.Metadata.registerNode(
 			considered to be immediate too, regardless of their settings.
 			"""
 
-		)
+		),
+
+		"dispatcher.direct" : (
+
+			"description",
+			"""
+			Causes the command to be run from a shell in the Gaffer environment instead
+			of executing the task node.
+
+			If enabled, all input plug values and substitutions will be computed at
+			the time of dispatch. Otherwise, plug values and substitutions will be
+			computed at the time of task execution.
+			""",
+
+		),
 
 	}
 

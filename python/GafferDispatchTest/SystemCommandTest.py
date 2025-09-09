@@ -46,6 +46,12 @@ import GafferDispatch
 
 class SystemCommandTest( GafferTest.TestCase ) :
 
+	def __createLocalDispatcher( self ) :
+
+		result = GafferDispatch.LocalDispatcher( jobPool = GafferDispatch.LocalDispatcher.JobPool() )
+		result["jobsDirectory"].setValue( self.temporaryDirectory() / "jobs" )
+		return result
+
 	def test( self ) :
 
 		n = GafferDispatch.SystemCommand()
@@ -108,9 +114,8 @@ class SystemCommandTest( GafferTest.TestCase ) :
 		s["n"] = GafferDispatch.SystemCommand()
 		s["n"]["command"].setValue( "echo 1 > {}".format( ( self.temporaryDirectory() / "systemCommandTest.####.txt" ).as_posix() ) )
 
-		s["d"] = GafferDispatch.LocalDispatcher( jobPool = GafferDispatch.LocalDispatcher.JobPool() )
+		s["d"] = self.__createLocalDispatcher()
 		s["d"]["tasks"][0].setInput( s["n"]["task"] )
-		s["d"]["jobsDirectory"].setValue( self.temporaryDirectory() / "jobs" )
 		s["d"]["framesMode"].setValue( s["d"].FramesMode.CustomRange )
 		s["d"]["frameRange"].setValue( "1-10" )
 
@@ -150,6 +155,53 @@ class SystemCommandTest( GafferTest.TestCase ) :
 		c = GafferDispatch.SystemCommand()
 		self.assertEqual( c["command"].getValue(), "" )
 		self.assertEqual( c["task"].hash(), IECore.MurmurHash() )
+
+	def testDirect( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		testFile = self.temporaryDirectory() / "test"
+
+		s["c"] = GafferDispatch.SystemCommand()
+		s["c"]["dispatcher"]["direct"].setValue( True )
+		s["c"]["command"].setValue( "echo HELLO > " + testFile.as_posix() )
+
+		s["d"] = self.__createLocalDispatcher()
+		s["d"]["executeInBackground"].setValue( True )
+		s["d"]["framesMode"].setValue( GafferDispatch.Dispatcher.FramesMode.CurrentFrame )
+		s["d"]["tasks"][0].setInput( s["c"]["task"] )
+
+		s["c"]["shell"].setValue( False )
+		s["d"]["task"].execute()
+		s["d"].jobPool().waitForAll()
+		self.assertFalse( testFile.is_file() )
+
+		s["c"]["shell"].setValue( True )
+		s["d"]["task"].execute()
+		s["d"].jobPool().waitForAll()
+		with open( testFile, encoding = "utf-8" ) as f :
+			self.assertEqual( f.readlines(), [ "HELLO\n" ] )
+
+	def testDirectSubstitutions( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		s["n"] = GafferDispatch.SystemCommand()
+		s["n"]["dispatcher"]["direct"].setValue( True )
+		s["n"]["command"].setValue( "echo {adjective} {noun}> " + ( self.temporaryDirectory() / "systemCommandTest.txt" ).as_posix() )
+		s["n"]["substitutions"].addChild( Gaffer.NameValuePlug( "adjective", IECore.StringData( "red" ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic ) )
+		s["n"]["substitutions"].addChild( Gaffer.NameValuePlug( "noun", IECore.StringData( "truck" ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic ) )
+
+		s["d"] = self.__createLocalDispatcher()
+		s["d"]["executeInBackground"].setValue( True )
+		s["d"]["framesMode"].setValue( GafferDispatch.Dispatcher.FramesMode.CurrentFrame )
+		s["d"]["tasks"][0].setInput( s["n"]["task"] )
+
+		s["d"]["task"].execute()
+		s["d"].jobPool().waitForAll()
+
+		self.assertEqual( "red truck\n", open( self.temporaryDirectory() / "systemCommandTest.txt", encoding = "utf-8" ).readlines()[0] )
+
 
 if __name__ == "__main__":
 	unittest.main()

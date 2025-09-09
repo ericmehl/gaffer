@@ -71,6 +71,21 @@ class SystemCommand( GafferDispatch.TaskNode ) :
 
 	def execute( self ) :
 
+		command, useShell, env = self.__subprocessArguments()
+
+		subprocess.check_call( command, shell = useShell, env = env )
+
+	def directCommandArguments( self, context ) :
+
+		if self["dispatcher"]["direct"].getValue() and self["shell"].getValue() :
+			with context :
+				command, useShell, env = self.__subprocessArguments()
+				return [ str( Gaffer.executablePath() ), "env" ] + shlex.split( command )
+
+		return []
+
+	def __subprocessArguments( self ) :
+
 		substitutions = IECore.CompoundData()
 		self["substitutions"].fillCompoundData( substitutions )
 		substitutions = { key : str( value ) for ( key, value ) in substitutions.items() }
@@ -88,6 +103,6 @@ class SystemCommand( GafferDispatch.TaskNode ) :
 		if useShell == False :
 			command = shlex.split( command )
 
-		subprocess.check_call( command, shell = useShell, env = env )
+		return ( command, useShell, env )
 
 IECore.registerRunTimeTyped( SystemCommand, typeName = "GafferDispatch::SystemCommand" )

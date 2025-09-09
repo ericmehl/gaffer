@@ -124,6 +124,7 @@ namespace
 {
 
 const InternedString g_batchSize( "batchSize" );
+const InternedString g_directPlugName( "direct" );
 const InternedString g_immediatePlugName( "immediate" );
 const InternedString g_jobDirectoryContextEntry( "dispatcher:jobDirectory" );
 const InternedString g_scriptFileNameContextEntry( "dispatcher:scriptFileName" );
@@ -308,6 +309,11 @@ void Dispatcher::setupPlugs( Plug *parentPlug )
 {
 	parentPlug->addChild( new IntPlug( g_batchSize, Plug::In, 1 ) );
 	parentPlug->addChild( new BoolPlug( g_immediatePlugName, Plug::In, false ) );
+
+	if( parentPlug->node()->isInstanceOf( "GafferDispatch::SystemCommand" ) )
+	{
+		parentPlug->addChild( new BoolPlug( g_directPlugName, Plug::In, false ) );
+	}
 
 	const CreatorMap &m = creators();
 	for( const auto &[name, creator] : m )

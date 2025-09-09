@@ -54,29 +54,33 @@ def gafferCommandArguments( batch, ignoreScriptLoadErrors = False ) :
 	if batchContext is None or batch.plug() is None :
 		return []
 
-	frames = str( __import__( "IECore" ).frameListFromList( [ int( x ) for x in batch.frames() ] ) )
+	if (
+		not hasattr( batch.plug().node(), "directCommandArguments" ) or
+		len( ( args := batch.plug().node().directCommandArguments( batch.context() ) ) ) == 0
+	) :
+		frames = str( __import__( "IECore" ).frameListFromList( [ int( x ) for x in batch.frames() ] ) )
 
-	args = [
-		str( __import__( "Gaffer" ).executablePath() ), "execute",
-		"-script", batch.context()["dispatcher:scriptFileName"],
-		"-nodes", batch.plug().node().getName(),
-		"-frames", frames,
-	]
+		args = [
+			str( __import__( "Gaffer" ).executablePath() ), "execute",
+			"-script", batch.context()["dispatcher:scriptFileName"],
+			"-nodes", batch.plug().node().getName(),
+			"-frames", frames,
+		]
 
-	if ignoreScriptLoadErrors :
-		args.append( "-ignoreScriptLoadErrors" )
+		if ignoreScriptLoadErrors :
+			args.append( "-ignoreScriptLoadErrors" )
 
-	scriptNode = batch.plug().ancestor( __import__( "Gaffer" ).ScriptNode )
-	assert( scriptNode is not None )
-	scriptContext = scriptNode.context()
+		scriptNode = batch.plug().ancestor( __import__( "Gaffer" ).ScriptNode )
+		assert( scriptNode is not None )
+		scriptContext = scriptNode.context()
 
-	contextArgs = []
-	for entry in [ k for k in batchContext.keys() if k != "frame" ] :
-		if entry not in scriptContext.keys() or batchContext[entry] != scriptContext[entry] :
-			contextArgs.extend( [ "-" + entry, __import__( "IECore" ).repr( batchContext[entry] ) ] )
+		contextArgs = []
+		for entry in [ k for k in batchContext.keys() if k != "frame" ] :
+			if entry not in scriptContext.keys() or batchContext[entry] != scriptContext[entry] :
+				contextArgs.extend( [ "-" + entry, __import__( "IECore" ).repr( batchContext[entry] ) ] )
 
-	if contextArgs :
-		args.extend( [ "-context" ] + contextArgs )
+		if contextArgs :
+			args.extend( [ "-context" ] + contextArgs )
 
 	return args
 
