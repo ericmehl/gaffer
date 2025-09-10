@@ -164,7 +164,7 @@ class SystemCommandTest( GafferTest.TestCase ) :
 
 		s["c"] = GafferDispatch.SystemCommand()
 		s["c"]["dispatcher"]["direct"].setValue( True )
-		s["c"]["command"].setValue( "echo HELLO > " + testFile.as_posix() )
+		s["c"]["command"].setValue( "echo HELLO> " + testFile.as_posix() )
 
 		s["d"] = self.__createLocalDispatcher()
 		s["d"]["executeInBackground"].setValue( True )
