@@ -54,10 +54,8 @@ def gafferCommandArguments( batch, ignoreScriptLoadErrors = False ) :
 	if batchContext is None or batch.plug() is None :
 		return []
 
-	if (
-		not hasattr( batch.plug().node(), "directCommandArguments" ) or
-		len( ( args := batch.plug().node().directCommandArguments( batch.context() ) ) ) == 0
-	) :
+	args = batch.plug().node().directCommandArguments( batch.context() ) if hasattr( batch.plug().node(), "directCommandArguments" ) else []
+	if len( args ) > 0 :
 		frames = str( __import__( "IECore" ).frameListFromList( [ int( x ) for x in batch.frames() ] ) )
 
 		args = [
