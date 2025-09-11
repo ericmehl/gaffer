@@ -225,6 +225,26 @@ class SystemCommandTest( GafferTest.TestCase ) :
 		env = "".join( open( self.temporaryDirectory() / "systemCommandTest.txt", encoding = "utf-8" ).readlines() )
 		self.assertTrue( "GAFFER_SYSTEMCOMMAND_TEST=test" in env )
 
+	def testDirectMultipleFrameBatch( self ) :
+
+		s = Gaffer.ScriptNode()
+
+		s["n"] = GafferDispatch.SystemCommand()
+		s["n"]["dispatcher"]["direct"].setValue( True )
+		s["n"]["dispatcher"]["batchSize"].setValue( 10 )
+		s["n"]["command"].setValue( "echo 1 > {}".format( ( self.temporaryDirectory() / "systemCommandTest.####.txt" ).as_posix() ) )
+
+		s["d"] = self.__createLocalDispatcher()
+		s["d"]["tasks"][0].setInput( s["n"]["task"] )
+		s["d"]["framesMode"].setValue( s["d"].FramesMode.CustomRange )
+		s["d"]["frameRange"].setValue( "1-10" )
+
+		s["d"]["task"].execute()
+
+		sequences = IECore.ls( str( self.temporaryDirectory() ) )
+		self.assertEqual( len( sequences ), 1 )
+		self.assertEqual( str( sequences[0] ), "systemCommandTest.####.txt 1-10" )
+
 
 if __name__ == "__main__":
 	unittest.main()

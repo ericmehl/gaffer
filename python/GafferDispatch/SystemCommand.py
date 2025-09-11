@@ -75,16 +75,19 @@ class SystemCommand( GafferDispatch.TaskNode ) :
 
 		subprocess.check_call( command, shell = useShell, env = env )
 
-	def directCommandArguments( self, context ) :
+	def directCommandArguments( self, context, frames ) :
 
+		result = []
 		if self["dispatcher"]["direct"].getValue() and self["shell"].getValue() :
-			with context :
-				command, useShell, env = self.__subprocessArguments()
-				env = IECore.CompoundData()
-				self["environmentVariables"].fillCompoundData( env )
-				return [ str( Gaffer.executablePath() ), "env" ] + [ f"{k}={v}" for k, v in env.items() ] + shlex.split( command )
+			for i, frame in enumerate( frames ) :
+				context.setFrame( frame )
+				with context :
+					command, useShell, env = self.__subprocessArguments()
+					env = IECore.CompoundData()
+					self["environmentVariables"].fillCompoundData( env )
+					result += ( ["&&"] if i > 0 else [] ) + [ str( Gaffer.executablePath() ), "env" ] + [ f"{k}={v}" for k, v in env.items() ] + shlex.split( command )
 
-		return []
+		return result
 
 	def __subprocessArguments( self ) :
 
