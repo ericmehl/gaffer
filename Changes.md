@@ -1,7 +1,12 @@
 1.6.x.x (relative to 1.6.2.0)
 =======
 
+Improvements
+------------
 
+- Viewer :
+  - Moved purpose menu items from the Drawing Mode menu to the Expansion menu.
+  - Added purpose presets for Render (Default + Render purposes), Preview (Default + Proxy) and Preview with Guides (Default + Proxy + Guide).
 
 1.6.2.0 (relative to 1.6.1.0)
 =======
