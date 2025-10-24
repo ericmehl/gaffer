@@ -35,6 +35,13 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#ifdef _MSC_VER
+#include <windows.h>
+#include "nvapi.h"
+#include "nvapi_interface.h"
+#include "NvApiDriverSettings.h"
+#endif
+
 #include "boost/python.hpp"
 
 #include "AnimationGadgetBinding.h"
@@ -64,6 +71,60 @@
 
 using namespace GafferUIModule;
 
+#ifdef _MSC_VER
+
+// `NvApiDriverSettings.h` enumerates values in a slightly strange way. It gives
+// values for enabled and disabled, but names `Auto` as `OGL_THREAD_CONTROL_DEFAULT`.
+// We create our own enumeration which also includes `NoSupport` for non Nvidia users.
+enum class NvidiaThreadOptimisation {
+	Auto = EValues_OGL_THREAD_CONTROL::OGL_THREAD_CONTROL_DEFAULT,
+	Enabled = EValues_OGL_THREAD_CONTROL::OGL_THREAD_CONTROL_ENABLE,
+	Disabled = EValues_OGL_THREAD_CONTROL::OGL_THREAD_CONTROL_DISABLE,
+	NoSupport = 3
+};
+
+NvidiaThreadOptimisation nvidiaThreadOptimisation()
+{
+	NvidiaThreadOptimisation threadOptimisation = NvidiaThreadOptimisation::NoSupport;
+
+	if( NvAPI_Initialize() != NVAPI_OK )
+	{
+		return threadOptimisation;
+	}
+
+	NvDRSSessionHandle hSession;
+	if( NvAPI_DRS_CreateSession( &hSession ) != NVAPI_OK )
+	{
+		return threadOptimisation;
+	}
+
+	if( NvAPI_DRS_LoadSettings( hSession ) )
+	{
+		NvAPI_DRS_DestroySession( hSession );
+		return threadOptimisation;
+	}
+
+	NvDRSProfileHandle hProfile;
+	if( NvAPI_DRS_GetBaseProfile( hSession, &hProfile ) )
+	{
+		NvAPI_DRS_DestroySession( hSession );
+		return threadOptimisation;
+	}
+
+	NVDRS_SETTING originalSetting;
+	originalSetting.version = NVDRS_SETTING_VER;
+	if( NvAPI_DRS_GetSetting( hSession, hProfile, OGL_THREAD_CONTROL_ID, &originalSetting ) == NVAPI_OK )
+	{
+		threadOptimisation = (NvidiaThreadOptimisation)originalSetting.u32CurrentValue;
+	}
+
+	NvAPI_DRS_DestroySession(hSession);
+
+	return threadOptimisation;
+}
+
+#endif
+
 BOOST_PYTHON_MODULE( _GafferUI )
 {
 
@@ -91,5 +152,15 @@ BOOST_PYTHON_MODULE( _GafferUI )
 	bindPlugAdder();
 	bindAnimationGadget();
 	bindPathColumn();
+
+#ifdef _MSC_VER
+	boost::python::enum_<NvidiaThreadOptimisation>( "NvidiaThreadOptimisation" )
+		.value( "Auto", NvidiaThreadOptimisation::Auto )
+		.value( "Enabled", NvidiaThreadOptimisation::Enabled )
+		.value( "Disabled", NvidiaThreadOptimisation::Disabled )
+		.value( "NoSupport", NvidiaThreadOptimisation::NoSupport )
+	;
+	boost::python::def( "nvidiaThreadOptimisation", &nvidiaThreadOptimisation );
+#endif
 
 }

@@ -116,7 +116,7 @@ def __shiboken() :
 
 # Import modules that must be imported before _GafferUI, using __import__
 # to avoid polluting the GafferUI namespace.
-__import__( "IECore" )
+IECore = __import__( "IECore" )
 __import__( "Gaffer" )
 
 from ._GafferUI import *
@@ -307,5 +307,17 @@ from . import PatternMatchUI
 # backwards compatibility
 ## \todo Remove me
 Metadata = __import__( "Gaffer" ).Metadata
+
+import os
+if os.name == "nt" :
+	nvThreadOptimisation = nvidiaThreadOptimisation()
+	if nvThreadOptimisation == NvidiaThreadOptimisation.Enabled or nvThreadOptimisation == NvidiaThreadOptimisation.Auto :
+		IECore.msg(
+			IECore.Msg.Level.Warning,
+			"GafferUI",
+			"Nvidia Thread Optimization is set to {} which may negatively impact performance. It is recommended to set it to \"Off\" in your driver settings.".format(
+				"\"On\"" if nvThreadOptimisation == NvidiaThreadOptimisation.Enabled else "\"Auto\""
+			)
+		)
 
 __import__( "IECore" ).loadConfig( "GAFFER_STARTUP_PATHS", subdirectory = "GafferUI" )
