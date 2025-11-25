@@ -28,6 +28,8 @@ Fixes
 - PythonCommand :
   - Fixed invalid results from evaluating `"name" in variables`.
   - Fixed handling of CompoundObjectPlugs, ObjectPlugs and ObjectVectorPlugs in `variables` plug.
+- Dispatcher :
+  - Fixed omission that prevented values from CompoundObjectPlugs, ObjectPlugs and ObjectVectorPlugs with inputs from being saved in a dispatch with `isolated` enabled.
 
 API
 ---
