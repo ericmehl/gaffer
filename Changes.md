@@ -25,7 +25,9 @@ Fixes
 - SceneInspector : Fixed sporadic incomplete updates, particularly when an interactive render was running.
 - Render, InteractiveRender, StandardOptions : Fixed bugs allowing Cycles and 3Delight to appear as available renderers even when hidden from the UI or not configured.
 - Options, Attributes : Fixed missing presets.
-- PythonCommand : Fixed invalid results from evaluating `"name" in variables`.
+- PythonCommand :
+  - Fixed invalid results from evaluating `"name" in variables`.
+  - Fixed handling of CompoundObjectPlugs, ObjectPlugs and ObjectVectorPlugs in `variables` plug.
 
 API
 ---
