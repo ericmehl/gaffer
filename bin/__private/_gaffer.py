@@ -81,7 +81,7 @@ gafferRoot = pathlib.Path( __file__ ).resolve().parents[2]
 
 # Not every environment variable we set for Gaffer itself is something
 # we want to be inherited by subprocesses that Gaffer launches. Store
-# clean copies that can be restored by `__gaffer.py`.
+# clean copies that can be restored by `gaffer`.
 
 if sys.platform == "linux" :
 	os.environ["__GAFFER_RESTORE_LD_PRELOAD"] = os.environ.get( "LD_PRELOAD", "__NONE__" )
@@ -414,13 +414,10 @@ if "PYTHONNOUSERSITE" not in os.environ :
 	# the user directory.
 	os.environ["PYTHONNOUSERSITE"] = "1"
 
-# Exec `__gaffer.py`
+# Exec `gaffer`
 # ==================
 
-args = [
-	sys.executable,
-	str( pathlib.Path( sys.argv[0] ).with_name( "__gaffer.py" ) )
-] + sys.argv[1:]
+args = [ sys.executable ] + sys.argv[1:]
 
 if sys.platform != "win32" :
 	os.execv( sys.executable, args )

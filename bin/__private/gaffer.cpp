@@ -42,7 +42,10 @@
 //   - Control over what libraries the main executable links to, for example
 //     libstdc++ and custom allocators.
 
+#define PY_SSIZE_T_CLEAN
 #include "Python.h"
+
+#include "__gaffer.inl"
 
 #ifdef MS_WINDOWS
 
@@ -68,12 +71,50 @@ int wmain( int argc, wchar_t **argv )
 			std::cerr << "gaffer.exe : " << *logEntry << "\n";
 		}
 	}
-
-	return Py_Main( argc, argv );
-}
 #else
 int main( int argc, char **argv )
 {
-	return Py_BytesMain( argc, argv );
-}
 #endif
+
+	PyStatus status;
+	PyConfig config;
+	PyConfig_InitPythonConfig( &config );
+
+	try
+	{
+
+#ifdef MS_WINDOWS
+		status = PyConfig_SetString( &config, &config.program_name, argv[0] );
+#else
+		status = PyConfig_SetBytesString( &config, &config.program_name, argv[0] );
+#endif
+
+		if( PyStatus_Exception( status ) )
+		{
+			throw std::runtime_error( "Error setting `config.program_name`" );
+		}
+
+		status = Py_InitializeFromConfig( &config );
+		if( PyStatus_Exception( status ) )
+		{
+			throw std::runtime_error( "Error in `Py_InitializeFromConfig`" );
+		}
+		PyConfig_Clear( &config );
+
+		PyRun_SimpleString( gafferScript );
+
+		if( Py_FinalizeEx() < 0 )
+		{
+			exit( 120 );
+		}
+	}
+
+	catch( const std::exception & )
+	{
+		/// \todo Do something with `e`?
+		PyConfig_Clear( &config );
+		Py_ExitStatusException( status );
+	}
+
+	return 0;
+}

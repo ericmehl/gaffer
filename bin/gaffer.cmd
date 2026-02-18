@@ -2,7 +2,7 @@
 
 rem Public-facing launch script for gaffer. This sets up the Python interpreter
 rem and then defers to `_gaffer.py` to set up the appropriate environment
-rem and finally launch `__gaffer.py`.
+rem and finally launch `gaffer.exe`.
 
 setlocal EnableDelayedExpansion
 

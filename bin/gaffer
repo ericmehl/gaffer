@@ -38,7 +38,7 @@
 
 # Public-facing launch script for gaffer. This sets up the Python interpreter
 # and then defers to `_gaffer.py` to set up the appropriate environment
-# and finally launch `__gaffer.py`.
+# and finally launch `gaffer`.
 
 set -e
 

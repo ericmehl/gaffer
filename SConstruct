@@ -1551,7 +1551,7 @@ libraries = {
 	},
 
 	"scripts" : {
-		"additionalFiles" : [ "bin/__private/_gaffer.py", "bin/__private/__gaffer.py" ],
+		"additionalFiles" : [ "bin/__private/_gaffer.py" ],
 	},
 
 	"misc" : {
