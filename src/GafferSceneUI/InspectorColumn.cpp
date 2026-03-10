@@ -169,6 +169,7 @@ PathColumn::CellData InspectorColumn::headerData( const IECore::Canceller *cance
 
 void InspectorColumn::inspectorDirtied()
 {
+	std::cerr << "InspectorColumn::inspectorDirtied() " << this << "\n";
 	changedSignal()( this );
 }
 
@@ -230,13 +231,31 @@ PathColumn::CellData InspectorColumn::cellDataFromValue( const IECore::Object *v
 }
 
 PathColumn::CellData InspectorColumn::cellDataFromInspection( const GafferSceneUI::Private::Inspector::Result *inspection ) const
-{
+{	
+	std::cerr << "InspectorColumn::cellDataFromInspection() column = " << this << "\n";
+	if( auto a = runTimeCast<const StringData>( this->headerData( nullptr ).value ) )
+	{
+		std::cerr << "column name = " << a->readable() << "\n";
+	}
+	// auto scriptNode = s->ancestor<Gaffer::ScriptNode>();
+	// const std::string plugName = scriptNode ? scriptNode->relativeName( s ) : s->getName().string();
+	// std::cerr << "source() = " << s->getName().string() << "\n";
+
 	CellData result;
 	if( !inspection )
 	{
 		return result;
 	}
 
+	auto v = inspection->value();
+	if( auto b = runTimeCast<const BoolData>( v ) )
+	{
+		std::cerr << "inspection->value() = " << b->readable() << "\n";
+	}
+	else
+	{
+		std::cerr << "inspection->value() = " << v << "\n";
+	}
 	result = cellDataFromValue( inspection->value() );
 
 	result.background = g_sourceTypeColors.at( (int)inspection->sourceType() );

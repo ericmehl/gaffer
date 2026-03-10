@@ -1179,12 +1179,14 @@ class PathModel : public QAbstractItemModel
 
 		void startUpdate( bool skipIfInvisible = true )
 		{
+			std::cerr << "BEGIN PathListingWidget::startUpdate() PathModel = " << this << "\n";
 			if( !m_updateScheduled )
 			{
 				// We can get here if `waitForPendingUpdates()` starts the
 				// update early, and the timer triggers afterwards. Or if
 				// `waitForPendingUpdates()` is called when there are no
 				// updates to do.
+				std::cerr << "RETURNING due to !m_updateScheduled\n";
 				return;
 			}
 
@@ -1193,6 +1195,7 @@ class PathModel : public QAbstractItemModel
 				// No point in performing an update if we're not visible.
 				// Wait for `eventFilter()` to start the update in the next
 				// `QShowEvent`.
+				std::cerr << "RETURNING due to skipIfInvisible...\n";
 				return;
 			}
 
@@ -1222,6 +1225,7 @@ class PathModel : public QAbstractItemModel
 								}
 							}
 						);
+						std::cerr << "\tPathListingWidget::startUpdate() m_rootItem->update() PathModel = " << this << "\n";
 						m_rootItem->update( this, workingPath.get(), expandedPaths, priorityPaths, canceller );
 						queueEdit(
 							[this] () {
@@ -1249,6 +1253,7 @@ class PathModel : public QAbstractItemModel
 						// and we can rely on `scheduleUpdate()` to deduplicate
 						// multiple requests, and `startUpdate()` to defer
 						// requests if we're hidden.
+						std::cerr << "\tPathListingWidget cancelled PathModel = " << this << "\n";
 						queueEdit(
 							[this] () { scheduleUpdate(); }
 						);
@@ -1256,6 +1261,8 @@ class PathModel : public QAbstractItemModel
 				}
 			);
 			m_updateScheduled = false;
+			std::cerr << "END PathListingWidget::startUpdate() PathModel = " << this << "\n";
+
 		}
 
 		// Cancels the current background update, optionally flushing the
@@ -1472,7 +1479,8 @@ class PathModel : public QAbstractItemModel
 				/// multiple threads we need to consider the interaction with
 				/// `m_scrollToCandidates` because the order we visit children
 				/// in would no longer be deterministic.
-
+				try
+				{
 				std::deque<std::pair<Path::Names, Ptr>> queue( { { path->names(), this } } );
 				while( !queue.empty() )
 				{
@@ -1535,6 +1543,12 @@ class PathModel : public QAbstractItemModel
 					// Reverse the items we added at the front, so we'll pop them
 					// in the order we pushed them.
 					std::reverse( queue.begin(), queue.begin() + newFrontItems );
+				}
+				}
+				catch( const IECore::Cancelled & )
+				{
+					std::cerr << "CANCELLED PathModel = " << model << "\n";
+					throw;
 				}
 			}
 

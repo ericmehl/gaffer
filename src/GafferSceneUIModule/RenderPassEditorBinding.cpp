@@ -437,6 +437,7 @@ class RenderPassPath : public Gaffer::Path
 		{
 			if( plug == m_scene->globalsPlug() )
 			{
+				std::cerr << "RenderPassPath::plugDirtied() -> emitPathChanged()\n";
 				emitPathChanged();
 			}
 		}
