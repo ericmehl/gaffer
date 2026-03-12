@@ -289,7 +289,6 @@ Inspector::AcquireEditFunctionOrFailure OptionInspector::acquireEditFunction( Ga
 				option = m_option,
 				context = history->context
 			] ( bool createIfNecessary ) {
-				std::cerr << "OptionInspector::acquireEditFunction() -> EditScopeAlgo::acquireRenderPassOptionEdit()\n";
 				Context::Scope scope( context.get() );
 				return EditScopeAlgo::acquireRenderPassOptionEdit(
 					editScope.get(),
@@ -324,7 +323,6 @@ Inspector::AcquireEditFunctionOrFailure OptionInspector::acquireEditFunction( Ga
 				option = m_option,
 				context = history->context
 			] ( bool createIfNecessary ) {
-				std::cerr << "OptionInspector::acquireEditFunction() -> EditScopeAlgo::acquireOptionEdit()\n";
 				Context::Scope scope( context.get() );
 				return EditScopeAlgo::acquireOptionEdit(
 					editScope.get(),

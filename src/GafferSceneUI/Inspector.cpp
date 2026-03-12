@@ -1190,7 +1190,6 @@ bool Inspector::Result::canEdit( const IECore::Object *value, std::string &failu
 
 void Inspector::Result::edit( const IECore::Object *value ) const
 {
-	std::cerr << "START Inspector::Result::edit()\n";
 	std::string reason;
 	if( !canEdit( value, reason ) )
 	{
@@ -1198,5 +1197,4 @@ void Inspector::Result::edit( const IECore::Object *value ) const
 	}
 
 	m_editors->editFunction( acquireEdit( /* createIfNecessary = */ true ).get(), value );
-	std::cerr << "END Inspector::Result::edit()\n";
 }

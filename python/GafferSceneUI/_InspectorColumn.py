@@ -56,8 +56,6 @@ from . import _GafferSceneUI
 
 def __toggleBoolean( pathListing, inspections ) :
 
-	print( "START __InspectorColumn.__toggleBoolean()" )
-
 	# Make sure all the inspections contain and accept BoolData
 	if not all(
 		isinstance( i.value(), IECore.BoolData ) and i.canEdit( IECore.BoolData( True ) )
@@ -72,14 +70,13 @@ def __toggleBoolean( pathListing, inspections ) :
 		for inspection in inspections :
 			inspection.edit( IECore.BoolData( newValue ) )
 
-	print( "END __InspectorColumn.__toggleBoolean()" )
 	return True
 
 def __editSelectedCells( pathListing, quickBoolean = True, ensureEnabled = False ) :
 
 	global __inspectorColumnPopup
 
-	print( "_InspectorColumn.__editSelectedCells()" )
+	print( "START _InspectorColumn.__editSelectedCells()" )
 
 	inspections = []
 

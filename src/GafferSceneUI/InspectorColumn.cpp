@@ -169,7 +169,6 @@ PathColumn::CellData InspectorColumn::headerData( const IECore::Canceller *cance
 
 void InspectorColumn::inspectorDirtied()
 {
-	std::cerr << "InspectorColumn::inspectorDirtied() " << this << "\n";
 	changedSignal()( this );
 }
 
