@@ -191,6 +191,7 @@ BackgroundTask::BackgroundTask( const Plug *subject, const Function &function )
 			std::unique_lock<std::mutex> lock( taskData->mutex );
 			if( taskData->status == Cancelled )
 			{
+				std::cerr << "BackgroundTask::BackgroundTask taskData->status == Cancelled\n";
 				return;
 			}
 
@@ -208,6 +209,7 @@ BackgroundTask::BackgroundTask( const Plug *subject, const Function &function )
 			Status status;
 			try
 			{
+				std::cerr << "BackgroundTask::BackgroundTask try running function\n";
 				(*taskData->function)( taskData->canceller );
 				status = Completed;
 			}
@@ -222,6 +224,7 @@ BackgroundTask::BackgroundTask( const Plug *subject, const Function &function )
 			}
 			catch( const IECore::Cancelled & )
 			{
+				std::cerr << "BackgroundTask::BackgroundTask catch Cancelled\n";
 				// No need to do anything
 				status = Cancelled;
 			}

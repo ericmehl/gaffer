@@ -1204,6 +1204,8 @@ class PathModel : public QAbstractItemModel
 			// background task.
 			cancelUpdate();
 
+			std::cerr << "PathModel::startUpdate() -> callOnBackgroundThread() pathModel = " << this << "\n";
+
 			// And then we can reschedule our update task.
 			m_updateTask = ParallelAlgo::callOnBackgroundThread(
 				getRoot()->cancellationSubject(),
@@ -1253,7 +1255,7 @@ class PathModel : public QAbstractItemModel
 						// and we can rely on `scheduleUpdate()` to deduplicate
 						// multiple requests, and `startUpdate()` to defer
 						// requests if we're hidden.
-						std::cerr << "\tPathListingWidget cancelled PathModel = " << this << "\n";
+						std::cerr << "CANCELLED PathListingWidget PathModel = " << this << "\n";
 						queueEdit(
 							[this] () { scheduleUpdate(); }
 						);
@@ -1269,6 +1271,7 @@ class PathModel : public QAbstractItemModel
 		// queue of pending edits.
 		void cancelUpdate( bool flushPendingEdits = true )
 		{
+			std::cerr << "PathModel::cancelUpdate() PathModel = " << this << "\n";
 			if( PyGILState_Check() )
 			{
 				// Resetting the update task implicitly calls `cancelAndWait()`.
@@ -1326,6 +1329,7 @@ class PathModel : public QAbstractItemModel
 		{
 			// Qt takes responsibility for deleting the event after it is
 			// delivered.
+			std::cerr << "PathModel::queueEdit() PathModel = " << this << "\n";
 			QCoreApplication::postEvent( this, new EditEvent( edit ) );
 		}
 
@@ -1365,6 +1369,7 @@ class PathModel : public QAbstractItemModel
 
 		void updateHeaderData( const IECore::Canceller *canceller )
 		{
+			std::cerr << "PathModel::updateHeaderData() PathModel = " << this << "\n";
 			if( m_headerDataState != State::Dirty )
 			{
 				return;
