@@ -37,11 +37,30 @@
 
 import functools
 import imath
+import weakref
 
 import IECore
 
 import Gaffer
 import GafferUI
+
+class _ViewableChildrenPathFilter( Gaffer.PathFilter ) :
+
+	def __init__( self, scriptRoot, userData = {} ) :
+
+		Gaffer.PathFilter.__init__( self, userData )
+
+		self.__scriptRoot = weakref.ref( scriptRoot )
+
+	def _filter( self, paths, canceller ) :
+
+		result = []
+		for p in paths :
+			n = self.__scriptRoot().descendant( str( p ).lstrip( "/" ).replace( "/", "." ) )
+			if isinstance( n, Gaffer.Node ) and Gaffer.Metadata.value( n, "ui:childNodesAreViewable" ) or False :
+				result.append( p )
+
+		return result
 
 class GraphEditor( GafferUI.Editor ) :
 
@@ -75,6 +94,10 @@ class GraphEditor( GafferUI.Editor ) :
 
 		with GafferUI.ListContainer( borderWidth = 8, spacing = 0 ) as overlay :
 			with GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal ) :
+				self.__viewableChildrenPathFilter = _ViewableChildrenPathFilter( self.scriptNode() )
+				self.__rootPath = Gaffer.GraphComponentPath( self.scriptNode(), [], filter = self.__viewableChildrenPathFilter )
+				self.__rootPath.pathChangedSignal().connect( Gaffer.WeakMethod( self.__rootPathChanged ) )
+				self.__breadCrumbs = GafferUI.BreadCrumbsWidget( self.__rootPath )
 				GafferUI.Spacer( imath.V2i( 1 ) )
 				GafferUI.MenuButton(
 					image = "annotations.png", hasFrame = False,
@@ -613,8 +636,18 @@ class GraphEditor( GafferUI.Editor ) :
 				node = node.parent()
 
 		self.titleChangedSignal()( self )
+		self.__updateRootPath()
+
+	def __updateRootPath( self ) :
+
+		rootNode = self.graphGadget().getRoot()
+		pathString = rootNode.relativeName( self.scriptNode() ).replace( ".", "/" ) if not rootNode.isSame( self.scriptNode() ) else "/"
+
+		self.__rootPath.setFromString( pathString )
 
 	def __rootNameChanged( self, root, oldName ) :
+
+		self.__updateRootPath()
 
 		self.titleChangedSignal()( self )
 
@@ -623,6 +656,10 @@ class GraphEditor( GafferUI.Editor ) :
 		# This may be called for our root, or any of its parents
 		if node.parent() == None :
 			self.graphGadget().setRoot( self.scriptNode() )
+
+	def __rootPathChanged( self, path ) :
+
+		self.graphGadget().setRoot( path.property( "graphComponent:graphComponent" ) )
 
 	def __preRender( self, viewportGadget ) :
 
