@@ -64,9 +64,9 @@ class GraphEditor( GafferUI.Editor ) :
 		self.__gadgetWidget.getViewportGadget().setDragTracking( GafferUI.ViewportGadget.DragTracking.XDragTracking | GafferUI.ViewportGadget.DragTracking.YDragTracking )
 		self.__frame( scriptNode.selection() )
 
-		self.__gadgetWidget.buttonPressSignal().connect( Gaffer.WeakMethod( self.__buttonPress ) )
-		self.__gadgetWidget.keyPressSignal().connect( Gaffer.WeakMethod( self.__keyPress ) )
-		self.__gadgetWidget.buttonDoubleClickSignal().connect( Gaffer.WeakMethod( self.__buttonDoubleClick ) )
+		self.__gadgetWidget.getViewportGadget().buttonPressSignal().connect( Gaffer.WeakMethod( self.__buttonPress ) )
+		self.__gadgetWidget.getViewportGadget().keyPressSignal().connect( Gaffer.WeakMethod( self.__keyPress ) )
+		self.__gadgetWidget.getViewportGadget().buttonDoubleClickSignal().connect( Gaffer.WeakMethod( self.__buttonDoubleClick ) )
 		self.dragEnterSignal().connect( Gaffer.WeakMethod( self.__dragEnter ) )
 		self.dragLeaveSignal().connect( Gaffer.WeakMethod( self.__dragLeave ) )
 		self.dropSignal().connect( Gaffer.WeakMethod( self.__drop ) )

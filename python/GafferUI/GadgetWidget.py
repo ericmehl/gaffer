@@ -184,8 +184,10 @@ class GadgetWidget( GafferUI.GLWidget ) :
 		focusItem = self._qtWidget().scene().focusItem()
 		if focusItem is not None :
 			self._qtWidget().scene().clearFocus()
-			if focusItem.widget().focusWidget() is not None :
-				focusItem.widget().focusWidget().clearFocus()
+			if isinstance( focusItem, QtWidgets.QWidget ) :
+				focusItem = focusItem.widget().focusWidget()
+			if  focusItem is not None :
+				focusItem.clearFocus()
 
 		if not self._makeCurrent() :
 			return False
@@ -264,8 +266,11 @@ class GadgetWidget( GafferUI.GLWidget ) :
 
 		# we get given keypresses before the graphicsview does, so we
 		# need to make sure we don't stop them going to a focussed overlay widget.
-		if self._qtWidget().scene().focusItem() is not None :
-			if self._qtWidget().scene().focusItem().widget().focusWidget() is not None :
+		focusItem = self._qtWidget().scene().focusItem()
+		if isinstance( focusItem, QtWidgets.QWidget ) :
+			focusItem = focusItem.widget().focusWidget()
+		if focusItem is not None :
+			if focusItem is not None :
 				return False
 
 		if not self._makeCurrent() :
@@ -275,8 +280,11 @@ class GadgetWidget( GafferUI.GLWidget ) :
 
 	def __keyRelease( self, widget, event ) :
 
-		if self._qtWidget().scene().focusItem() is not None :
-			if self._qtWidget().scene().focusItem().widget().focusWidget() is not None :
+		focusItem = self._qtWidget().scene().focusItem()
+		if isinstance( focusItem, QtWidgets.QWidget ) :
+			focusItem = focusItem.widget().focusWidget()
+		if focusItem is not None :
+			if focusItem is not None :
 				return False
 
 		if not self._makeCurrent() :
