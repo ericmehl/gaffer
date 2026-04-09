@@ -270,8 +270,7 @@ class GadgetWidget( GafferUI.GLWidget ) :
 		if isinstance( focusItem, QtWidgets.QWidget ) :
 			focusItem = focusItem.widget().focusWidget()
 		if focusItem is not None :
-			if focusItem is not None :
-				return False
+			return False
 
 		if not self._makeCurrent() :
 			return False
@@ -284,8 +283,7 @@ class GadgetWidget( GafferUI.GLWidget ) :
 		if isinstance( focusItem, QtWidgets.QWidget ) :
 			focusItem = focusItem.widget().focusWidget()
 		if focusItem is not None :
-			if focusItem is not None :
-				return False
+			return False
 
 		if not self._makeCurrent() :
 			return False
