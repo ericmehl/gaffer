@@ -84,10 +84,6 @@ class BreadCrumbsWidget( GafferUI.Widget ) :
 
 		return self.__path
 
-	def hasFocus( self ) :
-
-		return self.__textWidget._qtWidget().hasFocus()
-
 	def updateWidgets( self ) :
 
 		# \todo Reduce, Reuse, Recycle instead of clearing and recreating all buttons
