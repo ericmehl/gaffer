@@ -175,7 +175,7 @@
     <linearGradient
        id="backgroundLighter"
        inkscape:swatch="solid"
-       gradientTransform="matrix(1.8190548,0,0,2.0056446,-986.3615,7605.2818)">
+       gradientTransform="matrix(-1.8190548,0,0,-2.0056446,1110.5357,-3768.6043)">
       <stop
          style="stop-color:#9e9e9e;stop-opacity:1;"
          offset="0"
@@ -366,7 +366,17 @@
      inkscape:bbox-nodes="true"
      inkscape:showpageshadow="2"
      inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#4c4c4c">
+     inkscape:deskcolor="#4c4c4c"
+     showgrid="true"
+     inkscape:zoom="16"
+     inkscape:cx="131.0625"
+     inkscape:cy="1872.3125"
+     inkscape:window-width="3840"
+     inkscape:window-height="2054"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer4">
     <inkscape:grid
        type="xygrid"
        id="grid3598"
@@ -2797,6 +2807,22 @@
          x="118"
          y="1850"
          inkscape:label="bookmarks" />
+      <rect
+         style="display:inline;opacity:1;fill:none;fill-opacity:0.992157;stroke:none;stroke-width:0.917663;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173;stroke-opacity:1;paint-order:markers stroke fill"
+         id="pathForwardArrow"
+         width="14"
+         height="14"
+         x="154"
+         y="1850"
+         inkscape:label="pathForwardArrow" />
+      <rect
+         style="display:inline;opacity:1;fill:none;fill-opacity:0.992157;stroke:none;stroke-width:0.917663;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173;stroke-opacity:1;paint-order:markers stroke fill"
+         id="pathBackArrow"
+         width="14"
+         height="14"
+         x="136"
+         y="1850"
+         inkscape:label="pathBackArrow" />
     </g>
     <g
        id="g2008"
@@ -7978,6 +8004,18 @@
          id="circle3363"
          d="m 70,1904.3622 a 5,5 0 0 0 -5,5 5,5 0 0 0 5,5 v -2 a 3,3 0 0 1 -3,-3 3,3 0 0 1 3,-3 3,3 0 0 1 3,3 h -2 l 3,4.5 3,-4.5 h -2 a 5,5 0 0 0 -5,-5 z"
          style="opacity:1;fill:#9f9f9f;fill-opacity:0.976471;stroke:#3c3c3c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:1.10173;stroke-opacity:1;paint-order:stroke fill markers" />
+      <path
+         id="path2303"
+         style="fill:url(#backgroundLighter);fill-opacity:0.992157;fill-rule:evenodd;stroke:#3c3c3c;stroke-opacity:0.992157"
+         inkscape:label="pathBackArrow"
+         d="m 149,1912.3622 h -4.5 v 3 l -7,-6 7,-6 v 3 h 4.5"
+         sodipodi:nodetypes="ccccccc" />
+      <path
+         id="path2307"
+         style="fill:url(#backgroundLighter);fill-opacity:0.992157;fill-rule:evenodd;stroke:#3c3c3c;stroke-opacity:0.992157"
+         inkscape:label="pathBackArrow"
+         d="m 155,1912.3622 h 4.5 v 3 l 7,-6 -7,-6 v 3 H 155"
+         sodipodi:nodetypes="ccccccc" />
     </g>
     <g
        id="g2000"

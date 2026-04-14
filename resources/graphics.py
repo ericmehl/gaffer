@@ -226,6 +226,8 @@
 				'pathListingList',
 				'pathListingTree',
 				'pathUpArrow',
+				'pathBackArrow',
+				'pathForwardArrow',
 				'refresh'
 			]
 
@@ -532,13 +534,13 @@
 			],
 
 		},
-		
+
 		"nodeEditor" : {
-			
+
 			"options" : {
 				"validatePixelAlignment" : True,
 			},
-			
+
 			"ids" : [
 				"rendererArnoldOnIcon",
 				"rendererArnoldOffIcon",

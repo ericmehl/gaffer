@@ -97,6 +97,7 @@ class GraphEditor( GafferUI.Editor ) :
 				self.__viewableChildrenPathFilter = _ViewableChildrenPathFilter( self.scriptNode() )
 				self.__rootPath = Gaffer.GraphComponentPath( self.scriptNode(), [], filter = self.__viewableChildrenPathFilter )
 				self.__rootPath.pathChangedSignal().connect( Gaffer.WeakMethod( self.__rootPathChanged ) )
+				self.__pathHistoryWidget = self.__PathHistoryWidget( self.__rootPath )
 				self.__breadCrumbs = GafferUI.BreadCrumbsWidget( self.__rootPath )
 				GafferUI.Spacer( imath.V2i( 1 ) )
 				GafferUI.MenuButton(
@@ -613,10 +614,7 @@ class GraphEditor( GafferUI.Editor ) :
 		# save/restore the current framing so jumping in
 		# and out of Boxes isn't a confusing experience.
 
-		Gaffer.Metadata.registerValue( previousRoot, "ui:graphEditor{}:framing".format( id( self ) ), self.__currentFrame(), persistent = False )
-
-		frame = Gaffer.Metadata.value( self.graphGadget().getRoot(), "ui:graphEditor{}:framing".format( id( self ) ) )
-		if frame is not None :
+		if ( frame := self.__pathHistoryWidget.mostRecentFrame() ) is not None :
 			self.graphGadgetWidget().getViewportGadget().frame(
 				imath.Box3f( imath.V3f( frame.min().x, frame.min().y, 0 ), imath.V3f( frame.max().x, frame.max().y, 0 ) )
 			)
@@ -864,5 +862,91 @@ class GraphEditor( GafferUI.Editor ) :
 			return sourceEnabledPlug
 
 		return enabledPlug
+
+	class __PathHistoryWidget( GafferUI.Widget ) :
+
+		def __init__( self, path, **kw ) :
+
+			self.__row = GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, borderWidth = 1, spacing = 4 )
+
+			GafferUI.Widget.__init__( self, self.__row, **kw )
+
+			with self.__row :
+				self.__backButton = GafferUI.Button( "", "pathBackArrow.png", toolTip = "XYZ" )
+				self.__forwardButton = GafferUI.Button( "", "pathForwardArrow.png", toolTip = "XYZ" )
+
+				self.__backButton.buttonPressSignal().connect( Gaffer.WeakMethod( self.__backButtonPress ) )
+				self.__forwardButton.buttonPressSignal().connect( Gaffer.WeakMethod( self.__forwardButtonPress ) )
+
+			self.__popupMenu = None
+
+			self.__path = None
+			# A list of tuples of the form `( pathString, frame )`. If `frame` is none, it indicates no
+			# preference and we should perform default framing.
+			self.__history = []
+			self.__index = -1
+			self.setPath( path )
+
+		def setPath( self, path ) :
+
+			self.__path = path
+			self.__history = [ ( str( self.__path ), None ) ]
+			self.__index = 0
+			self.__pathChangedConnection = self.__path.pathChangedSignal().connect( Gaffer.WeakMethod( self.__pathChanged, fallbackResult = None ) )
+			self.__updateButtonsEnabled()
+
+		def getPath( self ) :
+
+			return self.__path
+
+		def currentEntry( self ) :
+
+			return self.__history[self.__index]
+
+		def mostRecentFrame( self, pathString ) :
+
+			for i in range( self.__index, 0, step = -1 ) :
+				if self.__history[i][0] == pathString and self.__history[i][1] is not None :
+					return self.__history[i][1]
+
+			return None
+		
+		def setCurrentFrame( self, frame ) :
+
+			self.history[self.__index] = ( self.__history[self.__index][0], frame )
+
+		def __backButtonPress( self, *unused ) :
+
+			assert( self.__index > 0 )
+			# \todo Store the graph editor frame before changing index
+			self.__index -= 1
+			with Gaffer.Signals.BlockedConnection( self.__pathChangedConnection ) :
+				self.__path.setFromString( self.__history[self.__index][0] )
+			self.__updateButtonsEnabled()
+
+		def __forwardButtonPress( self, *unused ) :
+
+			assert( self.__index < len( self.__history ) - 1 )
+			# \todo Store the graph editor frame before changing index
+			self.__index += 1
+			with Gaffer.Signals.BlockedConnection( self.__pathChagnedConnection ) :
+				self.__path.setFromString( self.__history[self.__index][0] )
+			self.__updateButtonsEnabled()
+
+		def __updateButtonsEnabled( self ) :
+
+			self.__backButton.setEnabled( self.__index > 0 )
+			self.__forwardButton.setEnabled( self.__index < len( self.__history ) - 1 )
+
+		def __pathChanged( self, path ) :
+
+			self.__history = self.__history[self.__index:]
+
+			# \todo Need to get the graph editor frame and store it in `self.__index` before we update the index
+
+			self.__history.append( ( str( path ), None ) )
+			self.__index += 1
+			self.__updateButtonsEnabled()
+
 
 GafferUI.Editor.registerType( "GraphEditor", GraphEditor )
