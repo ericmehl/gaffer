@@ -75,6 +75,10 @@ Gaffer.Metadata.registerNode(
 	}
 )
 
+# \todo Remove this method when merging to `1.7`. Instead, register
+# dynamic metadata methods to `light:*:*` and determine the renderer
+# in that method. This will be consistent with `ShaderUI` and `LightUI`
+# registrations of the form `{shaderType}:{shaderName}:{parameterName}`.
 def __registerIcons() :
 
 	visited = set()
