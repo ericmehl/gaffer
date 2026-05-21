@@ -271,6 +271,11 @@ Features
 - RenameFiles : Added node for renaming files.
 - USD MeshLight : Added node to add necessary attributes to geometry to convert to a USD MeshLight.
 
+Improvements
+------------
+
+- MeshLight : Added viewport visualisation of textures.
+
 Fixes
 -----
 
