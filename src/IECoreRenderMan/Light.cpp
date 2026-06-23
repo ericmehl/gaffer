@@ -82,7 +82,7 @@ M44f correctiveTransform( const IECoreScene::Shader *lightShader )
 		// and this correction ensures the sun is in the right place.
 		return M44f().rotate( V3f( -M_PI_2, 0.f, 0.f ) );
 	}
-	else if( lightShader->getName() == "PxrMeshLight" )
+	else if( lightShader->getName() == "PxrMeshLight" || lightShader->getName() == "MeshLight" )
 	{
 		return M44f();
 	}
@@ -143,7 +143,7 @@ Light::Light( const ConstGeometryPrototypePtr &geometryPrototype, const Attribut
 	m_lightInstance = m_session->createLightInstance(
 		m_geometryPrototype ? m_geometryPrototype->id() : riley::GeometryPrototypeId(),
 		material ? material->id() : riley::MaterialId(), m_lightShader->id(), { 0, nullptr }, IdentityTransform(),
-		mergedAttributes( attributes->instanceAttributes(), m_extraAttributes )
+		mergedAttributes( attributes->lightInstanceAttributes(), m_extraAttributes )
 	);
 }
 
@@ -226,7 +226,7 @@ bool Light::attributes( const IECoreScenePreview::Renderer::AttributesInterface 
 		return true;
 	}
 
-	const RtParamList allAttributes = mergedAttributes( renderManAttributes->instanceAttributes(), m_extraAttributes );
+	const RtParamList allAttributes = mergedAttributes( renderManAttributes->lightInstanceAttributes(), m_extraAttributes );
 
 	const Material *material = renderManAttributes->lightMaterial();
 	const riley::LightInstanceResult result = m_session->modifyLightInstance(
@@ -357,7 +357,7 @@ void Light::updateLinking( RtUString memberships, RtUString shadowSubset )
 		lightShaderId = &lightShader->id();
 	}
 
-	const RtParamList allAttributes = mergedAttributes( m_attributes->instanceAttributes(), m_extraAttributes );
+	const RtParamList allAttributes = mergedAttributes( m_attributes->lightInstanceAttributes(), m_extraAttributes );
 	const riley::LightInstanceResult result = m_session->modifyLightInstance(
 		m_lightInstance,
 		/* material = */ nullptr,

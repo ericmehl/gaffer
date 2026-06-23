@@ -39,6 +39,8 @@
 #include "ParamListAlgo.h"
 #include "Loader.h"
 
+#include "IECoreRenderMan/ShaderNetworkAlgo.h"
+
 #include "IECoreScene/ShaderNetwork.h"
 
 #include "IECore/SimpleTypedData.h"
@@ -113,6 +115,10 @@ const IECore::InternedString g_automaticInstancingAttributeName( "gaffer:automat
 const InternedString g_doubleSidedAttributeName( "doubleSided" );
 const InternedString g_lightMuteAttributeName( "light:mute" );
 const InternedString g_renderManLightFilterAttributeName( "ri:lightFilter" );
+const InternedString g_visibilityCameraAttributeName( "ri:visibility:camera" );
+const InternedString g_visibilityIndirectAttributeName( "ri:visibility:indirect" );
+const InternedString g_visibilityTransmissionAttributeName( "ri:visibility:transmission" );
+const InternedString g_sidesAttributeName( "ri:sides" );
 const RtUString g_userMaterialId( "user:__materialid" );
 
 const vector<InternedString> g_displacementAttributeNames = { "ri:displacement", "osl:displacement", "displacement" };
@@ -178,7 +184,13 @@ pair<InternedString, const ShaderNetwork *> shaderNetworkAttribute( const Compou
 	return { InternedString(), nullptr };
 }
 
-bool isMeshLight( const IECoreScene::ShaderNetwork *lightShader )
+bool isUSDMeshLight( const IECoreScene::ShaderNetwork *lightShader )
+{
+	const IECoreScene::Shader *outputShader = lightShader->outputShader();
+	return outputShader && outputShader->getName() == "MeshLight";
+}
+
+bool isPxrMeshLight( const IECoreScene::ShaderNetwork *lightShader )
 {
 	const IECoreScene::Shader *outputShader = lightShader->outputShader();
 	return outputShader && outputShader->getName() == "PxrMeshLight";
@@ -225,6 +237,12 @@ const std::string g_userAttributePrefix( "user:" );
 
 Attributes::Attributes( const IECore::CompoundObject *attributes, MaterialCache *materialCache )
 {
+	const ShaderNetwork *lightShader = shaderNetworkAttribute( attributes->members(), g_lightAttributeNames ).second;
+	m_isUSDMeshLight = lightShader && ::isUSDMeshLight( lightShader );
+
+	ConstCompoundObjectPtr modifiedAttributes = ShaderNetworkAlgo::convertUSDMeshLightAttributes( attributes );
+	attributes = modifiedAttributes.get();
+
 	// Convert shaders.
 
 	const auto [surfaceName, surface] = shaderNetworkAttribute( attributes->members(), g_surfaceAttributeNames );
@@ -258,13 +276,16 @@ Attributes::Attributes( const IECore::CompoundObject *attributes, MaterialCache 
 	}
 
 	m_lightShader = shaderNetworkAttribute( attributes->members(), g_lightAttributeNames ).second;
-	if( m_lightShader && isMeshLight( m_lightShader.get() ) )
+	if( m_lightShader && isPxrMeshLight( m_lightShader.get() ) )
 	{
 		// Mesh lights default to having a black material so they don't appear
 		// in indirect rays, but the user can override with a surface assignment
 		// if they want further control. Other lights don't have materials.
 		// We assume that a volume shader makes no sense here.
-		m_lightMaterial = materialCache->getMaterial( surface ? surface : g_black.get(), surface ? surfaceName : InternedString(), attributes );
+		// We check for `m_isUSDMeshLight` because after the `convertUSDMeshLightAttributes()`
+		// call above, all mesh lights are PxrMeshLight and the only remaining evidence we have
+		// that a light started as a USDMeshLight is `m_isUSDMeshLight`.
+		m_lightMaterial = materialCache->getMaterial( ( surface && !m_isUSDMeshLight ) ? surface : g_black.get(), ( surface && !m_isUSDMeshLight ) ? surfaceName : InternedString(), attributes );
 	}
 
 	// Set up material id for PxrCryptomatte. This can be overridden if desired
@@ -338,6 +359,24 @@ Attributes::Attributes( const IECore::CompoundObject *attributes, MaterialCache 
 	}
 
 	m_lightFilter = attribute<ShaderNetwork>( attributes->members(), g_renderManLightFilterAttributeName );
+
+	// Only USD mesh lights get these visibility overrides : they have a
+	// separate camera-visible surface `Object`, so the light emitter itself
+	// should be hidden from camera, indirect and transmission rays. Native
+	// PxrMeshLights have no such surface and must remain camera-visible by
+	// default (and honour any user-authored visibility).
+	if( m_isUSDMeshLight )
+	{
+		m_lightInstanceAttributes = RtParamList( m_instanceAttributes );
+
+		static BoolDataPtr g_falseData( new BoolData( false ) );
+		static IntDataPtr g_oneData( new IntData( 1 ) );
+
+		ParamListAlgo::convertParameter( RtUString( g_visibilityCameraAttributeName.c_str() + g_renderManPrefix.size() ), g_falseData.get(), *m_lightInstanceAttributes );
+		ParamListAlgo::convertParameter( RtUString( g_visibilityIndirectAttributeName.c_str() + g_renderManPrefix.size() ), g_falseData.get(), *m_lightInstanceAttributes );
+		ParamListAlgo::convertParameter( RtUString( g_visibilityTransmissionAttributeName.c_str() + g_renderManPrefix.size() ), g_falseData.get(), *m_lightInstanceAttributes );
+		ParamListAlgo::convertParameter( RtUString( g_sidesAttributeName.c_str() + g_renderManPrefix.size() ), g_oneData.get(), *m_lightInstanceAttributes );
+	}
 }
 
 Attributes::~Attributes()
@@ -364,6 +403,11 @@ const IECore::MurmurHash &Attributes::instanceAttributesHash() const
 	return m_instanceAttributesHash;
 }
 
+const RtParamList &Attributes::lightInstanceAttributes() const
+{
+	return m_lightInstanceAttributes ? *m_lightInstanceAttributes : m_instanceAttributes;
+}
+
 const Material *Attributes::material() const
 {
 	return m_material.get();
@@ -382,4 +426,9 @@ const IECoreScene::ShaderNetwork *Attributes::lightShader() const
 const IECoreScene::ShaderNetwork *Attributes::lightFilter() const
 {
 	return m_lightFilter.get();
+}
+
+bool Attributes::isUSDMeshLight() const
+{
+	return m_isUSDMeshLight;
 }
