@@ -184,6 +184,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 			{
 				"command" : functools.partial( cls.__setColor, nodeList = nodeList ),
 				"active" : not any( Gaffer.MetadataAlgo.readOnly( n ) for n in nodeList ),
+				"shortCut" : "C",
 			}
 		)
 
@@ -207,6 +208,12 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 				# We want to present the options above as a simple "Show Name" checkbox, and haven't yet
 				# decided how to present other combinations of allowable gadgets.
 				IECore.msg( IECore.Msg.Level.Warning, "UIEditor", 'Unknown combination of "uiEditor:nodeGadgetTypes"' )
+
+	@classmethod
+	def connectToGraphEditor( cls, graphEditor ) :
+
+		assert( isinstance( graphEditor, GafferUI.GraphEditor ) )
+		graphEditor.keyPressSignal().connect( Gaffer.WeakMethod( cls.__graphEditorKeyPress ) )
 
 	@classmethod
 	def appendNodeEditorToolMenuDefinitions( cls, nodeEditor, node, menuDefinition ) :
@@ -345,6 +352,13 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 			with Gaffer.UndoScope( nodeList[0].ancestor( Gaffer.ScriptNode ) ) :
 				for node in nodeList :
 					Gaffer.Metadata.registerValue( node, "nodeGadget:color", color )
+
+	@classmethod
+	def __graphEditorKeyPress( cls, graphEditor, event ) :
+
+		selection = graphEditor.scriptNode().selection()
+		if event.key == "C" and event.modifiers == event.Modifiers.None_ and not any( Gaffer.MetadataAlgo.readOnly( n ) for n in selection ) :
+			cls.__setColor( graphEditor, graphEditor.scriptNode().selection() )
 
 	@staticmethod
 	def __setNameVisible( nodeList, nameVisible ) :

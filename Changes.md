@@ -12,7 +12,7 @@ Improvements
 - GraphEditor :
   - Changed node context menu items to operate on multiple nodes where possible (#2783).
   - Added context menu item and keyboard shortcut, <kbd>/</kbd>, for hiding all of a node's disconnected input plugs.
-
+  - Added <kbd>C</kbd> shortcut for setting node colors.
 
 API
 ---

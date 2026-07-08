@@ -331,6 +331,7 @@ def __graphEditorCreated( graphEditor ) :
 	graphEditor.graphGadget().dropSignal().connect( functools.partial( __locationDrop, graphEditor = weakref.ref( graphEditor ) ) )
 
 	GafferUI._PlugVisibilityGadget.connectToGraphEditor( graphEditor )
+	GafferUI.UIEditor.connectToGraphEditor( graphEditor )
 
 GafferUI.GraphEditor.instanceCreatedSignal().connect( __graphEditorCreated )
 
