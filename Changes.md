@@ -6,6 +6,11 @@ Features
 
 - RenderMan : Added support for RenderMan 27.3.
 
+API
+---
+
+- GraphEditor : Added an optional argument to `nodeContextMenuSignal()` to request a signal that will pass a list of nodes to the handler, rather than a single node. This can be used to register menu items that will act on multiple nodes.
+
 1.7.0.0a7 (relative to 1.7.0.0a6)
 =========
 
@@ -47,6 +52,7 @@ Build
 
 [^1]: Included in `1.6.x.x`, so should be omitted from final `1.7.0.0` release notes.
 [^2]: Improvement to a feature introduced in `1.7.0.0a3`, so should be omitted from final `1.7.0.0` release notes.
+
 
 1.7.0.0a6 (relative to 1.7.0.0a5)
 =========
