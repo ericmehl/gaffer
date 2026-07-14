@@ -877,6 +877,8 @@ class _CameraPlugValueWidget( GafferUI.PlugValueWidget ) :
 
 		GafferUI.PlugValueWidget.__init__( self, self.__menuButton, plug, **kw )
 
+		self.__menuButton.buttonPressSignal().connectFront( Gaffer.WeakMethod( self.__buttonPress ) )
+
 		self.__settingsWindow = None
 
 		# Must connect at front so we get called before PlugValueWidget's default handlers
@@ -999,6 +1001,16 @@ class _CameraPlugValueWidget( GafferUI.PlugValueWidget ) :
 		path = dialogue.waitForPath( parentWindow = self.ancestor( GafferUI.Window ) )
 		if path is not None :
 			self.__lookThrough( str( path ) )
+
+	def __buttonPress( self, widget, event ) :
+
+		if event.buttons == event.Buttons.Left and event.modifiers == event.Modifiers.Control :
+
+			self.getPlug()["lookThroughEnabled"].setValue( not self.getPlug()["lookThroughEnabled"].getValue() )
+
+			return True
+
+		return False
 
 	def __showSettings( self, menu ) :
 
