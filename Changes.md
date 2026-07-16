@@ -6,6 +6,11 @@ Features
 
 - RenderMan : Added support for RenderMan 27.3.
 
+Improvements
+------------
+
+- GraphEditor : Changed node context menu items to operate on multiple nodes where possible (#2783).
+
 API
 ---
 
