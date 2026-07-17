@@ -13,6 +13,7 @@ Improvements
   - Changed node context menu items to operate on multiple nodes where possible (#2783).
   - Added context menu item and keyboard shortcut, <kbd>/</kbd>, for hiding all of a node's disconnected input plugs.
   - Added <kbd>C</kbd> shortcut for setting node colors.
+- SceneView : Added keyboard shortcut <kbd>Z</kbd> to toggle between the lookthrough (camera / light) view and the free (perspective / top / front / side) cameras. <kbd>Ctrl</kbd> + click will perform the same toggle.
 
 API
 ---
