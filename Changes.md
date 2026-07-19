@@ -1,6 +1,11 @@
 1.7.x.x (relative to 1.7.1.0)
 =======
 
+Features
+--------
+
+- RenderMan : Added `layerPerLightGroup` parameter to outputs. Enabling this adds a layer to the output for each light group in the scene.
+
 Improvements
 ------------
 
