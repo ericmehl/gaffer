@@ -49,21 +49,21 @@ from GafferCycles import IECoreCyclesPreview as IECoreCycles
 
 class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
+	def __expectedLightParameters( self, parameters ) :
+
+		# Start with defaults
+		result = {
+			"intensity" : 1.0,
+			"exposure" : 0.0,
+			"color" : imath.Color3f( 1, 1, 1 ),
+			"normalize" : False,
+			"cast_shadow" : True,
+			"use_mis" : True,
+		}
+		result.update( parameters )
+		return result
+
 	def testConvertUSDLights( self ) :
-
-		def expectedLightParameters( parameters ) :
-
-			# Start with defaults
-			result = {
-				"intensity" : 1.0,
-				"exposure" : 0.0,
-				"color" : imath.Color3f( 1, 1, 1 ),
-				"normalize" : False,
-				"cast_shadow" : True,
-				"use_mis" : True,
-			}
-			result.update( parameters )
-			return result
 
 		for testName, shaders in {
 
@@ -84,7 +84,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"point_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"intensity" : 2.5,
 						"exposure" : 1.1,
 						"color" : imath.Color3f( 1, 2, 3 ),
@@ -103,7 +103,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"point_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"size" : 0.5,
 					} )
 				),
@@ -123,7 +123,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"point_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"size" : 0.0,
 						"normalize" : True,
 					} )
@@ -145,31 +145,9 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"spot_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"spot_angle" : 40.0,
 						"spot_smooth" : 0.5,
-						"size" : 0.5,
-					} )
-				),
-
-			],
-
-			# SphereLight (with bogus out-of-range Houdini softness)
-
-			"houdiniPenumbra" : [
-
-				IECoreScene.Shader(
-					"SphereLight", "light",
-					{
-						"shaping:cone:angle" : 20.0,
-						"shaping:cone:softness" : 60.0,
-					}
-				),
-
-				IECoreScene.Shader(
-					"spot_light", "light",
-					expectedLightParameters( {
-						"spot_angle" : 40.0,
 						"size" : 0.5,
 					} )
 				),
@@ -190,7 +168,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"quad_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"width" : 20.0,
 						"height" : 60.0,
 					} )
@@ -211,7 +189,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"distant_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"angle" : 1.0
 					} )
 				),
@@ -231,7 +209,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"quad_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"width" : 1.0,
 						"height" : 1.0,
 						"cast_shadow" : False,
@@ -253,7 +231,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"quad_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"width" : 1.0,
 						"height" : 1.0,
 					} )
@@ -276,7 +254,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 				IECoreScene.Shader(
 					"quad_light", "light",
-					expectedLightParameters( {
+					self.__expectedLightParameters( {
 						"width" : 1.0,
 						"height" : 1.0,
 					} )
@@ -303,6 +281,39 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 				comparisonShader.blindData().update( shaders[2] if len( shaders ) == 3 else { "__USDRayVisibility" : IECore.IntData( 2047 ) } )
 
 				self.__assertShadersEqual( network.getShader( "light" ), comparisonShader )
+
+	def testOutOfRangeSpotLightSoftness( self ) :
+
+		# SphereLight (with bogus out-of-range Houdini softness)
+
+		usdShader = IECoreScene.Shader(
+			"SphereLight", "light",
+			{
+				"shaping:cone:angle" : 20.0,
+				"shaping:cone:softness" : 60.0,
+			}
+		)
+
+		cyclesShader =  IECoreScene.Shader(
+			"spot_light", "light",
+			self.__expectedLightParameters( {
+				"spot_angle" : 40.0,
+				"size" : 0.5,
+			} )
+		)
+
+		network = IECoreScene.ShaderNetwork( shaders = { "light" : usdShader }, output = "light" )
+
+		with IECore.CapturingMessageHandler() as mh :
+			IECoreCycles.ShaderNetworkAlgo.convertUSDShaders( network )
+		self.assertEqual( len( mh.messages ), 1 )
+		self.assertEqual( mh.messages[0].level, IECore.MessageHandler.Level.Warning )
+		self.assertEqual( mh.messages[0].context, "transferUSDShapingParameters" )
+		self.assertEqual( mh.messages[0].message, "Ignoring `shaping:cone:softness` as it is greater than 1" )
+
+		cyclesShader.blindData().update( { "__USDRayVisibility" : IECore.IntData( 2047 ) } )
+
+		self.__assertShadersEqual( network.getShader( "light" ), cyclesShader )
 
 	def testConvertUSDRectLightTexture( self ) :
 
