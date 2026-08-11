@@ -879,14 +879,10 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 	def testUSDMeshLight( self ) :
 
-		# No surface network
-
 		attributes = IECore.CompoundObject(
 			{
 				"light" : IECoreScene.ShaderNetwork(
-					shaders = {
-						"light" : IECoreScene.Shader( "MeshLight", "light" )
-					},
+					shaders = { "light" : IECoreScene.Shader( "MeshLight", "light" ) },
 					output = "light"
 				)
 			}
@@ -1042,7 +1038,7 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 		self.assertShaderNetworksEqual( modifiedAttributes["cycles:surface"], meshLightSurface )
 
-		# Surface network with texture and colored light emission
+		# Surface with color input, colored mesh light emission
 
 		modifiedAttributes = IECoreCycles.ShaderNetworkAlgo.convertUSDMeshLightAttributes( surfaceWithTexture( imath.Color3f( 0.125, 0.25, 0.5 ) ) )
 		meshLightSurface = IECoreScene.ShaderNetwork(
@@ -1070,6 +1066,45 @@ class ShaderNetworkAlgoTest( GafferSceneTest.SceneTestCase ) :
 		)
 
 		self.assertShaderNetworksEqual( modifiedAttributes["cycles:surface"], meshLightSurface )
+
+		# Surface color only, light with color input
+
+		def lightWithTexture( surfaceColor ) :
+			return IECore.CompoundObject(
+				{
+					"light" : IECoreScene.ShaderNetwork(
+						shaders = {
+							"light" : IECoreScene.Shader( "MeshLight", "light", { "color" : imath.Color3f( 0.125, 0.25, 0.5 ) } ),
+							"hsv" : IECoreScene.Shader( "hsv", "shader", { "saturation" : 0.5, "value" : 0.25 } ),
+							"texture" : IECoreScene.Shader( "image_texture", "shader", { "filename" : "test.tx" } ),
+						},
+						output = "light",
+						connections = [
+							( ( "texture", "color" ), ( "hsv", "color" ) ),
+							( ( "hsv", "color" ), ( "light", "color" ) ),
+						]
+					),
+					"cycles:surface" : IECoreScene.ShaderNetwork(
+						shaders = {
+							"mixClosure" : IECoreScene.Shader( "mix_closure", "cycles:surface", { "fac" : 0.5 } ),
+							"surface" : IECoreScene.Shader( "principled_bsdf", "cycles:surface", { "emission_color" : surfaceColor } ),
+						},
+						output = ( "mixClosure", "closure" ),
+						connections = [
+							( ( "surface", "BSDF" ), ( "mixClosure", "closure1" ) ),
+						]
+					),
+				}
+			)
+
+		modifiedAttributes = IECoreCycles.ShaderNetworkAlgo.convertUSDMeshLightAttributes( lightWithTexture( imath.Color3f( 0.0 ) ) )
+		meshLightSurface = IECoreScene.ShaderNetwork(
+			shaders = {
+				"mixClosure" : IECoreScene.Shader( "mix_closure", "cycles:surface", { "fac" : 0.5 } ),
+				"surface" : IECoreScene.Shader( "principled_bsdf", "cycles:surface", { "emission_color" : surfaceColor } ),
+			}
+		)
+
 
 	def __assertShadersEqual( self, shader1, shader2, message = None ) :
 

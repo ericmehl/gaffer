@@ -353,7 +353,7 @@ T *attributeCast( const IECore::RunTimeTyped *v, const IECore::InternedString &n
 		return t;
 	}
 
-	IECore::msg( IECore::Msg::Warning, "IECoreRenderMan::Renderer", fmt::format( "Expected {} but got {} for attribute \"{}\".", T::staticTypeName(), v->typeName(), name.c_str() ) );
+	IECore::msg( IECore::Msg::Warning, "IECoreDelight::ShaderNetworkAlgo", fmt::format( "Expected {} but got {} for attribute \"{}\".", T::staticTypeName(), v->typeName(), name.c_str() ) );
 	return nullptr;
 }
 
