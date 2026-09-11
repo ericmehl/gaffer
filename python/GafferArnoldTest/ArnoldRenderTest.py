@@ -1783,6 +1783,12 @@ class ArnoldRenderTest( GafferSceneTest.RenderTest ) :
 		shader["parameters"]["Kd"].setValue( 1 )
 		return shader, shader["parameters"]["Kd_color"], shader["out"]
 
+	def _createEmissiveShader( self ) :
+
+		shader = GafferArnold.ArnoldShader()
+		shader.loadShader( "flat" )
+		return shader, shader["parameters"]["color"], shader["out"]
+
 	def _createPointLight( self ) :
 
 		light = GafferArnold.ArnoldLight()
