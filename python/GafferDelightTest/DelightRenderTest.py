@@ -82,6 +82,19 @@ class DelightRenderTest( GafferSceneTest.RenderTest ) :
 		shader.loadShader( "Surface/Constant" )
 		return shader, shader["parameters"]["Cs"], shader["out"]["out"]
 
+	def _createDiffuseShader( self ) :
+
+		shader = GafferOSL.OSLShader()
+		shader.loadShader( "lambert" )
+		shader["parameters"]["i_diffuse"].setValue( 1.0 )
+		return shader, shader["parameters"]["i_color"], shader["out"]["outColor"]
+
+	def _createEmissiveShader( self ) :
+
+		shader = GafferOSL.OSLShader()
+		shader.loadShader( "Surface/Constant" )
+		return shader, shader["parameters"]["Cs"], shader["out"]["out"]
+
 	def _createColorAttributeReader( self, attributeName ) :
 
 		shader = GafferOSL.OSLShader()
