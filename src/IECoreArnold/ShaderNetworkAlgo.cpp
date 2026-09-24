@@ -762,15 +762,7 @@ const InternedString g_widthParameter( "width" );
 const InternedString g_wrapSParameter( "wrapS" );
 const InternedString g_wrapTParameter( "wrapT" );
 
-const InternedString g_cameraVisibilityAttributeName( "ai:visibility:camera" );
-const InternedString g_diffuseReflectVisibilityAttributeName( "ai:visibility:diffuse_reflect" );
-const InternedString g_diffuseTransmitVisibilityAttributeName( "ai:visibility:diffuse_transmit" );
 const InternedString g_lightAttributeName( "light" );
-const InternedString g_shadowVisibilityAttributeName( "ai:visibility:shadow" );
-const InternedString g_specularReflectVisibilityAttributeName( "ai:visibility:specular_reflect" );
-const InternedString g_specularTransmitVisibilityAttributeName( "ai:visibility:specular_transmit" );
-const InternedString g_subsurfaceVisibilityAttributeName( "ai:visibility:subsurface" );
-const InternedString g_volumeVisibilityAttributeName( "ai:visibility:volume" );
 
 const InternedString g_emptyString( "" );
 
@@ -995,6 +987,11 @@ std::pair<ShaderNetwork::Parameter, ShaderNetwork::Parameter> surfaceGlowParamet
 		else if( shader->getName() == "UsdPreviewSurface" )
 		{
 			emissionColorParameter = { handle, g_emissiveColorParameter };
+			break;
+		}
+		else if( shader->getName() == "flat" )
+		{
+			emissionColorParameter = { handle, g_colorParameter };
 			break;
 		}
 	}
@@ -1383,15 +1380,6 @@ ConstCompoundObjectPtr convertUSDMeshLightAttributes( const CompoundObject *attr
 	IECoreScene::ShaderNetworkAlgo::removeUnusedShaders( newLightShaderNetwork.get() );
 
 	result->members()[g_lightAttributeName] = std::move( newLightShaderNetwork );
-
-	result->members().try_emplace( g_cameraVisibilityAttributeName, new IECore::BoolData( true ) );
-	result->members().try_emplace( g_shadowVisibilityAttributeName, new IECore::BoolData( false ) );
-	result->members().try_emplace( g_diffuseReflectVisibilityAttributeName, new IECore::BoolData( false ) );
-	result->members().try_emplace( g_specularReflectVisibilityAttributeName, new IECore::BoolData( false ) );
-	result->members().try_emplace( g_diffuseTransmitVisibilityAttributeName, new IECore::BoolData( false ) );
-	result->members().try_emplace( g_specularTransmitVisibilityAttributeName, new IECore::BoolData( false ) );
-	result->members().try_emplace( g_volumeVisibilityAttributeName, new IECore::BoolData( false ) );
-	result->members().try_emplace( g_subsurfaceVisibilityAttributeName, new IECore::BoolData( false ) );
 
 	return result;
 }
