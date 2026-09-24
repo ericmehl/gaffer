@@ -880,6 +880,7 @@ const InternedString g_texMappingYMappingParameter( "tex_mapping__y_mapping" );
 const InternedString g_texMappingZMappingParameter( "tex_mapping__z_mapping" );
 const InternedString g_translationParameter( "translation" );
 const InternedString g_treatAsPointParameter( "treatAsPoint" );
+const InternedString g_useClampParameter( "use_clamp" );
 const InternedString g_useMISParameter( "use_mis" );
 const InternedString g_useSpecularWorkflowParameter( "useSpecularWorkflow" );
 const InternedString g_UVParameter( "UV" );
@@ -902,7 +903,9 @@ const InternedString g_USDRayVisibilityBlindDataKey( "__USDRayVisibility" );
 
 const InternedString g_closureOutput( "closure" );
 const InternedString g_emissionOutput( "emission" );
-const InternedString g_isDiffuseRayOutput( "is_diffuse_ray" );
+const InternedString g_isCameraRayOutput( "is_camera_ray" );
+const InternedString g_isReflectionRayOutput( "is_reflection_ray" );
+const InternedString g_isTransmissionRayOutput( "is_transmission_ray" );
 const InternedString g_vectorOutput( "vector" );
 
 const string g_cyclesNamespace( "cycles:" );
@@ -1603,6 +1606,15 @@ ConstCompoundObjectPtr IECoreCycles::ShaderNetworkAlgo::convertUSDMeshLightAttri
 	ShaderPtr lightPathShader = new Shader( "light_path", "shader" );
 	const InternedString lightPathShaderHandle = newSurfaceNetwork->addShader( InternedString( "lightPath" ), std::move( lightPathShader ) );
 
+	ShaderPtr floatAddShaderA = new Shader( "math", "shader" );
+	floatAddShaderA->parameters()[g_mathTypeParameter] = new StringData( "add" );
+	const InternedString floatAddShaderAHandle = newSurfaceNetwork->addShader( InternedString( "floatAddShaderA" ), std::move( floatAddShaderA ) );
+
+	ShaderPtr floatAddShaderB = new Shader( "math", "shader" );
+	floatAddShaderB->parameters()[g_mathTypeParameter] = new StringData( "add" );
+	floatAddShaderB->parameters()[g_useClampParameter] = new BoolData( true );
+	const InternedString floatAddShaderBHandle = newSurfaceNetwork->addShader( InternedString( "floatAddShaderB" ), std::move( floatAddShaderB ) );
+
 	ShaderPtr mixShader = new Shader( "mix_closure", "cycles:surface" );
 	if( visibilityData )
 	{
@@ -1613,9 +1625,13 @@ ConstCompoundObjectPtr IECoreCycles::ShaderNetworkAlgo::convertUSDMeshLightAttri
 	const ShaderNetwork::Parameter originalOutputParameter = newSurfaceNetwork->getOutput();
 
 	newSurfaceNetwork->setOutput( { mixShaderHandle, g_closureOutput } );
-	newSurfaceNetwork->addConnection( { { lightPathShaderHandle, g_isDiffuseRayOutput }, { mixShaderHandle, g_facParameter } } );
-	newSurfaceNetwork->addConnection( { originalOutputParameter, { mixShaderHandle, g_closure1Parameter } } );
-	newSurfaceNetwork->addConnection( { { emissionShaderHandle, g_emissionOutput }, { mixShaderHandle, g_closure2Parameter } } );
+	newSurfaceNetwork->addConnection( { { lightPathShaderHandle, g_isCameraRayOutput }, { floatAddShaderAHandle, g_value1Parameter } } );
+	newSurfaceNetwork->addConnection( { { lightPathShaderHandle, g_isReflectionRayOutput }, { floatAddShaderAHandle, g_value2Parameter } } );
+	newSurfaceNetwork->addConnection( { { floatAddShaderAHandle, g_valueParameter }, { floatAddShaderBHandle, g_value1Parameter } } );
+	newSurfaceNetwork->addConnection( { { lightPathShaderHandle, g_isTransmissionRayOutput }, { floatAddShaderBHandle, g_value2Parameter } } );
+	newSurfaceNetwork->addConnection( { { floatAddShaderBHandle, g_valueParameter }, { mixShaderHandle, g_facParameter } } );
+	newSurfaceNetwork->addConnection( { { emissionShaderHandle, g_emissionOutput }, { mixShaderHandle, g_closure1Parameter } } );
+	newSurfaceNetwork->addConnection( { originalOutputParameter, { mixShaderHandle, g_closure2Parameter } } );
 
 	InternedString tintHandle;
 	ShaderNetwork::Parameter lightOutputParameter = lightNetwork->getOutput();
