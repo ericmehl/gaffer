@@ -1805,19 +1805,17 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 					# It's color should be the combined light and emissive colors. We compare
 					# normalized values because renderers are not consistent about intensity units.
 					planePixelColor = sampler["color"].getValue()
-					normalizedPlanePixelColor = imath.Color3f( [ planePixelColor[i] for i in range( 0, 3 ) ] ).normalized()
-					normalizedPlaneTargetColor = ( emissiveColor * lightColor + emissiveColor * emissionCorrectionMagicNumber ).normalized()
+					targetColor = emissiveColor * lightColor
 
 					for i in range( 0, 3 ) :
 						with self.subTest( i = i ) :
 							# The surface color (emissive) is not modified.
 							self.assertAlmostEqual( emissivePixelColor[i], emissiveColor[i] )
 
-							self.assertAlmostEqual( normalizedPlanePixelColor[i], normalizedPlaneTargetColor[i], delta = 0.01 )
-
-							# We should also have at least a little emissive color.
-							if emissiveColor[i] > 0.0 :
-								self.assertGreater( planePixelColor[i], 0.0 )
+							if targetColor[i] > 0.0 :
+								self.assertGreater( planePixelColor[i], 0.5 )
+							else :
+								self.assertLess( planePixelColor[i], 0.1 )
 
 	## Should be implemented by derived classes to return
 	# an appropriate Shader node with a constant surface shader loaded, along

@@ -1770,11 +1770,6 @@ class ArnoldRenderTest( GafferSceneTest.RenderTest ) :
 			with GafferTest.TestRunner.PerformanceScope() :
 				s["render"]["task"].execute()
 
-	@unittest.skip( "No USDMeshLight support just yet" )
-	def testUSDMeshLight( self ) :
-
-		pass
-
 	def _createConstantShader( self ) :
 
 		shader = GafferArnold.ArnoldShader()
