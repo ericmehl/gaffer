@@ -92,8 +92,8 @@ class DelightRenderTest( GafferSceneTest.RenderTest ) :
 	def _createEmissiveShader( self ) :
 
 		shader = GafferOSL.OSLShader()
-		shader.loadShader( "Surface/Constant" )
-		return shader, shader["parameters"]["Cs"], shader["out"]["out"]
+		shader.loadShader( "dlConstant" )
+		return shader, shader["parameters"]["i_color"], shader["out"]["outColor"]
 
 	def _createColorAttributeReader( self, attributeName ) :
 
