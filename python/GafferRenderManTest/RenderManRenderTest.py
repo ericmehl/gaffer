@@ -155,6 +155,12 @@ class RenderManRenderTest( GafferSceneTest.RenderTest ) :
 
 		return "ri:visibility:camera"
 
+	def _createCheckerShader( self ) :
+
+		shader = GafferOSL.OSLShader()
+		shader.loadShader( "PxrChecker" )
+		return shader, shader["parameters"]["colorA"], shader["parameters"]["colorB"], shader["out"]["resultRGB"]
+
 	def __colorAtUV( self, image, uv ) :
 
 		pixel = image.getpixel( int( uv.x * (image.spec().width - 1) ), int( uv.y * (image.spec().height - 1) ) )

@@ -1956,6 +1956,12 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 
 		script["emissiveShader"], emissiveShaderColorPlug, emissiveShaderOut = self._createEmissiveShader()
 
+		# The best supported solid color shader across all renderers looks to be a checkerboard
+		# with both colors set to the same value.
+		script["emissiveChecker"], emissiveCheckerColor1, emissiveCheckerColor2, emissiveCheckerOut = self._createCheckerShader()
+		emissiveCheckerColor1.setValue( imath.Color3f( 1.0, 1.0, 0.0 ) )
+		emissiveCheckerColor2.setValue( imath.Color3f( 1.0, 1.0, 0.0 ) )
+
 		script["lightSurfaceAssignment"] = GafferScene.ShaderAssignment()
 		script["lightSurfaceAssignment"]["in"].setInput( script["meshLightPlane"]["out"] )
 		script["lightSurfaceAssignment"]["shader"].setInput( emissiveShaderOut )
@@ -2026,9 +2032,15 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 		sampler = GafferImage.ImageSampler()
 		sampler["image"].setInput( reader["out"] )
 
-		for emissiveColor in [ imath.Color3f( 0.0 ), imath.Color3f( 1.0, 0.0, 1.0 ), imath.Color3f( 1.0 ) ] :
+		for emissiveColor in [ emissiveCheckerOut, imath.Color3f( 0.0 ), imath.Color3f( 1.0, 0.0, 1.0 ), imath.Color3f( 1.0 ) ] :
 			for lightColor in [ imath.Color3f( 0.0 ), imath.Color3f( 0.0, 1.0, 1.0 ), imath.Color3f( 1.0 ) ] :
-				emissiveShaderColorPlug.setValue( emissiveColor )
+				if isinstance( emissiveColor, imath.Color3f ) :
+					emissiveShaderColorPlug.setInput( None )
+					emissiveShaderColorPlug.setValue( emissiveColor )
+				else :
+					emissiveShaderColorPlug.setValue( imath.Color3f( 0.0 ) )
+					emissiveShaderColorPlug.setInput( emissiveCheckerOut )
+
 				setMeshLightAttributes( lightColor )
 
 				script["render"]["task"].execute()
@@ -2044,6 +2056,7 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 					# It's color should be the combined light and emissive colors. We compare
 					# normalized values because renderers are not consistent about intensity units.
 					planePixelColor = sampler["color"].getValue()
+					emissiveColor = emissiveColor if isinstance( emissiveColor, imath.Color3f ) else emissiveCheckerColor1.getValue()
 					targetColor = emissiveColor * lightColor
 
 					for i in range( 0, 3 ) :
@@ -2105,6 +2118,15 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 	def _createOptions( self ) :
 
 		return GafferScene.CustomOptions()
+
+	## Should be implemented by derived classes to return
+	# an appropriate Shader node with a checkerboard texture loaded, along
+	# with the plug for the first colour parameter, the plug for the second
+	# colour parameter and the output plug to be connected to a shader color
+	# plug.
+	def _createCheckerShader( self ) :
+
+		raise NotImplementedError
 
 	def __renderManShuffle( self ) :
 

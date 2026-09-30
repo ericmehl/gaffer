@@ -1829,3 +1829,9 @@ class ArnoldRenderTest( GafferSceneTest.RenderTest ) :
 		options["options"]["ai:AA_samples"]["value"].setValue( 3 )
 
 		return options
+
+	def _createCheckerShader( self ) :
+
+		shader = GafferArnold.ArnoldShader()
+		shader.loadShader( "checkerboard" )
+		return shader, shader["parameters"]["color1"], shader["parameters"]["color2"], shader["out"]

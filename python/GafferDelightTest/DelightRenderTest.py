@@ -114,3 +114,9 @@ class DelightRenderTest( GafferSceneTest.RenderTest ) :
 		options["options"]["dl:oversampling"]["value"].setValue( 16 )
 
 		return options
+
+	def _createCheckerShader( self ) :
+
+		shader = GafferOSL.OSLShader()
+		shader.loadShader( "checker" )
+		return shader, shader["parameters"]["color1"], shader["parameters"]["color2"], shader["out"]["outColor"]

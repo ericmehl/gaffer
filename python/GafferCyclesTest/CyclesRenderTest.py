@@ -88,6 +88,12 @@ class CyclesRenderTest( GafferSceneTest.RenderTest ) :
 
 		return options
 
+	def _createCheckerShader( self ) :
+
+		shader = GafferCycles.CyclesShader()
+		shader.loadShader( "checker_texture" )
+		return shader, shader["parameters"]["color1"], shader["parameters"]["color2"], shader["out"]["color"]
+
 	@unittest.skip( "Instance IDs only work with encapsulated instancers. We don't have encapsulation support yet in our Cycles backend" )
 	def testInstanceIDOutput( self ) :
 
