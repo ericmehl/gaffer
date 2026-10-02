@@ -50,6 +50,11 @@ using namespace IECoreArnold;
 namespace
 {
 
+const AtString g_gaussianArnoldString( "gaussian" );
+const AtString g_gsOpacityArnoldString( "gs_opacity" );
+const AtString g_gsRotationArnoldString( "gs_rotation" );
+const AtString g_gsScaleArnoldString( "gs_scale" );
+const AtString g_gsShArnoldString( "gs_sh" );
 const AtString g_modeArnoldString( "mode" );
 const AtString g_motionStartArnoldString( "motion_start" );
 const AtString g_motionEndArnoldString( "motion_end" );
@@ -79,6 +84,10 @@ AtNode *convertStatic( const IECoreScene::PointsPrimitive *points, AtUniverse *u
 		{
 			AiNodeSetStr( result, g_modeArnoldString, g_quadArnoldString );
 		}
+		else if( t->readable() == "gaussianSplat" )
+		{
+			AiNodeSetStr( result, g_modeArnoldString, g_gaussianArnoldString );
+		}
 		else
 		{
 			IECore::msg( IECore::Msg::Warning, messageContext, fmt::format( "Unknown type \"{}\" - reverting to disk mode.", t->readable() ) );
@@ -87,7 +96,7 @@ AtNode *convertStatic( const IECoreScene::PointsPrimitive *points, AtUniverse *u
 
 	// arbitrary user parameters
 
-	const char *ignore[] = { "P", "width", "radius", nullptr };
+	const char *ignore[] = { "P", "width", "radius", "orientation", "sphericalHarmonicsCoefficient", nullptr };
 	ShapeAlgo::convertPrimitiveVariables( points, result, ignore, messageContext );
 
 	return result;
@@ -109,6 +118,75 @@ AtNode *convert( const IECoreScenePreview::Renderer::Samples<const IECoreScene::
 
 	AiNodeSetFlt( result, g_motionStartArnoldString, motionStart );
 	AiNodeSetFlt( result, g_motionEndArnoldString, motionEnd );
+
+	if( AiNodeGetStr( result, g_modeArnoldString ) == g_gaussianArnoldString )
+	{
+		const V3fVectorData *scaleData = samples.front()->variableData<V3fVectorData>( "scale", PrimitiveVariable::Interpolation::Vertex );
+		/// \todo Warn if doesn't exist
+		const std::vector<Imath::V3f> &scales = scaleData->readable();
+		AiNodeSetArray( result, g_gsScaleArnoldString, AiArrayConvert( scales.size(), 1, AI_TYPE_VECTOR, scales.data() ) );
+
+		const FloatVectorData *opacityData = samples.front()->variableData<FloatVectorData>( "opacity", PrimitiveVariable::Interpolation::Vertex );
+		/// \todo Warn if doesn't exist
+		const std::vector<float> &opacities = opacityData->readable();
+		AiNodeSetArray( result, g_gsOpacityArnoldString, AiArrayConvert( opacities.size(), 1, AI_TYPE_FLOAT, opacities.data() ) );
+
+		/// \todo Does this orientation satisfy the todo below about adding rotation?
+		if( const QuatfVectorData *orientationData = samples.front()->variableData<QuatfVectorData>( "orientation", PrimitiveVariable::Vertex ) )
+		{
+			// Arnold wants the quaternions as groups of four floats with the imaginary part first.
+			// Cortex represents them with the imaginary part second, so we need to flip them.
+			const std::vector<Imath::Quatf> &orientation = orientationData->readable();
+			AtArray *orientationArray = AiArrayAllocate( orientation.size() * 4, 1, AI_TYPE_FLOAT );
+			float *shuffledOrientationArray = static_cast<float *>( AiArrayMap( orientationArray ) );
+			for( size_t i = 0, eI = orientation.size(); i < eI; ++i )
+			{
+				shuffledOrientationArray[i * 4] = orientation[i].v.x;
+				shuffledOrientationArray[i * 4 + 1] = orientation[i].v.y;
+				shuffledOrientationArray[i * 4 + 2] = orientation[i].v.z;
+				shuffledOrientationArray[i * 4 + 3] = orientation[i].r;
+			}
+			AiArrayUnmap( orientationArray );
+			AiNodeSetArray( result, g_gsRotationArnoldString, orientationArray );
+		}
+
+		// Re-interleave the coefficients that Cortex split out into multiple primvars.
+
+		const IntData *degreeData = samples.front()->variableData<IntData>( "sphericalHarmonicsDegree", PrimitiveVariable::Constant );
+
+		const int degree = degreeData->readable();
+		const int coefficientCount = ( degree + 1 ) * ( degree + 1 );
+
+		std::vector<Imath::Color3f> allCoefficients( coefficientCount * samples.front()->getNumPoints() );
+
+		for( size_t i = 0; i < coefficientCount; ++i )
+		{
+			const Color3fVectorData *coefficientData = samples.front()->variableData<Color3fVectorData>(
+				std::string( "sphericalHarmonicsCoefficients[" ) + std::to_string( (int)i ) + "]",
+				PrimitiveVariable::Vertex
+			);
+
+			if( !coefficientData )
+			{
+				throw IECore::Exception( fmt::format( "Could not find Gaussian Splat coeffient data set {}", i ) );
+			}
+
+			const std::vector<Imath::Color3f> &coefficients = coefficientData->readable();
+			for( size_t j = 0, eJ = samples.front()->getNumPoints(); j < eJ; ++j )
+			{
+				allCoefficients[j * coefficientCount + i] = coefficients[j];
+			}
+
+		}
+
+		// Normalize the first coefficient for each point, as done in arnold-usd.
+		for( size_t i = 0, eI = samples.front()->getNumPoints(); i < eI; ++i )
+		{
+			allCoefficients[i * coefficientCount] = allCoefficients[i * coefficientCount] * 0.28209479177387814f + Imath::Color3f( 0.5f );
+		}
+
+		AiNodeSetArray( result, g_gsShArnoldString, AiArrayConvert( allCoefficients.size(), 1, AI_TYPE_RGB, allCoefficients.data() ) );
+	}
 
 	/// \todo Aspect, rotation
 
