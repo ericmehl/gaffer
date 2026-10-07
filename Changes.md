@@ -5,6 +5,7 @@ Improvements
 ------------
 
 - Cycles : Added support for rendering PointInstancers.
+- SceneReader : Added support for loading ParticleField3DGaussianSplat USD prims.
 
 Fixes
 -----
@@ -26,6 +27,11 @@ API
 
 - BoolWidget : Added `setEditable()` and `getEditable()` methods.
 - Button : Added `setClickable()` and `getClickable()` methods, also available on MenuButton.
+
+Build
+-----
+
+- Cortex : Updated to version 10.7.3.0.
 
 1.7.3.1 (relative to 1.7.3.0)
 =======
