@@ -51,6 +51,31 @@ using namespace IECoreArnold;
 namespace
 {
 
+bool aiVersionLessThan( int arch, int major, int minor, int patch )
+{
+	// This is _not_ the same as `AiCheckAPIVersion()` :
+	//
+	// - `AiCheckAPIVersion()` is for determining ABI compatibility and
+	//   returns false if the `arch` or `major` numbers are not equal.
+	// - `AiCheckAPIVersion()` doesn't support a patch version.
+	// - `aiVersionLess()` is suitable for determining if an Arnold
+	//   feature or bugfix is available.
+	const char *arnoldVersionString = AiGetVersion( nullptr, nullptr, nullptr, nullptr );
+	int arnoldVersion[4];
+	for( int i = 0; i < 4; ++i )
+	{
+		arnoldVersion[i] = strtol( arnoldVersionString, const_cast<char **>( &arnoldVersionString ), 10 );
+		++arnoldVersionString;
+	}
+
+	auto version = { arch, major, minor, patch };
+
+	return std::lexicographical_compare(
+		begin( arnoldVersion ), end( arnoldVersion ),
+		version.begin(), version.end()
+	);
+}
+
 const AtString g_gaussianArnoldString( "gaussian" );
 const AtString g_gsColorSpaceArnoldString( "gs_input_color_space" );
 const AtString g_gsOpacityArnoldString( "gs_opacity" );
@@ -97,7 +122,7 @@ AtNode *convertStatic( const IECoreScene::PointsPrimitive *points, AtUniverse *u
 		{
 			AiNodeSetStr( result, g_modeArnoldString, g_quadArnoldString );
 		}
-		else if( t->readable() == g_gaussianSplatTypeName && AiCheckAPIVersion( "7", "5", "2" ) )
+		else if( t->readable() == g_gaussianSplatTypeName && !aiVersionLessThan( 7, 5, 2, 0 ) )
 		{
 			AiNodeSetStr( result, g_modeArnoldString, g_gaussianArnoldString );
 		}
@@ -144,7 +169,7 @@ AtNode *convert( const IECoreScenePreview::Renderer::Samples<const IECoreScene::
 
 	/// \todo Aspect, rotation
 
-	if( AiNodeGetStr( result, g_modeArnoldString ) == g_gaussianArnoldString && AiCheckAPIVersion( "7", "5", "2" ) )
+	if( AiNodeGetStr( result, g_modeArnoldString ) == g_gaussianArnoldString && !aiVersionLessThan( 7, 5, 2, 0 ) )
 	{
 
 		if( const V3fVectorData *scalesData = samples.front()->variableData<V3fVectorData>( g_scalesVariable, PrimitiveVariable::Interpolation::Vertex ) )
