@@ -1954,6 +1954,10 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 		emissiveCheckerColor1.setValue( imath.Color3f( 1.0, 1.0, 0.0 ) )
 		emissiveCheckerColor2.setValue( imath.Color3f( 1.0, 1.0, 0.0 ) )
 
+		script["lightColorShader"], lightColorShaderColor1, lightColorShaderColor2, lightColorShaderOut = self._createCheckerShader()
+		lightColorShaderColor1.setValue( imath.Color3f( 0.0, 1.0, 1.0 ) )
+		lightColorShaderColor2.setValue( imath.Color3f( 0.0, 1.0, 1.0 ) )
+
 		script["lightSurfaceAssignment"] = GafferScene.ShaderAssignment()
 		script["lightSurfaceAssignment"]["in"].setInput( script["meshLightPlane"]["out"] )
 		script["lightSurfaceAssignment"]["shader"].setInput( emissiveShaderOut )
@@ -1963,19 +1967,33 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 		# To avoid adding a module dependency on `GafferUSD`, we add attributes
 		# equivalent to what USDMeshLight would add.
 		def setMeshLightAttributes( color ) :
-			script["meshLight"]["extraAttributes"].setValue(
-				IECore.CompoundObject( {
-					"light" : IECoreScene.ShaderNetwork(
-						shaders = {
-							"__shader" : IECoreScene.Shader(
-								"MeshLight", "light",
-								{ "color" : IECore.Color3fData( color ), "intensity" : 1000.0 },
-							)
-						},
-						output = "__shader",
-					),
-				} )
-			)
+			if not isinstance( color, tuple ) :
+				meshLightShader = IECoreScene.Shader( "MeshLight", "light", { "color" : IECore.Color3fData( color ), "intensity" : 1000.0 } )
+				params = IECore.CompoundObject( { "light" : IECoreScene.ShaderNetwork( shaders = { "__shader" : meshLightShader }, output = "__shader", ), } )
+			else :
+				meshLightShader = IECoreScene.Shader( "MeshLight", "light", { "color" : IECore.Color3fData( imath.Color3f( 1.0, 1.0, 0.0 ) ), "intensity" : 1000.0 } )
+				shaderOut, checkerColor1, checkerColor2 = color
+				params = IECore.CompoundObject(
+					{
+						"light" : IECoreScene.ShaderNetwork(
+							shaders = {
+								"__shader" : meshLightShader,
+								"lightTexture" : IECoreScene.Shader(
+									shaderOut.node()["name"].getValue(),
+									shaderOut.node()["type"].getValue(),
+									{
+										checkerColor1.getName() : IECore.Color3fData( checkerColor1.getValue() ),
+										checkerColor2.getName() : IECore.Color3fData( checkerColor2.getValue() )
+									}
+								)
+							},
+							connections = [ ( ( "lightTexture", shaderOut.getName() ), ( "__shader", "color" ) ) ],
+							output = "__shader",
+						),
+					}
+				)
+			script["meshLight"]["extraAttributes"].setValue( params )
+
 		setMeshLightAttributes( imath.Color3f( 1.0 ) )
 
 		script["planeFilter"] = GafferScene.PathFilter()
@@ -2024,12 +2042,13 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 		sampler = GafferImage.ImageSampler()
 		sampler["image"].setInput( reader["out"] )
 
-		for emissiveColor in [ emissiveCheckerOut, imath.Color3f( 0.0 ), imath.Color3f( 1.0, 0.0, 1.0 ), imath.Color3f( 1.0 ) ] :
-			for lightColor in [ imath.Color3f( 0.0 ), imath.Color3f( 0.0, 1.0, 1.0 ), imath.Color3f( 1.0 ) ] :
+		for emissiveColor in [ None, emissiveCheckerOut, imath.Color3f( 0.0 ), imath.Color3f( 1.0, 0.0, 1.0 ), imath.Color3f( 1.0 ) ] :
+			for lightColor in [ ( lightColorShaderOut, lightColorShaderColor1, lightColorShaderColor2 ), imath.Color3f( 0.0 ), imath.Color3f( 0.0, 1.0, 1.0 ), imath.Color3f( 1.0 ) ] :
+				script["lightSurfaceAssignment"]["enabled"].setValue( emissiveColor is not None )
 				if isinstance( emissiveColor, imath.Color3f ) :
 					emissiveShaderColorPlug.setInput( None )
 					emissiveShaderColorPlug.setValue( emissiveColor )
-				else :
+				elif isinstance( emissiveColor, Gaffer.Plug ) :
 					emissiveShaderColorPlug.setValue( imath.Color3f( 0.0 ) )
 					emissiveShaderColorPlug.setInput( emissiveCheckerOut )
 
@@ -2046,13 +2065,21 @@ class RenderTest( GafferSceneTest.SceneTestCase ) :
 					sampler["pixel"].setValue( imath.V2f( 320, 240 ) )
 
 					planePixelColor = sampler["color"].getValue()
-					emissiveColor = emissiveColor if isinstance( emissiveColor, imath.Color3f ) else emissiveCheckerColor1.getValue()
-					targetColor = emissiveColor * lightColor
+					if isinstance( lightColor, tuple ) :
+						lightColor = lightColorShaderColor1.getValue()
+					if emissiveColor is not None :
+						emissiveColor = emissiveColor if isinstance( emissiveColor, imath.Color3f ) else emissiveCheckerColor1.getValue()
+						targetColor = emissiveColor * lightColor
+					else :
+						targetColor = lightColor
 
 					for i in range( 0, 3 ) :
 						with self.subTest( i = i ) :
-							# The surface color (emissive) is not modified.
-							self.assertAlmostEqual( emissivePixelColor[i], emissiveColor[i] )
+							if emissiveColor is not None :
+								# The surface color (emissive) is not modified. If there is no
+								# surface texture, we skip this test because the default shader
+								# is renderer-dependant.
+								self.assertAlmostEqual( emissivePixelColor[i], emissiveColor[i] )
 
 							if targetColor[i] > 0.0 :
 								# Renderers are not totally consistent about light contribution from
