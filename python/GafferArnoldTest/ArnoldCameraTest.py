@@ -50,7 +50,7 @@ class ArnoldCameraTest( GafferSceneTest.SceneTestCase ) :
 		] :
 			arnoldCamera = GafferArnold.ArnoldCamera()
 
-			arnoldCamera["cameraType"].setValue( projection )
+			arnoldCamera["type"].setValue( projection )
 			for gafferParam, arnoldParam, value in parameters :
 				arnoldCamera[gafferParam].setValue( value )
 

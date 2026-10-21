@@ -1,7 +1,10 @@
 1.7.x.x (relative to 1.7.5.0)
 =======
 
+Features
+--------
 
+- Arnold : Added ArnoldCamera node to make it easier to create non-standard Arnold cameras such as fisheye and spherical cameras.
 
 1.7.5.0 (relative to 1.7.4.1)
 =======
@@ -54,14 +57,14 @@ Build
 - Cortex : Updated to version 10.7.4.0.
 
 1.7.4.1 (relative to 1.7.4.0)
-=======
 
 Improvements
 ------------
 
-- Arnold :
-  - Added ArnoldCamera node to make it easier to create non-standard Arnold cameras such as fisheye and spherical cameras.
-  - Added recognition of Arnold-specific camera parameters prefixed with `ai:`. Currently both prefixed and non-prefixed parameters are supported, but prefixed parameters should be preferred in anticipation of future deprecation of non-prefixed parameters.
+Arnold : Added recognition of Arnold-specific camera parameters prefixed with `ai:`. Currently both prefixed and non-prefixed parameters are supported, but prefixed parameters should be preferred in anticipation of future deprecation of non-prefixed parameters.
+
+1.7.4.1 (relative to 1.7.4.0)
+=======
 
 Fixes
 -----
