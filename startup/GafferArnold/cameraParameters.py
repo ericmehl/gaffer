@@ -110,4 +110,13 @@ Gaffer.Metadata.registerValues( {
 
 	},
 
+	"camera:parameter:ai:aperture_aspect_ratio" : {
+
+		"defaultValue" : 1.0,
+		"minValue" : 0.0,
+		"label" : "Aperture Aspect Ratio",
+		"layout:section" : "Arnold",
+
+	}
+
 } )

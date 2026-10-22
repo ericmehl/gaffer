@@ -34,7 +34,9 @@ Fixes
 Improvements
 ------------
 
-Arnold : Added recognition of Arnold-specific camera parameters prefixed with `ai:`. Currently both prefixed and non-prefixed parameters are supported, but prefixed parameters should be preferred in anticipation of future deprecation of non-prefixed parameters.
+Arnold :
+  - Added recognition of Arnold-specific camera parameters prefixed with `ai:`. Currently both prefixed and non-prefixed parameters are supported, but prefixed parameters should be preferred in anticipation of future deprecation of non-prefixed parameters.
+  - CameraQuery and CameraTweaks : Added `ai:aperture_aspect_ratio` preset menu items.
 
 API
 ---
