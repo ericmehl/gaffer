@@ -31,6 +31,11 @@ Fixes
 
 - Arnold : Fixed deadlocks caused by instancing in-memory OpenVDB grids (#7209).
 
+Improvements
+------------
+
+Arnold : Added recognition of Arnold-specific camera parameters prefixed with `ai:`. Currently both prefixed and non-prefixed parameters are supported, but prefixed parameters should be preferred in anticipation of future deprecation of non-prefixed parameters.
+
 API
 ---
 
