@@ -5,6 +5,7 @@ Features
 --------
 
 - PromotePointInstances : Added a new node for promoting point instances to "hero" scene locations. This replaces a similar node previously provided as part of GafferUSD and which is now deprecated.
+- Arnold : Added ArnoldCamera node to make it easier to create non-standard Arnold cameras such as fisheye and spherical cameras.
 
 Improvements
 ------------
@@ -113,6 +114,13 @@ Build
 -----
 
 - Cortex : Updated to version 10.7.4.0.
+
+1.7.4.1 (relative to 1.7.4.0)
+
+Improvements
+------------
+
+Arnold : Added recognition of Arnold-specific camera parameters prefixed with `ai:`. Currently both prefixed and non-prefixed parameters are supported, but prefixed parameters should be preferred in anticipation of future deprecation of non-prefixed parameters.
 
 1.7.4.1 (relative to 1.7.4.0)
 =======

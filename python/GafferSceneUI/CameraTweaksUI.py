@@ -253,3 +253,33 @@ class _TweaksFooter( GafferUI.PlugValueWidget ) :
 		plug = creator()
 		with Gaffer.UndoScope( self.getPlug().ancestor( Gaffer.ScriptNode ) ) :
 			self.getPlug().addChild( plug )
+
+
+##################
+# Scratch pad for loading tweaks from metadata
+
+# \todo Can this be merged with `CameraQueryUI._CameraQueryFooter.__menuDefinition()`?
+# name = target[17:]
+# if not name.startswith( "ai:" ) :
+# 	continue
+# value = Gaffer.Metadata.value( target, "defaultValue" )
+# valueType = type( value )
+# if issubclass( valueType, IECore.Data ) :
+# 	dataType = valueType
+# elif valueType is float :
+# 	# Special case as dataTypeFromElementType( float ) returns DoubleData
+# 	dataType = IECore.FloatData
+# else :
+# 	dataType = IECore.DataTraits.dataTypeFromElementType( valueType )
+# if isinstance( value, IECore.Rampff ) :
+# 	plug = Gaffer.RampffPlug(
+# 		defaultValue = IECore.Rampff(
+# 			[ ( 0, 0 ), ( 0.25, 1 ), (0.75, 1 ), ( 1, 0 ) ],
+# 			IECore.RampInterpolation.Linear
+# 		)
+# 	)
+# else :
+# 	plug = Gaffer.PlugAlgo.createPlugFromData( "value", Gaffer.Plug.Direction.In, Gaffer.Plug.Flags.Default, dataType( value ) )
+
+# tweakPlug = Gaffer.TweakPlug( name = name, nameDefault = name, modeDefault = Gaffer.TweakPlug.Mode.Create, valuePlug = plug )
+# self["CameraTweaks"]["tweaks"].addChild( tweakPlug )
