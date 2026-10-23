@@ -81,6 +81,7 @@ Gaffer.Metadata.registerNode(
 			"""
 			The type of camera to create.
 			""",
+			"userDefault" : "cylindrical",
 			"plugValueWidget:type" : "GafferUI.PresetsPlugValueWidget",
 			"presetNames" : IECore.StringVectorData( [ "Cylindrical", "Fisheye", "Spherical", "VR" ] ),
 			"presetValues" : IECore.StringVectorData( [ "cylindrical", "fisheye", "spherical", "vr" ] ),
@@ -189,10 +190,8 @@ Gaffer.Metadata.registerNode(
 			- Right Eye : The full image is the right eye and the left eye is not shown.
 			""",
 			"plugValueWidget:type" : "GafferUI.PresetsPlugValueWidget",
-			"preset:Side by Side" : "side_by_side",
-			"preset:Over Under" : "over_under",
-			"preset:Left Eye" : "left_eye",
-			"preset:Right Eye" : "right_eye",
+			"presetNames" : IECore.StringVectorData( [ "Side by Side", "Over Under", "Left Eye", "Right Eye" ] ),
+			"presetValues" : IECore.StringVectorData( [ "side_by_side", "over_under", "left_eye", "right_eye" ] ),
 			"layout:visibilityActivator" : "typeIsVR",
 
 		},
@@ -205,9 +204,8 @@ Gaffer.Metadata.registerNode(
 			to the image plane.
 			""",
 			"plugValueWidget:type" : "GafferUI.PresetsPlugValueWidget",
-			"preset:LatLong" : "latlong",
-			"preset:Cubemap (6x1)" : "cubemap_6x1",
-			"preset:Cubemap (3x2)" : "cubemap_3x2",
+			"presetNames" : IECore.StringVectorData( [ "LatLong", "Cubemap (6x1)", "Cubemap (3x2)" ] ),
+			"presetValues" : IECore.StringVectorData( [ "latlong", "cubemap_6x1", "cubemap_3x2" ] ),
 			"layout:visibilityActivator" : "typeIsVR",
 
 		},
@@ -240,8 +238,8 @@ Gaffer.Metadata.registerNode(
 			and have fewer artifacts.
 			""",
 			"plugValueWidget:type" : "GafferUI.PresetsPlugValueWidget",
-			"preset:None" : "none",
-			"preset:Cosine" : "cosine",
+			"presetNames" : IECore.StringVectorData( [ "None", "Cosine" ] ),
+			"presetValues" : IECore.StringVectorData( [ "none", "cosine" ] ),
 			"layout:visibilityActivator" : "typeIsVR",
 
 		},
@@ -266,8 +264,8 @@ Gaffer.Metadata.registerNode(
 			and have fewer artifacts.
 			""",
 			"plugValueWidget:type" : "GafferUI.PresetsPlugValueWidget",
-			"preset:None" : "none",
-			"preset:Cosine" : "cosine",
+			"presetNames" : IECore.StringVectorData( [ "None", "Cosine" ] ),
+			"presetValues" : IECore.StringVectorData( [ "none", "cosine" ] ),
 			"layout:visibilityActivator" : "typeIsVR",
 
 		},
@@ -287,9 +285,8 @@ Gaffer.Metadata.registerNode(
 		"shutterType" : {
 
 			"plugValueWidget:type" : "GafferUI.PresetsPlugValueWidget",
-			"preset:Box" : "box",
-			"preset:Triangle" : "triangle",
-			"preset:Curve" : "curve",
+			"presetNames" : IECore.StringVectorData( [ "Box", "Triangle", "Curve" ] ),
+			"presetValues" : IECore.StringVectorData( [ "box", "triangle", "curve" ] ),
 			"description" : "The filtering applied to time samples.\n\n- Box : All samples have the same weight.\n- Triangle : Additional weight is given to later time samples, resulting in smoother tails.\n- Curve : Weights are determined by a user-defined curve.",
 
 		},
@@ -304,12 +301,10 @@ Gaffer.Metadata.registerNode(
 		"rollingShutter" : {
 
 			"plugValueWidget:type" : "GafferUI.PresetsPlugValueWidget",
-			"preset:Off" : "off",
-			"preset:Top" : "top",
-			"preset:Bottom" : "bottom",
-			"preset:Left" : "left",
-			"preset:Right" : "right",
+			"presetNames" : IECore.StringVectorData( [ "Off", "Top", "Bottom", "Left", "Right" ] ),
+			"presetValues" : IECore.StringVectorData( [ "off", "top", "bottom", "left", "right" ] ),
 			"description" : "The direction of the rolling shutter.",
+			"divider" : True,
 
 		},
 

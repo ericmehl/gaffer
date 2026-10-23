@@ -89,7 +89,6 @@ class ArnoldCamera( GafferScene.SceneNode ) :
 		self["VRTweaks"]["tweaks"].addChild( Gaffer.TweakPlug( name = "bottomMergeAngleTweak", nameDefault = "ai:bottom_merge_angle", valuePlug = Gaffer.FloatPlug( "value", defaultValue = 90.0, minValue = 0.0, maxValue = 180.0 ) ) )
 
 		self["NameSwitch"] = Gaffer.NameSwitch( "NameSwitch" )
-		self["NameSwitch"]["selector"].setValue( "cylindrical" )
 		self["NameSwitch"].setup( self["Camera"]["out"] )
 		self["NameSwitch"]["in"].resize( 5 )
 		self["NameSwitch"]["in"][0]["name"].setValue( "*" )
@@ -144,7 +143,7 @@ class ArnoldCamera( GafferScene.SceneNode ) :
 		] :
 			Gaffer.PlugAlgo.promote( p, excludeMetadata = "" )
 
-		Gaffer.PlugAlgo.promoteWithName( self["NameSwitch"]["selector"], "type" )
+		Gaffer.PlugAlgo.promoteWithName( self["NameSwitch"]["selector"], "type", excludeMetadata = "layout:* preset* divider" )
 
 		excludeMetadata = "layout:* nodule:type"
 		Gaffer.PlugAlgo.promoteWithName( self["CylindricalTweaks"]["tweaks"]["horizontalFOVTweak"]["value"], "cylindricalHorizontalFOV", excludeMetadata = excludeMetadata )
