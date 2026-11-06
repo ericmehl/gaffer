@@ -60,6 +60,7 @@
 	#include <tchar.h>
 	#include "accctrl.h"
 	#include "aclapi.h"
+	#include "sddl.h"
 #endif
 
 #include <regex>
@@ -79,6 +80,30 @@ namespace
 {
 
 #ifdef _MSC_VER
+
+// Microsoft states that SIDs are always unique on creation, so we can cache
+// them without concern for changes within a session.
+
+static std::unordered_map<std::wstring, std::string> g_sidCache;
+
+std::wstring sidString( PSID sid )
+{
+	if( !IsValidSid( sid ) )
+	{
+		return L"";
+	}
+
+	std::wstring sidString;
+	LPWSTR rawSidString = nullptr;
+	if( ConvertSidToStringSidW( sid, &rawSidString ) )
+	{
+		sidString = std::wstring( rawSidString );
+		LocalFree( rawSidString );
+
+		return sidString;
+	}
+	return L"";
+}
 
 std::string getFileSecurityInfo( const std::string &pathString, SECURITY_INFORMATION info )
 {
@@ -116,6 +141,14 @@ std::string getFileSecurityInfo( const std::string &pathString, SECURITY_INFORMA
 	else
 	{
 		return "";
+	}
+
+	const std::wstring sidString = ::sidString( pSid );
+
+	auto it = g_sidCache.find( sidString );
+	if( it != g_sidCache.end() )
+	{
+		return it->second;
 	}
 
 	// First call to LookupAccountSid to get the buffer sizes.
@@ -161,6 +194,8 @@ std::string getFileSecurityInfo( const std::string &pathString, SECURITY_INFORMA
 	{
 		return "";
 	}
+
+	g_sidCache[sidString] = AcctName;
 
 	return AcctName;
 }
