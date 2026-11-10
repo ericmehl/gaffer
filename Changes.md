@@ -13,6 +13,7 @@ Fixes
 - ImageAlgo : Fixed handling of empty data window in `tiles()`.
 - Editor : Exceptions thrown by slots connected to `instanceCreatedSignal()` are now caught and reported, rather than stopping execution.
 - RenderMan : Fixed non-deterministic ordering of output definitions.
+- Arnold : Fixed interactive updates to USD RectLights when the input network to `color` or the `texture:file` parameter were modified.
 
 API
 ---
