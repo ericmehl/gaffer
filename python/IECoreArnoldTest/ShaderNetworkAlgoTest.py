@@ -1713,6 +1713,42 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 					self.assertEqual( lightNetwork.input( ( "correct", "input" ) ), ( "texture", "out" ) )
 					self.assertEqual( lightNetwork.input( ( "tint", "input2" ) ), ( "lightTexture", "out" ) )
 
+	def testUSDMeshLightColorTemperature( self ) :
+
+		attributes = IECore.CompoundObject(
+			{
+				"light" : IECoreScene.ShaderNetwork(
+					shaders = {
+						"light" : IECoreScene.Shader( "MeshLight", "light", {
+							"color" : imath.Color3f( 0.125, 0.25, 0.375 ),
+							"enableColorTemperature" : True,
+							"colorTemperature" : 1000.0
+						} )
+					},
+					output = "light"
+				)
+			}
+		)
+
+		with IECoreArnold.UniverseBlock( writable = True ) as universe :
+
+			modifiedAttributes = IECoreArnold.ShaderNetworkAlgo.convertUSDMeshLightAttributes( attributes )
+
+			lightNetwork = modifiedAttributes["light"]
+
+			self.assertEqual( len( lightNetwork.shaders() ), 1 )
+			shader = lightNetwork.getShader( "light" )
+
+			# From IECoreArnold::ShaderNetworkAlgo
+			tempRGB = imath.Color3f( 1.0, 0.02749, 0.0 )
+			tempRGB /= tempRGB.dot( imath.V3f( 0.2126, 0.7152, 0.0722 ) )
+			for i in range( 0, 3 ) :
+				self.assertAlmostEqual(
+					shader.parameters["color"].value[i],
+					( imath.Color3f( 0.125, 0.25, 0.375 ) * tempRGB )[i],
+					places = 5
+				)
+
 	def testUSDConformantOSLRampParameter( self ) :
 
 		network = IECoreScene.ShaderNetwork(

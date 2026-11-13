@@ -777,13 +777,21 @@ const std::vector<IECore::InternedString> g_surfaceShaderAttributeNames = {
 
 const string g_arnoldNamespace( "arnold:" );
 
-void transferUSDLightParameters( ShaderNetwork *network, InternedString shaderHandle, const Shader *usdShader, Shader *shader )
+Color3f usdLightColor( const Shader *usdShader )
 {
 	Color3f color = parameterValue( usdShader, g_colorParameter, Color3f( 1 ) );
 	if( parameterValue( usdShader, g_enableColorTemperatureParameter, false ) )
 	{
 		color *= blackbody( parameterValue( usdShader, g_colorTemperatureParameter, 6500.0f ) );
 	}
+
+	return color;
+}
+
+void transferUSDLightParameters( ShaderNetwork *network, InternedString shaderHandle, const Shader *usdShader, Shader *shader )
+{
+
+	const Color3f color = usdLightColor( usdShader );
 	shader->parameters()[g_colorParameter] = new Color3fData( color );
 
 	transferUSDParameter( network, shaderHandle, usdShader, g_diffuseParameter, shader, g_diffuseParameter, 1.0f );
@@ -1323,7 +1331,7 @@ ConstCompoundObjectPtr convertUSDMeshLightAttributes( const CompoundObject *attr
 	// EmissionColor 1         |      C(0)    |       C        |     C(1)      |     Light Tex
 	// EmissionColor Textured  |      C(0)    |      TINT      |  Emission Tex |       TINT
 
-	const Color3f lightColor = parameterValue( lightOutputShader, g_colorParameter, Color3f( 1.f ) );
+	const Color3f lightColor = usdLightColor( lightOutputShader );
 	const Color3f emissionColor = emissionColorParameter ? parameterValue( surfaceNetwork->getShader( emissionColorParameter.shader ), emissionColorParameter.name, Color3f( 0.f ) ) : Color3f( 0.f );
 	if( emissionColorParameter )
 	{
