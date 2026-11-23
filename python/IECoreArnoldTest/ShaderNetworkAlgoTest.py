@@ -1855,7 +1855,7 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 					self.assertIsNotNone( light )
 					self.assertEqual( light.name, "mesh_light" )
 					self.assertEqual( light.type, "ai:light" )
-					assertColorsAlmostEqual( light.parameters["color"].value, ( lightColor * imath.Color3f( 0.4, 0.5, 0.6 ) * tempRGB ) )
+					assertColorsAlmostEqual( light.parameters["color"].value, ( lightColor * tempRGB ) )
 
 					if lightColor != imath.Color3f( 0 ) :
 						texture = lightNetwork.getShader( "texture" )
@@ -1924,9 +1924,10 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 					self.assertIsNotNone( light )
 					self.assertEqual( light.name, "mesh_light" )
 					self.assertEqual( light.type, "ai:light" )
-					assertColorsAlmostEqual( light.parameters["color"].value, imath.Color3f( 0.1, 0.2, 0.3 ) * surfaceEmitColor * tempRGB )
 
 					if surfaceEmitColor != imath.Color3f( 0.0 ) :
+
+						assertColorsAlmostEqual( light.parameters["color"].value, imath.Color3f( 0.1, 0.2, 0.3 ) * tempRGB )
 
 						texture = lightNetwork.getShader( "texture" )
 						self.assertIsNotNone( texture )
@@ -1934,9 +1935,12 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 
 						tint = lightNetwork.getShader( "tint" )
 						self.assertIsNotNone ( tint )
-						assertColorsAlmostEqual( tint.parameters["input1"].value, surfaceEmitColor * tempRGB )
+						assertColorsAlmostEqual( tint.parameters["input2"].value, surfaceEmitColor * tempRGB )
 						self.assertEqual( lightNetwork.input( ( "light", "color" ) ), ( "tint", "out" ) )
-						self.assertEqual( lightNetwork.input( ( "tint", "input2" ) ), ( "texture", "out" ) )
+						self.assertEqual( lightNetwork.input( ( "tint", "input1" ) ), ( "texture", "out" ) )
+
+					else :
+						assertColorsAlmostEqual( light.parameters["color"].value, imath.Color3f( 0.0 ) )
 
 		# Light and surface with color inputs
 
@@ -1982,7 +1986,7 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 			self.assertIsNotNone( light )
 			self.assertEqual( light.name, "mesh_light" )
 			self.assertEqual( light.type, "ai:light" )
-			assertColorsAlmostEqual( light.parameters["color"].value, imath.Color3f( 0.1 * 0.4, 0.2 * 0.5, 0.3 * 0.6 ) * tempRGB )
+			assertColorsAlmostEqual( light.parameters["color"].value, imath.Color3f( 0.1, 0.2, 0.3 ) * tempRGB )
 
 			texture = lightNetwork.getShader( "texture" )
 			self.assertIsNotNone( texture )
@@ -1995,14 +1999,14 @@ class ShaderNetworkAlgoTest( unittest.TestCase ) :
 			tint = lightNetwork.getShader( "tint" )
 			self.assertIsNotNone( tint )
 
-			tintTemperature = lightNetwork.getShader( "tintTemperature" )
+			tintTemperature = lightNetwork.getShader( "tint1" )
 			self.assertIsNotNone( tintTemperature )
 			assertColorsAlmostEqual( tintTemperature.parameters["input2"].value, tempRGB )
 
-			self.assertEqual( lightNetwork.input( ( "light", "color" ) ), ( "tint", "out" ) )
+			self.assertEqual( lightNetwork.input( ( "light", "color" ) ), ( "tint1", "out" ) )
+			self.assertEqual( lightNetwork.input( ( "tint1", "input1" ) ), ( "tint", "out" ) )
 			self.assertEqual( lightNetwork.input( ( "tint", "input1" ) ), ( "texture", "out" ) )
-			self.assertEqual( lightNetwork.input( ( "tint", "input2" ) ), ( "tintTemperature", "out" ) )
-			self.assertEqual( lightNetwork.input( ( "tintTemperature", "input1" ) ), ( "lightTexture", "out" ) )
+			self.assertEqual( lightNetwork.input( ( "tint", "input2" ) ), ( "lightTexture", "out" ) )
 
 	def testUSDConformantOSLRampParameter( self ) :
 
